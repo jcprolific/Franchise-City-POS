@@ -1,0 +1,97 @@
+:root {
+  /* Brand Colors - Matched from POS but slightly sleeker for dashboard */
+  --accent: #d4af37;
+  --accent-light: #eadd9a;
+  --accent-dark: #b5952f;
+  --accent-glow: rgba(212, 175, 55, 0.15);
+  
+  /* Surface Colors */
+  --bg-app: #0f0f11;
+  --bg-sidebar: #131416;
+  --bg-surface: #1a1b1e;
+  --bg-surface-alt: #232529;
+  --bg-card: #16171a;
+  --bg-card-hover: #1e1f23;
+  
+  /* Text */
+  --text-primary: #f8f9fa;
+  --text-secondary: #adb5bd;
+  --text-muted: #6c757d;
+
+  /* State */
+  --danger: #ff4757;
+  --success: #2ed573;
+  --info: #1e90ff;
+
+  /* Borders */
+  --border: #2b2d31;
+  --border-light: #383a40;
+  
+  /* Layout */
+  --sidebar-width: 260px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-xs: 0.75rem;
+  --font-sm: 0.875rem;
+  --font-base: 1rem;
+  --font-md: 1.125rem;
+  --font-lg: 1.25rem;
+  --font-xl: 1.5rem;
+  --font-2xl: 2rem;
+  
+  /* Spaces */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

@@ -1,0 +1,219 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn var(--transition-fast);
+}
+
+.modal-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  width: 420px;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn var(--transition-base) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xl) var(--space-2xl);
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-product-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.modal-product-icon {
+  font-size: 36px;
+}
+
+.modal-product-name {
+  font-size: var(--font-lg);
+  font-weight: 700;
+}
+
+.modal-product-price {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-price);
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.modal-close:hover {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.modal-body {
+  padding: var(--space-xl) var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* ---- Option Group ---- */
+.option-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.option-group-label {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.option-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.option-btn {
+  padding: var(--space-sm) var(--space-lg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.option-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-light);
+}
+
+.option-btn.selected {
+  background: var(--accent-glow-strong);
+  border-color: var(--accent);
+  color: var(--accent-light);
+}
+
+.option-btn .option-price {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.option-btn.selected .option-price {
+  color: var(--accent);
+}
+
+/* ---- Addons Grid ---- */
+.addons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.addon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.addon-btn:hover {
+  background: var(--bg-card-hover);
+}
+
+.addon-btn.selected {
+  background: var(--accent-glow-strong);
+  border-color: var(--accent);
+  color: var(--accent-light);
+}
+
+.addon-price {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.addon-btn.selected .addon-price {
+  color: var(--accent);
+}
+
+/* ---- Modal Footer ---- */
+.modal-footer {
+  padding: var(--space-lg) var(--space-2xl) var(--space-2xl);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.modal-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-md);
+  font-weight: 700;
+}
+
+.modal-total-price {
+  color: var(--accent-light);
+  font-size: var(--font-lg);
+}
+
+.modal-add-btn {
+  width: 100%;
+  padding: var(--space-lg);
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: var(--font-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.modal-add-btn:hover {
+  box-shadow: 0 4px 18px rgba(204, 138, 46, 0.4);
+  transform: translateY(-1px);
+}
+
+.modal-add-btn:active {
+  transform: translateY(0);
+}

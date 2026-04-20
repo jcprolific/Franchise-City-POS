@@ -1,0 +1,334 @@
+.dashboard-page {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-2xl) var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* ---- Header ---- */
+.dashboard-header h1 {
+  font-size: var(--font-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-header .branch-label {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ---- KPI Cards ---- */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+}
+
+.kpi-card {
+  padding: var(--space-lg) var(--space-xl);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  transition: all var(--transition-fast);
+  animation: slideUp var(--transition-base);
+}
+
+.kpi-card:hover {
+  border-color: var(--border-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kpi-card-title {
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--accent-light);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kpi-card-icon {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.kpi-card-value {
+  font-size: var(--font-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.kpi-card-change {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--success);
+}
+
+.kpi-card-change.sold {
+  color: var(--accent-light);
+}
+
+/* ---- Charts Row ---- */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: var(--space-xl);
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-xl);
+  animation: slideUp var(--transition-base);
+}
+
+.chart-card-title {
+  font-size: var(--font-md);
+  font-weight: 700;
+  margin-bottom: var(--space-xl);
+}
+
+/* ---- Bar Chart ---- */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  height: 200px;
+  padding: var(--space-md) 0;
+  border-left: 1px dashed var(--border-light);
+  border-bottom: 1px dashed var(--border-light);
+  position: relative;
+}
+
+.bar-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar-chart-bar {
+  width: 70%;
+  background: linear-gradient(180deg, var(--accent-light), var(--accent-dark));
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  min-height: 4px;
+  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.bar-chart-bar:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 12px rgba(204, 138, 46, 0.3);
+}
+
+.bar-chart-label {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.bar-chart-y-labels {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transform: translateX(-100%);
+  padding-right: var(--space-sm);
+}
+
+.bar-y-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---- Donut Chart ---- */
+.donut-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xl);
+}
+
+.donut-chart {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-chart-inner {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  position: absolute;
+}
+
+.donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-xs);
+}
+
+.donut-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.donut-legend-name {
+  flex: 1;
+  color: var(--text-secondary);
+}
+
+.donut-legend-count {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ---- Bottom Row ---- */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: var(--space-xl);
+}
+
+/* ---- Transactions Table ---- */
+.transactions-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-xl);
+  animation: slideUp 0.35s ease;
+}
+
+.transactions-card-title {
+  font-size: var(--font-md);
+  font-weight: 700;
+  margin-bottom: var(--space-lg);
+}
+
+.transactions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.transactions-table th {
+  text-align: left;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border);
+}
+
+.transactions-table td {
+  padding: var(--space-md);
+  font-size: var(--font-sm);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.transactions-table tr:last-child td {
+  border-bottom: none;
+}
+
+.transactions-table .order-id {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.transactions-table .total {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.transactions-table .payment-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--bg-surface-alt);
+  border-radius: 4px;
+  font-size: var(--font-xs);
+  font-weight: 500;
+}
+
+/* ---- Low Stock Alert ---- */
+.low-stock-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-xl);
+  animation: slideUp 0.35s ease;
+}
+
+.low-stock-card-title {
+  font-size: var(--font-md);
+  font-weight: 700;
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.low-stock-card-title span {
+  font-size: 16px;
+}
+
+.low-stock-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.low-stock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.low-stock-name {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.low-stock-qty {
+  font-size: var(--font-sm);
+  font-weight: 700;
+  color: var(--danger);
+}
