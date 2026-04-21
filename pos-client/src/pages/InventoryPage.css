@@ -5,6 +5,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
+  background: var(--bg-app);
 }
 
 /* ---- Header ---- */
@@ -15,9 +16,11 @@
 }
 
 .inventory-header-left h1 {
+  font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-2xl);
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
 .inventory-header-left .inventory-count {
@@ -52,13 +55,14 @@
   width: 100%;
   padding: var(--space-md) var(--space-xl);
   background: var(--bg-card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-radius: var(--pos-radius-pill, var(--radius-md));
   color: var(--text-primary);
   font-size: var(--font-base);
   font-family: var(--font-family);
   outline: none;
   transition: all var(--transition-fast);
+  box-shadow: var(--pos-shadow-card, var(--shadow-sm));
 }
 
 .inventory-search-input::placeholder {
@@ -84,10 +88,11 @@
   gap: var(--space-md);
   padding: var(--space-lg) var(--space-xl);
   background: var(--bg-card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-radius: var(--pos-radius-md, var(--radius-md));
   transition: all var(--transition-fast);
   animation: slideUp var(--transition-base);
+  box-shadow: var(--pos-shadow-card, var(--shadow-sm));
 }
 
 .inventory-item:hover {
@@ -122,8 +127,9 @@
 }
 
 .inventory-item-name {
+  font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-base);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -148,9 +154,10 @@
 }
 
 .inventory-qty-number {
+  font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-xl);
-  font-weight: 700;
-  color: var(--success);
+  font-weight: 800;
+  color: #1e8c4d;
   line-height: 1;
 }
 

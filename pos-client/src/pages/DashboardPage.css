@@ -5,13 +5,16 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
+  background: var(--bg-app);
 }
 
 /* ---- Header ---- */
 .dashboard-header h1 {
+  font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-2xl);
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
 .dashboard-header .branch-label {
@@ -30,19 +33,20 @@
 .kpi-card {
   padding: var(--space-lg) var(--space-xl);
   background: var(--bg-card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-radius: var(--pos-radius-md, var(--radius-md));
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   transition: all var(--transition-fast);
   animation: slideUp var(--transition-base);
+  box-shadow: var(--pos-shadow-card, var(--shadow-sm));
 }
 
 .kpi-card:hover {
   border-color: var(--border-light);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--pos-shadow-hover, var(--shadow-md));
 }
 
 .kpi-card-header {
@@ -53,10 +57,10 @@
 
 .kpi-card-title {
   font-size: var(--font-xs);
-  font-weight: 500;
-  color: var(--accent-light);
+  font-weight: 600;
+  color: var(--pos-accent-strong, var(--accent-dark));
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.12em;
 }
 
 .kpi-card-icon {
@@ -65,20 +69,22 @@
 }
 
 .kpi-card-value {
+  font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-2xl);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;
+  color: var(--text-primary);
 }
 
 .kpi-card-change {
   font-size: var(--font-xs);
   font-weight: 600;
-  color: var(--success);
+  color: #1e8c4d;
 }
 
 .kpi-card-change.sold {
-  color: var(--accent-light);
+  color: var(--pos-accent-strong, var(--accent-dark));
 }
 
 /* ---- Charts Row ---- */
@@ -90,16 +96,19 @@
 
 .chart-card {
   background: var(--bg-card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-radius: var(--pos-radius-md, var(--radius-md));
   padding: var(--space-xl);
   animation: slideUp var(--transition-base);
+  box-shadow: var(--pos-shadow-card, var(--shadow-sm));
 }
 
 .chart-card-title {
+  font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-md);
   font-weight: 700;
   margin-bottom: var(--space-xl);
+  color: var(--text-primary);
 }
 
 /* ---- Bar Chart ---- */
@@ -230,16 +239,19 @@
 /* ---- Transactions Table ---- */
 .transactions-card {
   background: var(--bg-card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-radius: var(--pos-radius-md, var(--radius-md));
   padding: var(--space-xl);
   animation: slideUp 0.35s ease;
+  box-shadow: var(--pos-shadow-card, var(--shadow-sm));
 }
 
 .transactions-card-title {
+  font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-md);
   font-weight: 700;
   margin-bottom: var(--space-lg);
+  color: var(--text-primary);
 }
 
 .transactions-table {
@@ -291,19 +303,22 @@
 /* ---- Low Stock Alert ---- */
 .low-stock-card {
   background: var(--bg-card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-radius: var(--pos-radius-md, var(--radius-md));
   padding: var(--space-xl);
   animation: slideUp 0.35s ease;
+  box-shadow: var(--pos-shadow-card, var(--shadow-sm));
 }
 
 .low-stock-card-title {
+  font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-md);
   font-weight: 700;
   margin-bottom: var(--space-lg);
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  color: var(--text-primary);
 }
 
 .low-stock-card-title span {

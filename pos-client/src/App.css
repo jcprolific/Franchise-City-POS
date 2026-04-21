@@ -11,3 +11,378 @@
   display: flex;
   flex-direction: column;
 }
+
+/* ============================================
+   POS Shell – Unified Light Theme
+   (Scoped overrides; HQ area remains dark)
+   ============================================ */
+.pos-shell {
+  /* ----- Palette overrides ----- */
+  --bg-app: #f6efe4;
+  --bg-sidebar: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #faf4ea;
+  --bg-card: #ffffff;
+  --bg-card-hover: #faf3e5;
+  --bg-cart: #ffffff;
+  --bg-cart-footer: #faf4ea;
+  --bg-input: #ffffff;
+
+  --accent: #d98724;
+  --accent-light: #e8a24d;
+  --accent-dark: #b86f16;
+  --accent-glow: rgba(217, 135, 36, 0.14);
+  --accent-glow-strong: rgba(217, 135, 36, 0.28);
+
+  --text-primary: #2a1d12;
+  --text-secondary: #5c4a38;
+  --text-muted: #a0907a;
+  --text-price: #d98724;
+
+  --border: #eadfc9;
+  --border-light: #ddcdb0;
+
+  --shadow-sm: 0 1px 3px rgba(46, 29, 17, 0.06);
+  --shadow-md: 0 4px 12px rgba(46, 29, 17, 0.10);
+  --shadow-lg: 0 8px 24px rgba(46, 29, 17, 0.14);
+  --shadow-glow: 0 0 20px rgba(217, 135, 36, 0.12);
+
+  /* ----- POS-specific tokens (shared with pos-page CSS) ----- */
+  --pos-bg: #f6efe4;
+  --pos-surface: #ffffff;
+  --pos-surface-muted: #faf4ea;
+  --pos-surface-soft: #f1e8d7;
+  --pos-border: #eadfc9;
+  --pos-border-strong: #ddcdb0;
+
+  --pos-text: #2a1d12;
+  --pos-text-soft: #5c4a38;
+  --pos-text-muted: #a0907a;
+
+  --pos-accent: #d98724;
+  --pos-accent-soft: #fff3e3;
+  --pos-accent-strong: #b86f16;
+
+  --pos-ink: #2e1d11;
+  --pos-ink-hover: #3a261a;
+
+  --pos-shadow-card: 0 1px 2px rgba(46, 29, 17, 0.04),
+    0 2px 6px rgba(46, 29, 17, 0.05);
+  --pos-shadow-hover: 0 6px 18px rgba(46, 29, 17, 0.10);
+  --pos-shadow-panel: 0 1px 3px rgba(46, 29, 17, 0.05),
+    0 6px 20px rgba(46, 29, 17, 0.06);
+
+  --pos-radius-sm: 10px;
+  --pos-radius-md: 14px;
+  --pos-radius-lg: 20px;
+  --pos-radius-pill: 999px;
+
+  --pos-font-serif: 'Fraunces', 'Playfair Display', Georgia, 'Times New Roman',
+    serif;
+
+  background: var(--bg-app);
+  color: var(--text-primary);
+}
+
+/* Keep HQ area dark — nothing needed here since HqShell has no .pos-shell */
+
+/* Banner tweak for light background */
+.pos-shell .access-banner {
+  background: #fdecea;
+  border-color: #f3b8b1;
+  color: #a33127;
+}
+
+/* ============================================
+   Sidebar (light) inside .pos-shell
+   ============================================ */
+.pos-shell .sidebar {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+}
+
+.pos-shell .sidebar-brand {
+  border-bottom: 1px solid var(--border);
+}
+
+.pos-shell .sidebar-brand-icon {
+  background: var(--pos-surface-soft);
+  color: var(--pos-text);
+}
+
+.pos-shell .sidebar-brand-name {
+  color: var(--pos-text);
+  font-family: var(--pos-font-serif);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.pos-shell .sidebar-nav-item {
+  color: var(--pos-text-soft);
+  font-weight: 600;
+}
+
+.pos-shell .sidebar-nav-item:hover {
+  background: var(--pos-surface-muted);
+  color: var(--pos-text);
+}
+
+.pos-shell .sidebar-nav-item.active {
+  background: var(--pos-ink);
+  color: #f9ecd4;
+}
+
+.pos-shell .sidebar-nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+.pos-shell .sidebar-footer {
+  border-top: 1px solid var(--border);
+}
+
+.pos-shell .sidebar-user-avatar {
+  background: var(--pos-ink);
+  color: #f4e6d0;
+}
+
+.pos-shell .sidebar-user-name {
+  color: var(--pos-text);
+}
+
+.pos-shell .sidebar-user-role {
+  color: var(--pos-text-muted);
+}
+
+.pos-shell .sidebar-sync-badge {
+  background: var(--pos-surface-muted);
+  color: var(--pos-text-soft);
+  border: 1px solid var(--pos-border);
+}
+
+.pos-shell .sidebar-logout-btn {
+  background: transparent;
+  border: 1px solid var(--pos-border);
+  color: var(--pos-text-soft);
+}
+
+.pos-shell .sidebar-logout-btn:hover {
+  background: rgba(231, 76, 60, 0.08);
+  border-color: rgba(231, 76, 60, 0.35);
+  color: #c0392b;
+}
+
+/* ============================================
+   Generic page title polish for inventory/dashboard
+   ============================================ */
+.pos-shell .page-container {
+  background: var(--bg-app);
+}
+
+/* ============================================
+   HQ Shell – Match POS Light Tone
+   ============================================ */
+.hq-shell {
+  --bg-app: #f6efe4;
+  --bg-sidebar: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #faf4ea;
+  --bg-card: #ffffff;
+  --bg-card-hover: #faf3e5;
+  --bg-input: #ffffff;
+
+  --accent: #d98724;
+  --accent-light: #e8a24d;
+  --accent-dark: #b86f16;
+  --accent-glow: rgba(217, 135, 36, 0.14);
+
+  --text-primary: #2a1d12;
+  --text-secondary: #5c4a38;
+  --text-muted: #a0907a;
+
+  --border: #eadfc9;
+  --border-light: #ddcdb0;
+
+  --shadow-sm: 0 1px 3px rgba(46, 29, 17, 0.06);
+  --shadow-md: 0 4px 12px rgba(46, 29, 17, 0.10);
+  --shadow-lg: 0 8px 24px rgba(46, 29, 17, 0.14);
+
+  --pos-font-serif: 'Fraunces', 'Playfair Display', Georgia, 'Times New Roman', serif;
+
+  background: var(--bg-app);
+  color: var(--text-primary);
+}
+
+.hq-shell .page-container {
+  background: var(--bg-app);
+}
+
+.hq-shell .page-title h1 {
+  font-family: var(--pos-font-serif);
+  font-weight: 800;
+}
+
+.hq-shell .admin-sidebar {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+}
+
+.hq-shell .admin-sidebar .sidebar-brand {
+  border-bottom: 1px solid var(--border);
+}
+
+.hq-shell .admin-sidebar .sidebar-brand-icon {
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.hq-shell .admin-sidebar .sidebar-brand-name {
+  color: var(--text-primary);
+}
+
+.hq-shell .admin-sidebar .sidebar-brand-sub {
+  color: var(--accent-dark);
+}
+
+.hq-shell .admin-sidebar .sidebar-nav-item {
+  color: var(--text-secondary);
+}
+
+.hq-shell .admin-sidebar .sidebar-nav-item:hover {
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+}
+
+.hq-shell .admin-sidebar .sidebar-nav-item.active {
+  background: #2e1d11;
+  color: #f9ecd4;
+  border-color: #2e1d11;
+}
+
+.hq-shell .admin-sidebar .sidebar-nav-item.active .nav-icon {
+  color: #f9ecd4;
+}
+
+.hq-shell .admin-sidebar .sidebar-footer {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+}
+
+/* Let HQ content scroll inside the main column */
+.hq-shell .app-main {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.hq-shell .page-container {
+  height: auto;
+  overflow: visible;
+}
+
+@media (max-width: 900px) {
+  .hq-shell.app-layout {
+    flex-direction: column;
+  }
+
+  .hq-shell .app-main {
+    height: auto;
+    min-height: 0;
+  }
+}
+
+.access-banner {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  background: rgba(231, 76, 60, 0.1);
+  color: #ffb4ab;
+  font-size: var(--font-sm);
+}
+
+.page-container {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-2xl) var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.page-title h1 {
+  font-size: var(--font-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.page-title p {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  margin-top: 2px;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--accent-light);
+  transform: translateY(-1px);
+}
+
+.admin-table-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th {
+  background: var(--bg-surface-alt);
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-md) var(--space-lg);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-table td {
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.admin-table tr:hover td {
+  background: var(--bg-card-hover);
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}

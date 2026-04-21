@@ -1,12 +1,63 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { sampleDashboard } from '../data/inventoryDashboardData';
 import { sampleInventory } from '../data/inventoryDashboardData';
+import { supabase } from '../lib/supabase';
+import { fetchLiveDashboardData } from '../lib/dashboardRealtime';
 import './DashboardPage.css';
 
 export default function DashboardPage() {
-  const d = sampleDashboard;
+  const staticDashboard = sampleDashboard;
+  const [liveDashboard, setLiveDashboard] = useState({
+    todaySales: 0,
+    todaySalesChange: 0,
+    totalOrders: 0,
+    ordersChange: 0,
+    avgOrderValue: 0,
+    avgOrderChange: 0,
+    recentTransactions: [] as {
+      id: string;
+      time: string;
+      items: number;
+      total: number;
+      payment: string;
+    }[],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
-  const maxSales = Math.max(...d.weeklySales.map((s) => s.amount));
+  const refreshDashboard = useCallback(async () => {
+    try {
+      setLoadError('');
+      const { dashboard } = await fetchLiveDashboardData();
+      setLiveDashboard(dashboard);
+    } catch (error) {
+      console.error('Dashboard sync failed:', error);
+      setLoadError('Realtime sync unavailable. Showing latest cached values.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshDashboard();
+
+    const channel = supabase
+      .channel('dashboard-pos-order-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pos_order' },
+        () => {
+          void refreshDashboard();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [refreshDashboard]);
+
+  const maxSales = Math.max(...staticDashboard.weeklySales.map((s) => s.amount));
 
   const lowStockItems = useMemo(
     () => sampleInventory.filter((i) => i.quantity <= i.lowStockThreshold),
@@ -14,18 +65,18 @@ export default function DashboardPage() {
   );
 
   // Build donut chart gradient
-  const totalProducts = d.topProducts.reduce((sum, p) => sum + p.count, 0);
+  const totalProducts = staticDashboard.topProducts.reduce((sum, p) => sum + p.count, 0);
   const donutGradient = useMemo(() => {
     let accumulated = 0;
     const stops: string[] = [];
-    d.topProducts.forEach((p) => {
+    staticDashboard.topProducts.forEach((p) => {
       const start = (accumulated / totalProducts) * 360;
       accumulated += p.count;
       const end = (accumulated / totalProducts) * 360;
       stops.push(`${p.color} ${start}deg ${end}deg`);
     });
     return `conic-gradient(${stops.join(', ')})`;
-  }, [d.topProducts, totalProducts]);
+  }, [staticDashboard.topProducts, totalProducts]);
 
   return (
     <div className="dashboard-page" id="dashboard-page">
@@ -34,6 +85,8 @@ export default function DashboardPage() {
         <h1>Dashboard</h1>
         <span className="branch-label">Franchise City · Main Branch</span>
       </div>
+      {isLoading && <div className="branch-label">Loading live orders...</div>}
+      {loadError && <div className="branch-label">{loadError}</div>}
 
       {/* KPI Cards */}
       <div className="kpi-row">
@@ -42,8 +95,11 @@ export default function DashboardPage() {
             <span className="kpi-card-title">Today's Sales</span>
             <span className="kpi-card-icon">💰</span>
           </div>
-          <div className="kpi-card-value">₱{d.todaySales.toLocaleString()}</div>
-          <div className="kpi-card-change">+{d.todaySalesChange}%</div>
+          <div className="kpi-card-value">₱{liveDashboard.todaySales.toLocaleString()}</div>
+          <div className="kpi-card-change">
+            {liveDashboard.todaySalesChange >= 0 ? '+' : ''}
+            {liveDashboard.todaySalesChange.toFixed(1)}%
+          </div>
         </div>
 
         <div className="kpi-card" style={{ animationDelay: '60ms' }}>
@@ -51,8 +107,11 @@ export default function DashboardPage() {
             <span className="kpi-card-title">Orders</span>
             <span className="kpi-card-icon">🛒</span>
           </div>
-          <div className="kpi-card-value">{d.totalOrders}</div>
-          <div className="kpi-card-change">+{d.ordersChange}%</div>
+          <div className="kpi-card-value">{liveDashboard.totalOrders}</div>
+          <div className="kpi-card-change">
+            {liveDashboard.ordersChange >= 0 ? '+' : ''}
+            {liveDashboard.ordersChange.toFixed(1)}%
+          </div>
         </div>
 
         <div className="kpi-card" style={{ animationDelay: '120ms' }}>
@@ -60,8 +119,11 @@ export default function DashboardPage() {
             <span className="kpi-card-title">Avg Order Value</span>
             <span className="kpi-card-icon">📈</span>
           </div>
-          <div className="kpi-card-value">₱{d.avgOrderValue.toFixed(2)}</div>
-          <div className="kpi-card-change">+{d.avgOrderChange}%</div>
+          <div className="kpi-card-value">₱{liveDashboard.avgOrderValue.toFixed(2)}</div>
+          <div className="kpi-card-change">
+            {liveDashboard.avgOrderChange >= 0 ? '+' : ''}
+            {liveDashboard.avgOrderChange.toFixed(1)}%
+          </div>
         </div>
 
         <div className="kpi-card" style={{ animationDelay: '180ms' }}>
@@ -69,8 +131,8 @@ export default function DashboardPage() {
             <span className="kpi-card-title">Top Product</span>
             <span className="kpi-card-icon">⭐</span>
           </div>
-          <div className="kpi-card-value">{d.topProductName}</div>
-          <div className="kpi-card-change sold">{d.topProductSold} sold</div>
+          <div className="kpi-card-value">{staticDashboard.topProductName}</div>
+          <div className="kpi-card-change sold">{staticDashboard.topProductSold} sold</div>
         </div>
       </div>
 
@@ -85,7 +147,7 @@ export default function DashboardPage() {
                 <span key={v} className="bar-y-label">{v.toLocaleString()}</span>
               ))}
             </div>
-            {d.weeklySales.map((s) => (
+            {staticDashboard.weeklySales.map((s) => (
               <div key={s.day} className="bar-chart-col">
                 <div
                   className="bar-chart-bar"
@@ -109,7 +171,7 @@ export default function DashboardPage() {
               <div className="donut-chart-inner" />
             </div>
             <div className="donut-legend">
-              {d.topProducts.map((p) => (
+              {staticDashboard.topProducts.map((p) => (
                 <div key={p.name} className="donut-legend-item">
                   <div className="donut-legend-dot" style={{ background: p.color }} />
                   <span className="donut-legend-name">{p.name}</span>
@@ -137,7 +199,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {d.recentTransactions.map((tx) => (
+              {liveDashboard.recentTransactions.map((tx) => (
                 <tr key={tx.id}>
                   <td className="order-id">{tx.id}</td>
                   <td>{tx.time}</td>
@@ -146,6 +208,15 @@ export default function DashboardPage() {
                   <td><span className="payment-tag">{tx.payment}</span></td>
                 </tr>
               ))}
+              {liveDashboard.recentTransactions.length === 0 && (
+                <tr>
+                  <td className="order-id">No orders yet</td>
+                  <td>--</td>
+                  <td>0</td>
+                  <td className="total">₱0.00</td>
+                  <td><span className="payment-tag">--</span></td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

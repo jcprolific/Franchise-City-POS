@@ -1,14 +1,17 @@
-import type { NavPage } from '../types';
+import { NavLink } from 'react-router-dom';
 import './Sidebar.css';
 
 interface SidebarProps {
-  currentPage: NavPage;
-  onNavigate: (page: NavPage) => void;
   userName: string;
+  userRole: string;
+  canAccessHq: boolean;
   onLogout: () => void;
 }
 
-export default function Sidebar({ currentPage, onNavigate, userName, onLogout }: SidebarProps) {
+export default function Sidebar({ userName, userRole, canAccessHq, onLogout }: SidebarProps) {
+  const navClassName = ({ isActive }: { isActive: boolean }) =>
+    `sidebar-nav-item ${isActive ? 'active' : ''}`;
+
   return (
     <aside className="sidebar" id="sidebar-nav">
       <div className="sidebar-brand">
@@ -17,30 +20,39 @@ export default function Sidebar({ currentPage, onNavigate, userName, onLogout }:
       </div>
 
       <nav className="sidebar-nav">
-        <button
+        <NavLink
           id="nav-pos"
-          className={`sidebar-nav-item ${currentPage === 'pos' ? 'active' : ''}`}
-          onClick={() => onNavigate('pos')}
+          className={navClassName}
+          to="/pos"
         >
           <span className="nav-icon">🖥</span>
           POS
-        </button>
-        <button
+        </NavLink>
+        <NavLink
           id="nav-inventory"
-          className={`sidebar-nav-item ${currentPage === 'inventory' ? 'active' : ''}`}
-          onClick={() => onNavigate('inventory')}
+          className={navClassName}
+          to="/inventory"
         >
           <span className="nav-icon">📦</span>
           Inventory
-        </button>
-        <button
+        </NavLink>
+        <NavLink
           id="nav-dashboard"
-          className={`sidebar-nav-item ${currentPage === 'dashboard' ? 'active' : ''}`}
-          onClick={() => onNavigate('dashboard')}
+          className={navClassName}
+          to="/dashboard"
         >
           <span className="nav-icon">📊</span>
           Dashboard
-        </button>
+        </NavLink>
+        {canAccessHq && (
+          <NavLink
+            className={navClassName}
+            to="/hq"
+          >
+            <span className="nav-icon">🏢</span>
+            HQ Portal
+          </NavLink>
+        )}
       </nav>
 
       <div className="sidebar-footer">
@@ -50,7 +62,7 @@ export default function Sidebar({ currentPage, onNavigate, userName, onLogout }:
           </div>
           <div className="sidebar-user-details">
             <span className="sidebar-user-name">{userName}</span>
-            <span className="sidebar-user-role">Cashier</span>
+            <span className="sidebar-user-role">{userRole}</span>
           </div>
         </div>
         <div className="sidebar-footer-actions">

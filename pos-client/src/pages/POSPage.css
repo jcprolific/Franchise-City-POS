@@ -1,6 +1,218 @@
-.pos-layout {
-  display: flex;
-  height: 100%;
+/* ============================================
+   COFTEA POS – Order-taking layout
+   Tokens (--pos-*) come from .pos-shell in App.css
+   ============================================ */
+.pos-page {
   flex: 1;
+  min-width: 0;
+  height: 100%;
   overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 18px;
+  padding: 22px 28px 24px;
+  background: var(--pos-bg);
+  color: var(--pos-text);
+  font-family: var(--font-family);
+}
+
+/* ============================================
+   Header
+   ============================================ */
+.pos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.pos-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pos-brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--pos-radius-pill);
+  background: var(--pos-surface);
+  border: 1px solid var(--pos-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: var(--pos-shadow-card);
+}
+
+.pos-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.pos-brand-title {
+  font-family: var(--pos-font-serif);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--pos-text);
+}
+
+.pos-brand-subtitle {
+  margin-top: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--pos-text-muted);
+}
+
+.pos-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.pos-meta-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+
+.pos-meta-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pos-text-muted);
+}
+
+.pos-meta-value {
+  margin-top: 3px;
+  font-family: var(--pos-font-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--pos-text);
+}
+
+.pos-meta-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--pos-border-strong);
+  opacity: 0.7;
+}
+
+.pos-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--pos-radius-pill);
+  background: var(--pos-ink);
+  color: #f4e6d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  box-shadow: var(--pos-shadow-card);
+}
+
+/* ============================================
+   Search
+   ============================================ */
+.pos-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pos-search-icon {
+  position: absolute;
+  left: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--pos-text-muted);
+  pointer-events: none;
+}
+
+.pos-search-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 44px 0 46px;
+  border-radius: var(--pos-radius-pill);
+  border: 1px solid var(--pos-border);
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  font-family: inherit;
+  font-size: 0.92rem;
+  outline: none;
+  box-shadow: var(--pos-shadow-card);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.pos-search-input::placeholder {
+  color: var(--pos-text-muted);
+}
+
+.pos-search-input:focus {
+  border-color: var(--pos-accent);
+  box-shadow: 0 0 0 3px rgba(217, 135, 36, 0.15);
+}
+
+.pos-search-clear {
+  position: absolute;
+  right: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--pos-radius-pill);
+  border: none;
+  background: var(--pos-surface-soft);
+  color: var(--pos-text-soft);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.pos-search-clear:hover {
+  background: var(--pos-ink);
+  color: #fff;
+}
+
+/* ============================================
+   Body grid: products + cart
+   ============================================ */
+.pos-body {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+  .pos-body {
+    grid-template-columns: 1fr 300px;
+  }
+  .pos-page {
+    padding: 18px 18px 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .pos-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================
+   Banner override (warm light)
+   ============================================ */
+.pos-page + .access-banner,
+.app-main > .access-banner {
+  /* keep existing dark banner styling if rendered outside */
 }

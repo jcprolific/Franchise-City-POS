@@ -139,6 +139,16 @@
   animation: fadeIn var(--transition-fast);
 }
 
+.login-hq-hint {
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(204, 138, 46, 0.1);
+  border: 1px solid rgba(204, 138, 46, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--accent-light);
+  font-size: var(--font-xs);
+  text-align: center;
+}
+
 /* ---- Sign Up Link ---- */
 .login-signup-btn {
   background: none;
@@ -315,6 +325,27 @@
 
 .login-guest-icon {
   font-size: 18px;
+}
+
+.login-hq-link {
+  margin-top: var(--space-md);
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-family: var(--font-family);
+  text-align: center;
+  cursor: pointer;
+}
+
+.login-hq-link span {
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+.login-hq-link:hover span {
+  text-decoration: underline;
 }
 
 /* ---- Footer ---- */

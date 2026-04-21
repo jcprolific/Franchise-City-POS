@@ -9,31 +9,31 @@ export const sampleCategories: Category[] = [
 
 export const sampleProducts: Product[] = [
   // Coffee
-  { id: 'prod-1', category_id: 'cat-1', name: 'Americano', base_price: 120, is_active: true, image_url: null, icon: '☕' },
-  { id: 'prod-2', category_id: 'cat-1', name: 'Latte', base_price: 150, is_active: true, image_url: null, icon: '☕' },
-  { id: 'prod-3', category_id: 'cat-1', name: 'Cappuccino', base_price: 150, is_active: true, image_url: null, icon: '☕' },
-  { id: 'prod-4', category_id: 'cat-1', name: 'Espresso', base_price: 100, is_active: true, image_url: null, icon: '☕' },
-  { id: 'prod-5', category_id: 'cat-1', name: 'Mocha', base_price: 160, is_active: true, image_url: null, icon: '☕' },
-  { id: 'prod-6', category_id: 'cat-1', name: 'Caramel Macchiato', base_price: 170, is_active: true, image_url: null, icon: '☕' },
-  { id: 'prod-7', category_id: 'cat-1', name: 'Flat White', base_price: 155, is_active: true, image_url: null, icon: '☕' },
-  { id: 'prod-8', category_id: 'cat-1', name: 'Spanish Latte', base_price: 165, is_active: true, image_url: null, icon: '☕' },
+  { id: 'prod-1', category_id: 'cat-1', name: 'Americano', base_price: 120, is_active: true, image_url: null, icon: '☕', description: 'Rich espresso with hot water' },
+  { id: 'prod-2', category_id: 'cat-1', name: 'Latte', base_price: 150, is_active: true, image_url: null, icon: '☕', description: 'Smooth & creamy' },
+  { id: 'prod-3', category_id: 'cat-1', name: 'Cappuccino', base_price: 150, is_active: true, image_url: null, icon: '☕', description: 'Foam-forward classic' },
+  { id: 'prod-4', category_id: 'cat-1', name: 'Espresso', base_price: 100, is_active: true, image_url: null, icon: '☕', description: 'Single shot, rich crema' },
+  { id: 'prod-5', category_id: 'cat-1', name: 'Mocha', base_price: 160, is_active: true, image_url: null, icon: '☕', description: 'Chocolate, espresso, milk' },
+  { id: 'prod-6', category_id: 'cat-1', name: 'Caramel Macchiato', base_price: 170, is_active: true, image_url: null, icon: '☕', description: 'Espresso with caramel & milk foam' },
+  { id: 'prod-7', category_id: 'cat-1', name: 'Flat White', base_price: 155, is_active: true, image_url: null, icon: '☕', description: 'Velvety microfoam' },
+  { id: 'prod-8', category_id: 'cat-1', name: 'Spanish Latte', base_price: 165, is_active: true, image_url: null, icon: '☕', description: 'Sweetened condensed milk latte' },
   // Milk Tea
-  { id: 'prod-9', category_id: 'cat-2', name: 'Classic Milk Tea', base_price: 130, is_active: true, image_url: null, icon: '🧋' },
-  { id: 'prod-10', category_id: 'cat-2', name: 'Taro Milk Tea', base_price: 140, is_active: true, image_url: null, icon: '🧋' },
-  { id: 'prod-11', category_id: 'cat-2', name: 'Matcha Latte', base_price: 150, is_active: true, image_url: null, icon: '🧋' },
-  { id: 'prod-12', category_id: 'cat-2', name: 'Brown Sugar MT', base_price: 155, is_active: true, image_url: null, icon: '🧋' },
-  { id: 'prod-13', category_id: 'cat-2', name: 'Wintermelon', base_price: 130, is_active: true, image_url: null, icon: '🧋' },
-  { id: 'prod-14', category_id: 'cat-2', name: 'Okinawa', base_price: 145, is_active: true, image_url: null, icon: '🧋' },
+  { id: 'prod-9', category_id: 'cat-2', name: 'Classic Milk Tea', base_price: 130, is_active: true, image_url: null, icon: '🧋', description: 'House-brewed black tea & milk' },
+  { id: 'prod-10', category_id: 'cat-2', name: 'Taro Milk Tea', base_price: 140, is_active: true, image_url: null, icon: '🧋', description: 'Creamy taro blend' },
+  { id: 'prod-11', category_id: 'cat-2', name: 'Matcha Latte', base_price: 150, is_active: true, image_url: null, icon: '🧋', description: 'Premium matcha with milk' },
+  { id: 'prod-12', category_id: 'cat-2', name: 'Brown Sugar MT', base_price: 155, is_active: true, image_url: null, icon: '🧋', description: 'Caramelized brown sugar' },
+  { id: 'prod-13', category_id: 'cat-2', name: 'Wintermelon', base_price: 130, is_active: true, image_url: null, icon: '🧋', description: 'Sweet & refreshing' },
+  { id: 'prod-14', category_id: 'cat-2', name: 'Okinawa', base_price: 145, is_active: true, image_url: null, icon: '🧋', description: 'Roasted brown sugar tea' },
   // Fruit Tea
-  { id: 'prod-15', category_id: 'cat-3', name: 'Mango Fruit Tea', base_price: 130, is_active: true, image_url: null, icon: '🥭' },
-  { id: 'prod-16', category_id: 'cat-3', name: 'Passion Fruit', base_price: 130, is_active: true, image_url: null, icon: '🍑' },
-  { id: 'prod-17', category_id: 'cat-3', name: 'Lychee Tea', base_price: 135, is_active: true, image_url: null, icon: '🍹' },
-  { id: 'prod-18', category_id: 'cat-3', name: 'Green Apple', base_price: 130, is_active: true, image_url: null, icon: '🍏' },
+  { id: 'prod-15', category_id: 'cat-3', name: 'Mango Fruit Tea', base_price: 130, is_active: true, image_url: null, icon: '🥭', description: 'Fresh mango pulp & tea' },
+  { id: 'prod-16', category_id: 'cat-3', name: 'Passion Fruit', base_price: 130, is_active: true, image_url: null, icon: '🍑', description: 'Tangy tropical blend' },
+  { id: 'prod-17', category_id: 'cat-3', name: 'Lychee Tea', base_price: 135, is_active: true, image_url: null, icon: '🍹', description: 'Lychee with jasmine green tea' },
+  { id: 'prod-18', category_id: 'cat-3', name: 'Green Apple', base_price: 130, is_active: true, image_url: null, icon: '🍏', description: 'Crisp & refreshing' },
   // Snacks
-  { id: 'prod-19', category_id: 'cat-4', name: 'Fries', base_price: 80, is_active: true, image_url: null, icon: '🍟' },
-  { id: 'prod-20', category_id: 'cat-4', name: 'Chicken Pops', base_price: 95, is_active: true, image_url: null, icon: '🍗' },
-  { id: 'prod-21', category_id: 'cat-4', name: 'Nachos', base_price: 85, is_active: true, image_url: null, icon: '🧀' },
-  { id: 'prod-22', category_id: 'cat-4', name: 'Fish Balls', base_price: 60, is_active: true, image_url: null, icon: '🐟' },
+  { id: 'prod-19', category_id: 'cat-4', name: 'Fries', base_price: 80, is_active: true, image_url: null, icon: '🍟', description: 'Golden crispy fries' },
+  { id: 'prod-20', category_id: 'cat-4', name: 'Chicken Pops', base_price: 95, is_active: true, image_url: null, icon: '🍗', description: 'Bite-sized fried chicken' },
+  { id: 'prod-21', category_id: 'cat-4', name: 'Nachos', base_price: 85, is_active: true, image_url: null, icon: '🧀', description: 'Loaded cheese nachos' },
+  { id: 'prod-22', category_id: 'cat-4', name: 'Fish Balls', base_price: 60, is_active: true, image_url: null, icon: '🐟', description: 'Classic street snack' },
 ];
 
 export const sampleVariants: ProductVariant[] = [

@@ -3,19 +3,21 @@ import { supabase } from '../lib/supabase';
 import './LoginPage.css';
 
 interface LoginPageProps {
-  onLogin: (mode: 'guest' | 'pin' | 'email', name?: string) => void;
+  onLogin: (mode: 'guest' | 'pin' | 'email', name?: string, targetArea?: 'pos' | 'hq') => Promise<void> | void;
 }
 
 type LoginTab = 'email' | 'pin';
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [activeTab, setActiveTab] = useState<LoginTab>('email');
+  const [targetArea, setTargetArea] = useState<'pos' | 'hq'>('pos');
 
   // Email state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [hqHint, setHqHint] = useState('');
 
   // PIN state
   const [pin, setPin] = useState('');
@@ -44,7 +46,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     const userName = data.user?.email?.split('@')[0] || 'User';
-    onLogin('email', userName);
+    await onLogin('email', userName, targetArea);
   };
 
   // ---- Email Sign Up ----
@@ -84,10 +86,26 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     const userName = loginData.user?.email?.split('@')[0] || 'User';
-    onLogin('email', userName);
+    await onLogin('email', userName, targetArea);
   };
 
   // ---- PIN Login ----
+  const submitPinLogin = (enteredPin: string) => {
+    if (enteredPin.length !== 4) {
+      setPinError('Enter 4-digit PIN');
+      return;
+    }
+
+    // Registered HQ PIN
+    if (enteredPin === '4200') {
+      onLogin('pin', 'Staff HQ', 'hq');
+      return;
+    }
+
+    // Other valid staff PINs still go to POS order-taking.
+    onLogin('pin', 'Staff', 'pos');
+  };
+
   const handlePinKey = (digit: string) => {
     if (pin.length >= 4) return;
     const newPin = pin + digit;
@@ -96,7 +114,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     if (newPin.length === 4) {
       setTimeout(() => {
-        onLogin('pin', 'Staff');
+        submitPinLogin(newPin);
       }, 300);
     }
   };
@@ -108,7 +126,14 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   // ---- Guest ----
   const handleGuestEntry = () => {
-    onLogin('guest', 'Guest');
+    onLogin('guest', 'Guest', 'pos');
+  };
+
+  const handleHqAccessClick = () => {
+    setTargetArea('hq');
+    setActiveTab('email');
+    setEmailError('');
+    setHqHint('Sign in with your HQ account to open the HQ dashboard.');
   };
 
   return (
@@ -168,6 +193,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
             {emailError && (
               <div className="login-error">{emailError}</div>
+            )}
+            {hqHint && (
+              <div className="login-hq-hint">{hqHint}</div>
             )}
 
             <button
@@ -232,11 +260,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               <button
                 className="pin-key enter"
                 onClick={() => {
-                  if (pin.length === 4) {
-                    onLogin('pin', 'Staff');
-                  } else {
-                    setPinError('Enter 4-digit PIN');
-                  }
+                  submitPinLogin(pin);
                 }}
                 aria-label="Enter"
                 type="button"
@@ -265,6 +289,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           >
             <span className="login-guest-icon">👤</span>
             Enter as Guest
+          </button>
+          <button
+            className="login-hq-link"
+            type="button"
+            onClick={handleHqAccessClick}
+          >
+            HQ access? <span>Click here</span>
           </button>
         </div>
 

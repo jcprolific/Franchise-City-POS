@@ -13,6 +13,7 @@ export interface Product {
   is_active: boolean;
   image_url: string | null;
   icon: string;
+  description?: string;
 }
 
 export interface ProductVariant {
