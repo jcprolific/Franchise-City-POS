@@ -16,6 +16,8 @@ import DashboardPage from './pages/DashboardPage';
 import AdminSidebar from './hq/components/AdminSidebar';
 import GlobalDashboard from './hq/pages/GlobalDashboard';
 import BranchManagement from './hq/pages/BranchManagement';
+import WarehouseManagement from './hq/pages/WarehouseManagement';
+import SupplierManagement from './hq/pages/SupplierManagement';
 import './App.css';
 
 type LoginMode = 'guest' | 'pin' | 'email' | null;
@@ -298,6 +300,8 @@ export default function App() {
           <Route element={<HqShell userName={auth.userName} onLogout={handleLogout} />}>
             <Route path="/hq" element={<GlobalDashboard />} />
             <Route path="/hq/branches" element={<BranchManagement />} />
+            <Route path="/hq/warehouse" element={<WarehouseManagement />} />
+            <Route path="/hq/suppliers" element={<SupplierManagement />} />
             <Route
               path="/hq/catalog"
               element={<HqPlaceholder title="Menu Catalog" subtitle="Centralized product engine coming soon." />}

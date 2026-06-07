@@ -14,6 +14,12 @@ import type { PosOutletContext } from '../App';
 import { sampleCategories, sampleProducts, sampleVariants, sampleAddons } from '../data/sampleData';
 import { supabase } from '../lib/supabase';
 import { getInsertPayloadForPosOrder, resolvePosOrderColumns } from '../lib/dashboardRealtime';
+import {
+  addAttendanceEntry,
+  getLatestAttendanceStatus,
+  getTotalHoursToday,
+  subscribeAttendance,
+} from '../lib/attendanceStore';
 import CategoryBar from '../components/CategoryBar';
 import ProductGrid from '../components/ProductGrid';
 import Cart from '../components/Cart';
@@ -58,12 +64,32 @@ export default function POSPage() {
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [today, setToday] = useState(() => new Date());
   const [orderNumber] = useState(() => 4800 + Math.floor(Math.random() * 200));
+  const [attendanceStatus, setAttendanceStatus] = useState<'IN' | 'OUT'>(() => {
+    const status = getLatestAttendanceStatus(displayName);
+    return status ?? 'OUT';
+  });
+  const [hoursToday, setHoursToday] = useState(0);
 
   // Keep date fresh around midnight
   useEffect(() => {
     const timer = setInterval(() => setToday(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const syncAttendance = () => {
+      const status = getLatestAttendanceStatus(displayName) ?? 'OUT';
+      setAttendanceStatus(status);
+      setHoursToday(getTotalHoursToday(displayName));
+    };
+    syncAttendance();
+    const cleanup = subscribeAttendance(syncAttendance);
+    const timer = setInterval(syncAttendance, 60_000);
+    return () => {
+      cleanup();
+      clearInterval(timer);
+    };
+  }, [displayName]);
 
   // ---- Derived Data ----
   const filteredProducts = useMemo(() => {
@@ -159,7 +185,16 @@ export default function POSPage() {
     }
   };
 
-  const handleConfirmCheckout = async () => {
+  const handleToggleAttendance = () => {
+    const nextStatus = attendanceStatus === 'IN' ? 'OUT' : 'IN';
+    addAttendanceEntry({
+      staffName: displayName,
+      role: outletCtx?.userRole || 'Cashier',
+      status: nextStatus,
+    });
+  };
+
+  const handleConfirmCheckout = async ({ paymentReference }: { paymentReference?: string }) => {
     if (cartItems.length === 0 || isSavingOrder) {
       return;
     }
@@ -173,6 +208,7 @@ export default function POSPage() {
       const payload = getInsertPayloadForPosOrder(columns, {
         orderNumber,
         paymentMethod,
+        paymentReference,
         subtotal,
         discountAmount,
         total,
@@ -235,6 +271,17 @@ export default function POSPage() {
           <div className="pos-meta-block">
             <span className="pos-meta-label">Cashier</span>
             <span className="pos-meta-value">{displayName}</span>
+          </div>
+          <div className="pos-meta-divider" aria-hidden="true" />
+          <div className="pos-attendance">
+            <button
+              type="button"
+              className={`pos-attendance-btn ${attendanceStatus === 'IN' ? 'is-in' : 'is-out'}`}
+              onClick={handleToggleAttendance}
+            >
+              {attendanceStatus === 'IN' ? 'Time Out' : 'Time In'}
+            </button>
+            <span className="pos-attendance-hours">{hoursToday.toFixed(1)}h today</span>
           </div>
           <div className="pos-avatar" aria-hidden="true">
             {getInitials(displayName)}

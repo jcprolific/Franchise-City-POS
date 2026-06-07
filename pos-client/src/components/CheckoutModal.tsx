@@ -5,25 +5,30 @@ import './CheckoutModal.css';
 interface CheckoutModalProps {
   total: number;
   paymentMethod: PaymentMethod;
-  onConfirm: () => void;
+  onConfirm: (payload: { paymentReference?: string }) => void;
   onCancel: () => void;
 }
 
 export default function CheckoutModal({ total, paymentMethod, onConfirm, onCancel }: CheckoutModalProps) {
   const [cashTendered, setCashTendered] = useState<string>('');
+  const [paymentReference, setPaymentReference] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
   const cashAmount = parseFloat(cashTendered) || 0;
   const change = cashAmount - total;
   const isCash = paymentMethod === 'CASH';
-  const canConfirm = isCash ? cashAmount >= total : true;
+  const isGcash = paymentMethod === 'GCASH';
+  const referenceValue = paymentReference.trim();
+  const canConfirm = isCash ? cashAmount >= total : isGcash ? referenceValue.length > 0 : true;
 
   const quickAmounts = [100, 200, 500, 1000];
 
   const handleConfirm = () => {
     setShowSuccess(true);
     setTimeout(() => {
-      onConfirm();
+      onConfirm({
+        paymentReference: referenceValue || undefined,
+      });
     }, 2000);
   };
 
@@ -42,7 +47,14 @@ export default function CheckoutModal({ total, paymentMethod, onConfirm, onCance
                 Change: ₱{change.toFixed(2)}
               </div>
             )}
-            <button className="success-done-btn" onClick={onConfirm}>
+            <button
+              className="success-done-btn"
+              onClick={() =>
+                onConfirm({
+                  paymentReference: referenceValue || undefined,
+                })
+              }
+            >
               New Order
             </button>
           </div>
@@ -99,6 +111,23 @@ export default function CheckoutModal({ total, paymentMethod, onConfirm, onCance
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {isGcash && (
+            <div className="payment-reference-section">
+              <label className="payment-reference-label" htmlFor="gcash-reference-input">
+                GCash Reference Number
+              </label>
+              <input
+                id="gcash-reference-input"
+                className="payment-reference-input"
+                type="text"
+                value={paymentReference}
+                onChange={(e) => setPaymentReference(e.target.value)}
+                placeholder="Hal. 1234 5678 9012"
+                autoFocus
+              />
             </div>
           )}
         </div>

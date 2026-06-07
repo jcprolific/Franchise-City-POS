@@ -170,6 +170,37 @@
   color: var(--danger);
 }
 
+.payment-reference-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.payment-reference-label {
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.payment-reference-input {
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--font-base);
+  font-family: var(--font-family);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.payment-reference-input:focus {
+  border-color: var(--accent);
+}
+
 .checkout-footer {
   padding: var(--space-lg) var(--space-2xl) var(--space-2xl);
   display: flex;

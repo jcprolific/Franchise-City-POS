@@ -1,0 +1,1205 @@
+{% comment %} Get subcategories from the current collection {% endcomment %}
+{% if collection %}
+  {% assign subcategories = collection.metafields.custom.subcategories.value %}
+{% endif %}
+
+{% comment %}
+  KEY FIX: All Liquid-dependent font CSS must live in an inline <style> tag,
+  NOT inside {% stylesheet %} — that block is compiled once and cached by Shopify,
+  so section.settings values never update inside it when the editor changes.
+{% endcomment %}
+<style>
+  {{ section.settings.collection_title_font | font_face: font_display: 'swap' }}
+  {{ section.settings.subcategory_title_font | font_face: font_display: 'swap' }}
+  {{ section.settings.section_font | font_face: font_display: 'swap' }}
+
+  #shopify-section-{{ section.id }} {
+    padding-top: {{ section.settings.padding_top }}px;
+    padding-bottom: {{ section.settings.padding_bottom }}px;
+    font-family: {{ section.settings.section_font.family }}, {{ section.settings.section_font.fallback_families }};
+    font-weight: {{ section.settings.section_font.weight }};
+    font-style: {{ section.settings.section_font.style }};
+  }
+
+  #shopify-section-{{ section.id }} .collection-title {
+    font-family: {{ section.settings.collection_title_font.family }}, {{ section.settings.collection_title_font.fallback_families }};
+    font-weight: {{ section.settings.collection_title_font.weight }};
+    font-style: {{ section.settings.collection_title_font.style }};
+  }
+
+  #shopify-section-{{ section.id }} .collection-description {
+    font-family: {{ section.settings.section_font.family }}, {{ section.settings.section_font.fallback_families }};
+    font-weight: {{ section.settings.section_font.weight }};
+    font-style: {{ section.settings.section_font.style }};
+  }
+
+  #shopify-section-{{ section.id }} .subcategory-title {
+    font-family: {{ section.settings.subcategory_title_font.family }}, {{ section.settings.subcategory_title_font.fallback_families }};
+    font-weight: {{ section.settings.subcategory_title_font.weight }};
+    font-style: {{ section.settings.subcategory_title_font.style }};
+  }
+
+  #shopify-section-{{ section.id }} .product-title,
+  #shopify-section-{{ section.id }} .product-subtitle,
+  #shopify-section-{{ section.id }} .product-price {
+    font-family: {{ section.settings.section_font.family }}, {{ section.settings.section_font.fallback_families }};
+    font-weight: {{ section.settings.section_font.weight }};
+    font-style: {{ section.settings.section_font.style }};
+  }
+</style>
+
+<div class="subcategory-section page-width">
+
+  {% comment %} Collection Title and Description {% endcomment %}
+  <div class="collection-header">
+    <h1 class="collection-title">{{ collection.title | upcase }}</h1>
+    {% if section.settings.collection_description != blank %}
+      <div class="collection-description">
+        {{ section.settings.collection_description }}
+      </div>
+    {% elsif collection.description != blank %}
+      <div class="collection-description">
+        {{ collection.description }}
+      </div>
+    {% endif %}
+  </div>
+
+  {% comment %} Subcategory Grid - Horizontal Scroll {% endcomment %}
+  {% if subcategories != blank %}
+  <div class="subcategory-scroll-wrapper">
+    <div class="subcategory-grid-horizontal">
+      {% for subcat in subcategories %}
+        <a href="{{ subcat.collection.url }}" class="subcategory-card">
+          {% if subcat.image %}
+            <div class="subcategory-image">
+              {{- subcat.image | image_url: width: 400 | image_tag:
+                  loading: 'lazy',
+                  width: 400,
+                  height: 400,
+                  alt: subcat.title
+              -}}
+            </div>
+          {% endif %}
+          <h3 class="subcategory-title">{{ subcat.title }}</h3>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% comment %} Breadcrumb {% endcomment %}
+  <div class="breadcrumb-wrapper">
+    <a href="/">Shop</a> <span class="breadcrumb-separator">/</span> <span>{{ collection.title }}</span>
+  </div>
+
+  {% comment %} Filter Bar {% endcomment %}
+  <div class="filter-bar">
+    <button type="button" class="filter-button" data-filter="sort">SORT</button>
+    <button type="button" class="filter-button" data-filter="material">MATERIAL</button>
+    <button type="button" class="filter-button" data-filter="size">SIZE</button>
+    <button type="button" class="filter-button" data-filter="collection">COLLECTION</button>
+    <button type="button" class="filter-button" data-filter="gender">GENDER</button>
+  </div>
+
+  {% comment %} Filter Sidebar {% endcomment %}
+  <div class="filter-sidebar" id="filterSidebar">
+    <div class="filter-sidebar-overlay" id="filterOverlay"></div>
+    <div class="filter-sidebar-content">
+      <div class="filter-sidebar-header">
+        <h3 id="filterTitle">No filters selected</h3>
+        <button class="filter-close-btn" id="closeFilter">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="filter-sidebar-body">
+        {% comment %} Sort Filter {% endcomment %}
+        <div class="filter-section" data-filter-section="sort">
+          <button class="filter-accordion-btn">
+            <span>Sort</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="filter-accordion-content">
+            <label class="filter-option">
+              <input type="radio" name="sort" value="featured">
+              <span>Featured</span>
+            </label>
+            <label class="filter-option">
+              <input type="radio" name="sort" value="price-low-high">
+              <span>Price: Low to High</span>
+            </label>
+            <label class="filter-option">
+              <input type="radio" name="sort" value="price-high-low">
+              <span>Price: High to Low</span>
+            </label>
+            <label class="filter-option">
+              <input type="radio" name="sort" value="newest">
+              <span>Newest</span>
+            </label>
+          </div>
+        </div>
+
+        {% comment %} Material Filter {% endcomment %}
+        <div class="filter-section" data-filter-section="material">
+          <button class="filter-accordion-btn">
+            <span>Material</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="filter-accordion-content">
+            <label class="filter-option">
+              <input type="checkbox" name="material" value="gold">
+              <span>Gold</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="material" value="silver">
+              <span>Silver</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="material" value="platinum">
+              <span>Platinum</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="material" value="rose-gold">
+              <span>Rose Gold</span>
+            </label>
+          </div>
+        </div>
+
+        {% comment %} Size Filter {% endcomment %}
+        <div class="filter-section" data-filter-section="size">
+          <button class="filter-accordion-btn">
+            <span>Size</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="filter-accordion-content">
+            <label class="filter-option">
+              <input type="checkbox" name="size" value="xs">
+              <span>XS</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="size" value="s">
+              <span>S</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="size" value="m">
+              <span>M</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="size" value="l">
+              <span>L</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="size" value="xl">
+              <span>XL</span>
+            </label>
+          </div>
+        </div>
+
+        {% comment %} Collection Filter {% endcomment %}
+        <div class="filter-section" data-filter-section="collection">
+          <button class="filter-accordion-btn">
+            <span>Collection</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="filter-accordion-content">
+            {% if section.settings.collection_filter_options != blank %}
+              {% for linked_collection in section.settings.collection_filter_options %}
+                <label class="filter-option filter-option-link">
+                  <input type="checkbox"
+                         name="collection"
+                         value="{{ linked_collection.handle }}">
+                  <span>{{ linked_collection.title }}</span>
+                </label>
+              {% endfor %}
+            {% else %}
+              <p class="filter-empty-message">Select collection options in section settings.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        {% comment %} Gender Filter {% endcomment %}
+        <div class="filter-section" data-filter-section="gender">
+          <button class="filter-accordion-btn">
+            <span>Gender</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="filter-accordion-content">
+            <label class="filter-option">
+              <input type="checkbox" name="gender" value="women">
+              <span>Women</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="gender" value="men">
+              <span>Men</span>
+            </label>
+            <label class="filter-option">
+              <input type="checkbox" name="gender" value="unisex">
+              <span>Unisex</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-sidebar-footer">
+        <button class="filter-apply-btn" id="applyFilters">VIEW PRODUCTS</button>
+      </div>
+    </div>
+  </div>
+
+  {% comment %} Product Grid {% endcomment %}
+  <div class="collection-products">
+    <div class="product-grid">
+      {% for product in collection.products %}
+        <div class="product-card-wrapper"
+             data-product-id="{{ product.id }}"
+             data-product-tags="{% for tag in product.tags %}{{ tag | handleize }}{% unless forloop.last %},{% endunless %}{% endfor %}"
+             data-product-collections="{% for product_collection in product.collections %}{{ product_collection.handle }}{% unless forloop.last %},{% endunless %}{% endfor %}">
+          <a href="{{ product.url }}" class="product-card">
+            {% if product.featured_image %}
+              <div class="product-image">
+                {{ product.featured_image | image_url: width: 600 | image_tag:
+                    loading: 'lazy',
+                    alt: product.title
+                }}
+                <div class="product-badges">
+                  {% if product.tags contains 'best-seller' or product.tags contains 'Best Seller' %}
+                    <span class="badge badge-bestseller">Best Seller</span>
+                  {% endif %}
+                  {% if product.tags contains 'new' or product.tags contains 'New' %}
+                    <span class="badge badge-new">NEW</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+
+            <div class="product-info">
+              <h3 class="product-title">{{ product.title | upcase }}</h3>
+              {% assign subtitle = product.metafields.custom.subtitle | default: product.vendor %}
+              {% if subtitle == blank %}
+                {% for tag in product.tags %}
+                  {% if tag contains 'collection:' %}
+                    {% assign subtitle = tag | remove: 'collection:' | strip %}
+                    {% break %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              {% if subtitle != blank %}
+                <p class="product-subtitle">{{ subtitle }}</p>
+              {% endif %}
+              <p class="product-price">{{ product.price | money }}</p>
+            </div>
+          </a>
+
+          <button class="quick-add-btn"
+                  data-product-id="{{ product.id }}"
+                  data-has-variants="{% if product.has_only_default_variant %}false{% else %}true{% endif %}"
+                  data-variant-id="{{ product.selected_or_first_available_variant.id }}"
+                  aria-label="Add {{ product.title }} to cart">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 6C8 4.34315 9.34315 3 11 3H13C14.6569 3 16 4.34315 16 6V7H8V6Z"/>
+              <path d="M6 7L5 9V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V9L18 7H6Z"/>
+              <circle cx="9.5" cy="10" r="0.8" fill="currentColor"/>
+              <circle cx="14.5" cy="10" r="0.8" fill="currentColor"/>
+            </svg>
+            <span class="add-to-cart-loading" style="display: none;">
+              <svg class="spinner" width="16" height="16" viewBox="0 0 50 50">
+                <circle class="path" cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="5"></circle>
+              </svg>
+            </span>
+          </button>
+
+          {% unless product.has_only_default_variant %}
+            <div class="quick-add-variants-overlay" id="variants-{{ product.id }}">
+              <div class="variants-header">
+                <span>SELECT SIZE</span>
+                <button class="variants-close" data-product-id="{{ product.id }}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+              <div class="variants-grid">
+                {% for variant in product.variants %}
+                  <button class="variant-btn {% unless variant.available %}disabled{% endunless %}"
+                          data-variant-id="{{ variant.id }}"
+                          {% unless variant.available %}disabled{% endunless %}>
+                    {{ variant.title }}
+                  </button>
+                {% endfor %}
+              </div>
+            </div>
+          {% endunless %}
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if paginate.pages > 1 %}
+      <div class="pagination-wrapper">
+        {{ paginate | default_pagination }}
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const filterButtons = document.querySelectorAll('.filter-button');
+  const filterSidebar = document.getElementById('filterSidebar');
+  const filterOverlay = document.getElementById('filterOverlay');
+  const closeFilter = document.getElementById('closeFilter');
+  const applyFilters = document.getElementById('applyFilters');
+  const filterTitle = document.getElementById('filterTitle');
+  const accordionButtons = document.querySelectorAll('.filter-accordion-btn');
+
+  filterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      filterSidebar.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      filterTitle.textContent = 'No filters selected';
+      document.querySelectorAll('.filter-section').forEach(s => s.style.display = 'block');
+    });
+  });
+
+  function closeSidebar() {
+    filterSidebar.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  closeFilter.addEventListener('click', closeSidebar);
+  filterOverlay.addEventListener('click', closeSidebar);
+  applyFilters.addEventListener('click', function() {
+    applyProductFilters();
+    closeSidebar();
+  });
+
+  accordionButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const content = this.nextElementSibling;
+      const isActive = this.classList.contains('active');
+      accordionButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.nextElementSibling.style.maxHeight = null;
+      });
+      if (!isActive) {
+        this.classList.add('active');
+        content.style.maxHeight = content.scrollHeight + 'px';
+      }
+    });
+  });
+
+  if (accordionButtons.length > 0) accordionButtons[0].click();
+
+  function getCheckedValues(filterName) {
+    return Array.from(document.querySelectorAll(`input[name="${filterName}"]:checked`))
+      .map(input => (input.value || '').toLowerCase().trim()).filter(Boolean);
+  }
+
+  function toValueArray(value) {
+    if (!value) return [];
+    return value.split(',').map(item => item.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function applyProductFilters() {
+    const selectedCollections = getCheckedValues('collection');
+    const selectedMaterials = getCheckedValues('material');
+    const selectedSizes = getCheckedValues('size');
+
+    document.querySelectorAll('.product-card-wrapper').forEach(card => {
+      const productCollections = toValueArray(card.dataset.productCollections);
+      const productTags = toValueArray(card.dataset.productTags);
+
+      const matchesCollection = selectedCollections.length === 0 ||
+        selectedCollections.some(v => productCollections.includes(v));
+      const matchesMaterial = selectedMaterials.length === 0 ||
+        selectedMaterials.some(v => productTags.includes(v));
+      const matchesSize = selectedSizes.length === 0 ||
+        selectedSizes.some(v => productTags.includes(v));
+
+      card.style.display = (matchesCollection && matchesMaterial && matchesSize) ? '' : 'none';
+    });
+  }
+
+  document.querySelectorAll('input[name="collection"], input[name="material"], input[name="size"]')
+    .forEach(cb => cb.addEventListener('change', applyProductFilters));
+
+  const filterBar = document.querySelector('.filter-bar');
+  if (filterBar) {
+    const observer = new IntersectionObserver(
+      ([entry]) => filterBar.classList.toggle('is-stuck', !entry.isIntersecting),
+      { threshold: 0, rootMargin: '-140px 0px 0px 0px' }
+    );
+    observer.observe(filterBar);
+  }
+
+  document.querySelectorAll('.quick-add-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const productId = this.getAttribute('data-product-id');
+      const hasVariants = this.getAttribute('data-has-variants') === 'true';
+      const variantId = this.getAttribute('data-variant-id');
+
+      if (hasVariants) {
+        const overlay = document.getElementById(`variants-${productId}`);
+        if (overlay) {
+          overlay.classList.add('active');
+          return;
+        }
+      }
+
+      performQuickAdd(variantId, this);
+    });
+  });
+
+  document.querySelectorAll('.variants-close').forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const productId = this.getAttribute('data-product-id');
+      const overlay = document.getElementById(`variants-${productId}`);
+      if (overlay) overlay.classList.remove('active');
+    });
+  });
+
+  document.querySelectorAll('.variant-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const variantId = this.getAttribute('data-variant-id');
+      const productId = this.closest('.quick-add-variants-overlay').id.replace('variants-', '');
+      const quickAddBtn = document.querySelector(`.quick-add-btn[data-product-id="${productId}"]`);
+      
+      this.closest('.quick-add-variants-overlay').classList.remove('active');
+      performQuickAdd(variantId, quickAddBtn);
+    });
+  });
+
+  function performQuickAdd(variantId, button) {
+    const loadingSpinner = button.querySelector('.add-to-cart-loading');
+    const icon = button.querySelector('svg:not(.spinner)');
+
+    if (loadingSpinner && icon) {
+      loadingSpinner.style.display = 'inline-block';
+      icon.style.display = 'none';
+    }
+    button.disabled = true;
+
+    fetch('/cart/add.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ id: variantId, quantity: 1 }] })
+    })
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(() => {
+      showCartNotification('Item added to cart!');
+      updateHeaderCartCount();
+      document.documentElement.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
+      window.dispatchEvent(new CustomEvent('cart:updated'));
+      const cartDrawer = document.querySelector('cart-drawer') || document.querySelector('[data-cart-drawer]');
+      if (cartDrawer && typeof cartDrawer.open === 'function') cartDrawer.open();
+    })
+    .catch(() => showCartNotification('Error adding to cart. Please try again.', true))
+    .finally(() => {
+      button.disabled = false;
+      if (loadingSpinner && icon) {
+        loadingSpinner.style.display = 'none';
+        icon.style.display = 'block';
+      }
+    });
+  }
+
+  function showCartNotification(message, isError = false) {
+    document.querySelector('.cart-notification-custom')?.remove();
+
+    const notification = document.createElement('div');
+    notification.className = 'cart-notification-custom';
+    notification.style.cssText = `
+      position:fixed;top:20px;right:20px;
+      background:${isError ? '#dc3545' : '#1a1a1a'};
+      color:white;padding:15px 25px;border-radius:4px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:10000;
+      font-size:14px;font-weight:500;animation:slideInRight 0.3s ease;
+    `;
+    notification.textContent = message;
+
+    if (!document.querySelector('style[data-cart-notification-style]')) {
+      const style = document.createElement('style');
+      style.setAttribute('data-cart-notification-style', '');
+      style.textContent = `
+        @keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+        @keyframes slideOutRight{from{transform:translateX(0);opacity:1}to{transform:translateX(100%);opacity:0}}
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      notification.style.animation = 'slideOutRight 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  function updateHeaderCartCount() {
+    fetch('/cart.js').then(r => r.json()).then(cart => {
+      const itemCount = cart.item_count;
+      const cartIconBubble = document.getElementById('cart-icon-bubble');
+      if (cartIconBubble) {
+        let bubble = cartIconBubble.querySelector('.cart-count-bubble');
+        if (itemCount > 0) {
+          if (!bubble) {
+            bubble = document.createElement('div');
+            bubble.className = 'cart-count-bubble';
+            bubble.innerHTML = `<span aria-hidden="true"></span><span class="visually-hidden"></span>`;
+            cartIconBubble.appendChild(bubble);
+          }
+          bubble.querySelector('[aria-hidden]').textContent = itemCount < 100 ? itemCount : '99+';
+          bubble.querySelector('.visually-hidden').textContent = `${itemCount} items in cart`;
+          bubble.style.display = 'flex';
+        } else if (bubble) {
+          bubble.remove();
+        }
+      }
+      document.dispatchEvent(new CustomEvent('cart:updated', { detail: { cart, itemCount } }));
+    }).catch(err => console.error('Error updating cart count:', err));
+  }
+});
+</script>
+
+{% schema %}
+{
+  "name": "Subcategory Grid",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "font_picker",
+      "id": "collection_title_font",
+      "label": "Collection title font",
+      "default": "helvetica_n7"
+    },
+    {
+      "type": "font_picker",
+      "id": "subcategory_title_font",
+      "label": "Subcategory label font",
+      "default": "helvetica_n7"
+    },
+    {
+      "type": "font_picker",
+      "id": "section_font",
+      "label": "Section font (products, description)",
+      "default": "helvetica_n4"
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "richtext",
+      "id": "collection_description",
+      "label": "Collection Description",
+      "default": "<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed doremi eiusmod tempor</p>"
+    },
+    {
+      "type": "collection_list",
+      "id": "collection_filter_options",
+      "label": "Collection filter options",
+      "info": "Choose multiple collections to show in Collection filter."
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Top padding",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Bottom padding",
+      "default": 36
+    }
+  ],
+  "presets": [
+    {
+      "name": "Subcategory Grid"
+    }
+  ]
+}
+{% endschema %}
+
+{% comment %}
+  Only static, non-Liquid CSS lives in stylesheet.
+  All font/padding settings are in the inline <style> tag above.
+{% endcomment %}
+{% stylesheet %}
+
+.subcategory-section {
+  margin: 0 auto;
+  background-color: #FFFDF4;
+}
+
+.collection-header {
+  margin-bottom: 3rem;
+}
+
+.collection-title {
+  font-size: 3.6rem;
+  color: rgb(var(--color-foreground));
+  margin: 0 0 1rem 0;
+  letter-spacing: 0.02em;
+}
+
+.collection-description {
+  font-size: 1.4rem;
+  line-height: 1.6;
+  color: rgba(var(--color-foreground), 0.7);
+  max-width: 80rem;
+}
+
+.subcategory-scroll-wrapper {
+  margin-bottom: 3rem;
+  overflow: hidden;
+}
+
+.subcategory-grid-horizontal {
+  display: flex;
+  gap: 2rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 1rem;
+}
+
+.subcategory-grid-horizontal::-webkit-scrollbar {
+  display: none;
+}
+
+.subcategory-card {
+  text-decoration: none;
+  text-align: center;
+  display: block;
+  flex: 0 0 auto;
+  width: 200px;
+  transition: transform 0.2s ease;
+}
+
+.subcategory-card:hover {
+  transform: translateY(-3px);
+}
+
+.subcategory-image {
+  width: 100%;
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+  aspect-ratio: 1;
+  background-color: rgba(var(--color-foreground), 0.03);
+}
+
+.subcategory-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.subcategory-title {
+  font-size: 1.4rem;
+  color: rgb(var(--color-foreground));
+  margin: 0;
+  text-transform: capitalize;
+  letter-spacing: 0.03em;
+}
+
+.breadcrumb-wrapper {
+  margin: 0 0 2rem 0;
+  font-size: 1.3rem;
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+.breadcrumb-wrapper a {
+  color: rgba(var(--color-foreground), 0.6);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-wrapper a:hover {
+  color: rgb(var(--color-foreground));
+}
+
+.breadcrumb-separator {
+  margin: 0 0.5rem;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 1rem;
+  padding: 2rem 0;
+  border-top: 1px solid rgba(var(--color-foreground), 0.08);
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.08);
+  margin-bottom: 4rem;
+  flex-wrap: wrap;
+}
+
+.filter-button {
+  padding: 0.8rem 2rem;
+  background: transparent;
+  border: 1px solid rgba(var(--color-foreground), 0.15);
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  transition: all 0.2s ease;
+  color: rgb(var(--color-foreground));
+  border-radius: 0;
+}
+
+.filter-button:hover {
+  background: rgb(var(--color-foreground));
+  color: rgb(var(--color-background));
+  border-color: rgb(var(--color-foreground));
+}
+
+.filter-sidebar {
+  position: fixed;
+  top: 0; right: 0;
+  width: 100%; height: 100%;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.filter-sidebar.active {
+  pointer-events: auto;
+}
+
+.filter-sidebar-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.filter-sidebar.active .filter-sidebar-overlay {
+  opacity: 1;
+}
+
+.filter-sidebar-content {
+  position: absolute;
+  top: 0; right: 0;
+  width: 100%;
+  max-width: 450px;
+  height: 100%;
+  background: #FFFDF4;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.filter-sidebar.active .filter-sidebar-content {
+  transform: translateX(0);
+}
+
+.filter-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem;
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+}
+
+.filter-sidebar-header h3 {
+  font-size: 1.6rem;
+  font-weight: 400;
+  margin: 0;
+  color: rgb(var(--color-foreground));
+}
+
+.filter-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--color-foreground));
+}
+
+.filter-sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.filter-section {
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+  padding: 1.5rem 0;
+}
+
+.filter-accordion-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: rgb(var(--color-foreground));
+  text-align: left;
+}
+
+.filter-accordion-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.filter-accordion-btn.active svg {
+  transform: rotate(180deg);
+}
+
+.filter-accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  padding-top: 0.4rem;
+}
+
+.filter-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  cursor: pointer;
+  font-size: 1.3rem;
+  color: rgb(var(--color-foreground));
+  line-height: 1.4;
+}
+
+.filter-option-link { text-decoration: none; }
+.filter-option-link:hover { opacity: 0.75; }
+
+.filter-option input {
+  margin: 0.2rem 0 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.filter-option span {
+  display: block;
+  word-break: break-word;
+}
+
+.filter-empty-message {
+  font-size: 1.2rem;
+  color: rgba(var(--color-foreground), 0.6);
+  margin: 1rem 0 0;
+}
+
+.filter-sidebar-footer {
+  padding: 2rem;
+  border-top: 1px solid rgba(var(--color-foreground), 0.1);
+}
+
+.filter-apply-btn {
+  width: 100%;
+  padding: 1.5rem;
+  background: rgb(var(--color-foreground));
+  color: rgb(var(--color-background));
+  border: none;
+  cursor: pointer;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  transition: opacity 0.2s ease;
+}
+
+.filter-apply-btn:hover { opacity: 0.8; }
+
+.collection-products { margin-top: 3rem; }
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3rem 2rem;
+  margin-bottom: 4rem;
+}
+
+.product-card-wrapper { position: relative; }
+
+.product-card {
+  text-decoration: none;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.product-card:hover { transform: translateY(-3px); }
+
+.product-image {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  background-color: rgba(var(--color-foreground), 0.02);
+  position: relative;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-badges {
+  position: absolute;
+  bottom: 0.8rem;
+  left: 0.8rem;
+  display: flex;
+  gap: 0.3rem;
+  z-index: 1;
+}
+
+.badge {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.badge-bestseller,
+.badge-new {
+  background-color: #7D7D7D;
+  color: #FFFFFF;
+}
+
+.product-info { text-align: left; }
+
+.product-title {
+  font-size: 1.4rem;
+  color: rgb(var(--color-foreground));
+  margin: 0 0 0.3rem 0;
+  letter-spacing: 0.03em;
+}
+
+.product-subtitle {
+  font-size: 1.2rem;
+  color: rgba(var(--color-foreground), 0.6);
+  margin: 0 0 0.5rem 0;
+}
+
+.product-price {
+  font-size: 1.3rem;
+  color: rgb(var(--color-foreground));
+  margin: 0;
+}
+
+.quick-add-btn {
+  position: absolute;
+  bottom: 5.5rem;
+  right: 1rem;
+  width: 3.2rem;
+  height: 3.2rem;
+  background: #FFFDF4;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0.4rem;
+}
+
+.quick-add-btn svg:not(.spinner) {
+  color: rgb(var(--color-foreground));
+  width: 20px;
+  height: 20px;
+}
+
+.quick-add-btn:hover { background: rgb(var(--color-foreground)); }
+.quick-add-btn:hover svg:not(.spinner) { color: white; }
+.quick-add-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.add-to-cart-loading { display: none; }
+
+.spinner { animation: rotate 1s linear infinite; }
+
+.spinner .path {
+  stroke-dasharray: 90, 150;
+  stroke-dashoffset: 0;
+  animation: dash 1.5s ease-in-out infinite;
+}
+
+@keyframes rotate { 100% { transform: rotate(360deg); } }
+
+@keyframes dash {
+  0%   { stroke-dasharray: 1, 150;  stroke-dashoffset: 0;    }
+  50%  { stroke-dasharray: 90, 150; stroke-dashoffset: -35;  }
+  100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+}
+
+.pagination-wrapper {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+@media screen and (max-width: 749px) {
+  .collection-title { font-size: 2.4rem; }
+  .subcategory-card { width: 150px; }
+  .subcategory-title { font-size: 1.2rem; }
+
+  .filter-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    gap: 0.8rem;
+  }
+
+  .filter-button {
+    white-space: nowrap;
+    padding: 0.8rem 1.5rem;
+    font-size: 1.1rem;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem 1.5rem;
+  }
+
+  .quick-add-btn {
+    bottom: 5rem;
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .filter-sidebar-content { max-width: 100%; }
+}
+
+@media screen and (min-width: 750px) and (max-width: 989px) {
+  .collection-title { font-size: 3rem; }
+}
+.product-card-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-add-variants-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #FFFDF4;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  transform: translateY(100%);
+  transition: transform 0.3s ease-out;
+}
+
+.quick-add-variants-overlay.active {
+  transform: translateY(0);
+}
+
+.variants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.08);
+}
+
+.variants-header span {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgb(var(--color-foreground));
+}
+
+.variants-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  color: rgb(var(--color-foreground));
+}
+
+.variants-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.variant-btn {
+  padding: 1rem 0.5rem;
+  background: transparent;
+  border: 1px solid rgba(var(--color-foreground), 0.15);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  color: rgb(var(--color-foreground));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.variant-btn:hover:not(.disabled) {
+  background: rgb(var(--color-foreground));
+  color: #FFFDF4;
+  border-color: rgb(var(--color-foreground));
+}
+
+.variant-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+@media screen and (max-width: 749px) {
+  .variants-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+{% endstylesheet %}

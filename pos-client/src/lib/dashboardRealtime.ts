@@ -42,6 +42,7 @@ interface ColumnMap {
   status?: string;
   paymentStatus?: string;
   cashierId?: string;
+  paymentReference?: string;
 }
 
 function toNumber(value: unknown) {
@@ -72,7 +73,7 @@ async function pickFirstExistingColumn(candidates: string[]) {
 }
 
 export async function resolvePosOrderColumns(): Promise<ColumnMap> {
-  const [primaryKey, date, total, payment, orderNo, itemCount, branch, subtotal, discountAmount, status, paymentStatus, cashierId] = await Promise.all([
+  const [primaryKey, date, total, payment, orderNo, itemCount, branch, subtotal, discountAmount, status, paymentStatus, cashierId, paymentReference] = await Promise.all([
     pickFirstExistingColumn(PRIMARY_KEY_COLUMNS),
     pickFirstExistingColumn(DATE_COLUMNS),
     pickFirstExistingColumn(TOTAL_COLUMNS),
@@ -85,9 +86,10 @@ export async function resolvePosOrderColumns(): Promise<ColumnMap> {
     pickFirstExistingColumn(['status']),
     pickFirstExistingColumn(['payment_status']),
     pickFirstExistingColumn(['cashier_id']),
+    pickFirstExistingColumn(['payment_reference', 'reference_no', 'gcash_reference_no', 'transaction_reference']),
   ]);
 
-  return { primaryKey, date, total, payment, orderNo, itemCount, branch, subtotal, discountAmount, status, paymentStatus, cashierId };
+  return { primaryKey, date, total, payment, orderNo, itemCount, branch, subtotal, discountAmount, status, paymentStatus, cashierId, paymentReference };
 }
 
 function toTransaction(row: RowRecord, columns: ColumnMap): DashboardTransaction {
@@ -190,6 +192,7 @@ export function getInsertPayloadForPosOrder(
   payload: {
     orderNumber: number;
     paymentMethod: string;
+    paymentReference?: string;
     subtotal: number;
     discountAmount: number;
     total: number;
@@ -210,6 +213,9 @@ export function getInsertPayloadForPosOrder(
   if (columns.status) data[columns.status] = 'COMPLETED';
   if (columns.paymentStatus) data[columns.paymentStatus] = 'PAID';
   if (columns.cashierId && payload.cashierId) data[columns.cashierId] = payload.cashierId;
+  if (columns.paymentReference && payload.paymentReference) {
+    data[columns.paymentReference] = payload.paymentReference;
+  }
 
   return data;
 }

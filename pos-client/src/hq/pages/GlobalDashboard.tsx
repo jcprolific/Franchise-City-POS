@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, CreditCard, ShoppingBag, Wallet, Store, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { getAttendanceEntries, subscribeAttendance } from '../../lib/attendanceStore';
 import type { HqKpiSnapshot, HqWeeklyRevenueItem } from '../lib/hqKpiService';
 import { fetchHqKpiData } from '../lib/hqKpiService';
 import './GlobalDashboard.css';
@@ -55,6 +56,10 @@ const placeholderLiveOrders = [
   { id: '4951', branch: 'Franchise City', items: 'Espresso x3', total: 300, status: 'COMPLETED', time: '10 min ago' },
 ];
 
+function formatHours(value: number) {
+  return `${value.toFixed(1)}h`;
+}
+
 export default function GlobalDashboard() {
   const [snapshot, setSnapshot] = useState<HqKpiSnapshot>(EMPTY_SNAPSHOT);
   const [chartData, setChartData] = useState<HqWeeklyRevenueItem[]>([]);
@@ -62,6 +67,7 @@ export default function GlobalDashboard() {
   const [errorText, setErrorText] = useState('');
   const [range, setRange] = useState<'daily' | 'weekly'>('weekly');
   const [search, setSearch] = useState('');
+  const [attendanceEntries, setAttendanceEntries] = useState(getAttendanceEntries());
 
   const refresh = useCallback(async () => {
     try {
@@ -92,6 +98,12 @@ export default function GlobalDashboard() {
       void supabase.removeChannel(channel);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    const sync = () => setAttendanceEntries(getAttendanceEntries());
+    sync();
+    return subscribeAttendance(sync);
+  }, []);
 
   const revenueChange = computePercentChange(snapshot.todayRevenue, snapshot.yesterdayRevenue);
   const orderChange = computePercentChange(snapshot.todayOrders, snapshot.yesterdayOrders);
@@ -133,6 +145,70 @@ export default function GlobalDashboard() {
 
   const cashierName = 'Staff HQ';
   const initials = 'SH';
+  const todayKey = useMemo(() => new Date().toDateString(), []);
+
+  const attendanceSummary = useMemo(() => {
+    const todayEntries = attendanceEntries
+      .filter((entry) => new Date(entry.timestamp).toDateString() === todayKey)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    const staffMap = new Map<
+      string,
+      {
+        staffName: string;
+        role: string;
+        status: 'IN' | 'OUT';
+        lastSeen: string;
+        hoursToday: number;
+      }
+    >();
+    const openShiftStart = new Map<string, string>();
+
+    for (const entry of todayEntries) {
+      const key = entry.staffName.toLowerCase();
+      if (!staffMap.has(key)) {
+        staffMap.set(key, {
+          staffName: entry.staffName,
+          role: entry.role,
+          status: 'OUT',
+          lastSeen: entry.timestamp,
+          hoursToday: 0,
+        });
+      }
+      const rec = staffMap.get(key)!;
+      rec.role = entry.role;
+      rec.lastSeen = entry.timestamp;
+      rec.status = entry.status;
+
+      if (entry.status === 'IN') {
+        openShiftStart.set(key, entry.timestamp);
+      } else {
+        const started = openShiftStart.get(key);
+        if (started) {
+          rec.hoursToday += new Date(entry.timestamp).getTime() - new Date(started).getTime();
+          openShiftStart.delete(key);
+        }
+      }
+    }
+
+    const nowMs = Date.now();
+    for (const [key, started] of openShiftStart) {
+      const rec = staffMap.get(key);
+      if (rec) {
+        rec.hoursToday += nowMs - new Date(started).getTime();
+      }
+    }
+
+    const staff = [...staffMap.values()]
+      .map((item) => ({ ...item, hoursToday: item.hoursToday / (1000 * 60 * 60) }))
+      .sort((a, b) => b.hoursToday - a.hoursToday);
+
+    return {
+      staff,
+      onShift: staff.filter((item) => item.status === 'IN').length,
+      totalHours: staff.reduce((sum, item) => sum + item.hoursToday, 0),
+    };
+  }, [attendanceEntries, todayKey]);
 
   return (
     <div className="hq-home" id="hq-home">
@@ -343,6 +419,74 @@ export default function GlobalDashboard() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="hq-panel">
+        <div className="hq-panel-head">
+          <div>
+            <span className="hq-eyebrow">Employee Attendance</span>
+            <h2>Time In / Time Out Monitoring</h2>
+          </div>
+          <button className="hq-ghost-btn" type="button">
+            {attendanceSummary.onShift} on shift
+          </button>
+        </div>
+
+        <section className="hq-attendance-kpis">
+          <article className="hq-attendance-kpi">
+            <span className="hq-attendance-kpi-label">Total Staff Logged Today</span>
+            <span className="hq-attendance-kpi-value">{attendanceSummary.staff.length}</span>
+          </article>
+          <article className="hq-attendance-kpi">
+            <span className="hq-attendance-kpi-label">Currently On Shift</span>
+            <span className="hq-attendance-kpi-value">{attendanceSummary.onShift}</span>
+          </article>
+          <article className="hq-attendance-kpi">
+            <span className="hq-attendance-kpi-label">Total Staff Hours Today</span>
+            <span className="hq-attendance-kpi-value">{formatHours(attendanceSummary.totalHours)}</span>
+          </article>
+        </section>
+
+        <div className="hq-orders-scroller">
+          <table className="hq-orders-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Hours Today</th>
+                <th>Last Update</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attendanceSummary.staff.map((staff) => (
+                <tr key={staff.staffName}>
+                  <td className="hq-orders-id">{staff.staffName}</td>
+                  <td>{staff.role}</td>
+                  <td>
+                    <span className={`hq-status hq-status--${staff.status === 'IN' ? 'ready' : 'completed'}`}>
+                      {staff.status === 'IN' ? 'On Shift' : 'Off Shift'}
+                    </span>
+                  </td>
+                  <td className="hq-orders-total">{formatHours(staff.hoursToday)}</td>
+                  <td className="hq-orders-time">
+                    {new Date(staff.lastSeen).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </td>
+                </tr>
+              ))}
+              {attendanceSummary.staff.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="hq-orders-time">
+                    No attendance logs yet today.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="hq-panel">

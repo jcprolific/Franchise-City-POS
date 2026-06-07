@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Store, Coffee, Users, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Store, Coffee, Users, Settings, LogOut, Warehouse, Handshake } from 'lucide-react';
 import './AdminSidebar.css';
 
 interface AdminSidebarProps {
@@ -13,6 +13,8 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
   const navItems = [
     { path: '/hq', label: 'Global KPI', icon: <LayoutDashboard size={18} /> },
     { path: '/hq/branches', label: 'Branches', icon: <Store size={18} /> },
+    { path: '/hq/warehouse', label: 'Warehouse', icon: <Warehouse size={18} /> },
+    { path: '/hq/suppliers', label: 'Suppliers', icon: <Handshake size={18} /> },
     { path: '/hq/catalog', label: 'Menu Catalog', icon: <Coffee size={18} /> },
     { path: '/hq/staff', label: 'Staff Directory', icon: <Users size={18} /> },
     { path: '/hq/settings', label: 'Settings', icon: <Settings size={18} /> },

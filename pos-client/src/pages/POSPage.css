@@ -118,6 +118,48 @@
   box-shadow: var(--pos-shadow-card);
 }
 
+.pos-attendance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.pos-attendance-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--pos-radius-pill);
+  border: 1px solid var(--pos-border);
+  background: var(--pos-surface);
+  color: var(--pos-text-soft);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.pos-attendance-btn.is-in {
+  background: rgba(30, 140, 77, 0.12);
+  border-color: rgba(30, 140, 77, 0.4);
+  color: #11693a;
+}
+
+.pos-attendance-btn.is-out {
+  background: rgba(192, 57, 43, 0.1);
+  border-color: rgba(192, 57, 43, 0.3);
+  color: #9a2415;
+}
+
+.pos-attendance-hours {
+  font-size: 0.64rem;
+  color: var(--pos-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* ============================================
    Search
    ============================================ */

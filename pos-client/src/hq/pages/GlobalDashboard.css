@@ -663,6 +663,37 @@
   color: #3c4b5c;
 }
 
+.hq-attendance-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.hq-attendance-kpi {
+  background: var(--hq-surface-muted);
+  border: 1px solid var(--hq-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hq-attendance-kpi-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hq-text-muted);
+  font-weight: 700;
+}
+
+.hq-attendance-kpi-value {
+  font-family: var(--hq-font-serif);
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--hq-text);
+}
+
 /* ---------------- Responsive ---------------- */
 @media (max-width: 1200px) {
   .hq-kpi-row {
@@ -724,6 +755,10 @@
 
 @media (max-width: 560px) {
   .hq-kpi-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hq-attendance-kpis {
     grid-template-columns: 1fr;
   }
 
