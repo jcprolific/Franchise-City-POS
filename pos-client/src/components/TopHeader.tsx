@@ -26,9 +26,6 @@ export default function TopHeader({
   return (
     <header className="top-header" id="top-header">
       <div className="top-header-brand">
-        <div className="top-header-logo" aria-hidden="true">
-          <span>🍟</span>
-        </div>
         <div className="top-header-brand-text">
           <span className="top-header-eyebrow">Franchise</span>
           <span className="top-header-franchise">{franchiseName}</span>
@@ -36,9 +33,11 @@ export default function TopHeader({
       </div>
 
       <div className="top-header-title-zone">
-        <div className="top-header-mascot" aria-hidden="true">
-          <span>🥔</span>
-        </div>
+        <img
+          src="/potato-corner-logo.png"
+          alt="Potato Corner"
+          className="top-header-brand-logo"
+        />
         <div className="top-header-title-text">
           <span className="top-header-title">{title}</span>
           <span className="top-header-subtitle">{subtitle}</span>

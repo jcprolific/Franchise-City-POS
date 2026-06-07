@@ -1,6 +1,7 @@
 .app-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -79,19 +80,21 @@
 
   --pos-font-serif: 'Fraunces', 'Playfair Display', Georgia, 'Times New Roman',
     serif;
+  --pos-font-display: 'Plus Jakarta Sans', var(--font-family);
+  --hq-font-display: 'Plus Jakarta Sans', var(--font-family);
 
-  /* ----- Potato Corner palette ----- */
-  --pc-green: #1f8b3b;
-  --pc-green-deep: #156a2c;
-  --pc-green-soft: #e7f4ea;
-  --pc-green-soft-border: #bfe2c8;
-  --pc-sidebar: #15401f;
-  --pc-sidebar-hover: #1d5429;
-  --pc-yellow: #ffd21f;
-  --pc-yellow-dark: #f0c014;
-  --pc-yellow-soft: #fff6d6;
-  --pc-orange: #e8531f;
-  --pc-orange-soft: #fff0e8;
+  /* ----- Potato Corner official palette ----- */
+  --pc-green: #008d36;
+  --pc-green-deep: #007a33;
+  --pc-green-soft: #e8f7ec;
+  --pc-green-soft-border: #b8e4c4;
+  --pc-sidebar: #008d36;
+  --pc-sidebar-hover: #007a33;
+  --pc-yellow: #ffd200;
+  --pc-yellow-dark: #e6bc00;
+  --pc-yellow-soft: #fff8cc;
+  --pc-orange: #f37021;
+  --pc-orange-soft: #fff0e6;
 
   /* Warmer-neutral surfaces to match reference */
   --pos-bg: #fbf7ef;
@@ -170,7 +173,7 @@
 
 .pos-shell .sidebar-nav-item.active {
   background: var(--pc-yellow);
-  color: #1a3a12;
+  color: #1b3022;
   font-weight: 700;
 }
 
@@ -185,7 +188,7 @@
 
 .pos-shell .sidebar-user-avatar {
   background: var(--pc-yellow);
-  color: #1a3a12;
+  color: #1b3022;
 }
 
 .pos-shell .sidebar-user-name {
@@ -219,6 +222,40 @@
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.35);
   color: #ffffff;
+}
+
+/* ---- Mobile: hide sidebar, single scroll container ---- */
+@media (max-width: 768px) {
+  .pos-shell {
+    --pos-sticky-offset: calc(90px + env(safe-area-inset-top, 0px));
+  }
+
+  .pos-shell.app-layout {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  .pos-shell .sidebar {
+    display: none;
+  }
+
+  .pos-shell-body {
+    flex-direction: column;
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .pos-shell .app-main {
+    width: 100%;
+    flex: none;
+    height: auto;
+    overflow: visible;
+  }
 }
 
 /* ============================================
@@ -257,6 +294,20 @@
   --shadow-lg: 0 8px 24px rgba(46, 29, 17, 0.14);
 
   --pos-font-serif: 'Fraunces', 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --hq-font-display: 'Plus Jakarta Sans', var(--font-family);
+
+  /* ----- Potato Corner official palette (shared with POS sidebar) ----- */
+  --pc-green: #008d36;
+  --pc-green-deep: #007a33;
+  --pc-green-soft: #e8f7ec;
+  --pc-green-soft-border: #b8e4c4;
+  --pc-sidebar: #008d36;
+  --pc-sidebar-hover: #007a33;
+  --pc-yellow: #ffd200;
+  --pc-yellow-dark: #e6bc00;
+  --pc-yellow-soft: #fff8cc;
+  --pc-orange: #f37021;
+  --pc-orange-soft: #fff0e6;
 
   background: var(--bg-app);
   color: var(--text-primary);
@@ -267,55 +318,57 @@
 }
 
 .hq-shell .page-title h1 {
-  font-family: var(--pos-font-serif);
-  font-weight: 800;
+  font-family: var(--hq-font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .hq-shell .admin-sidebar {
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border);
+  background: var(--pc-green);
+  border-right: none;
 }
 
 .hq-shell .admin-sidebar .sidebar-brand {
-  border-bottom: 1px solid var(--border);
-}
-
-.hq-shell .admin-sidebar .sidebar-brand-icon {
-  background: var(--bg-surface-alt);
-  color: var(--text-primary);
-  box-shadow: none;
+  border-bottom-color: rgba(255, 255, 255, 0.14);
 }
 
 .hq-shell .admin-sidebar .sidebar-brand-name {
-  color: var(--text-primary);
-}
-
-.hq-shell .admin-sidebar .sidebar-brand-sub {
-  color: var(--accent-dark);
+  color: #ffffff;
 }
 
 .hq-shell .admin-sidebar .sidebar-nav-item {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 600;
 }
 
 .hq-shell .admin-sidebar .sidebar-nav-item:hover {
-  background: var(--bg-surface-alt);
-  color: var(--text-primary);
+  background: var(--pc-sidebar-hover);
+  color: #ffffff;
 }
 
 .hq-shell .admin-sidebar .sidebar-nav-item.active {
-  background: #2e1d11;
-  color: #f9ecd4;
-  border-color: #2e1d11;
+  background: var(--pc-yellow);
+  color: #1b3022;
+  border-color: var(--pc-yellow);
+  font-weight: 700;
 }
 
 .hq-shell .admin-sidebar .sidebar-nav-item.active .nav-icon {
-  color: #f9ecd4;
+  color: #1b3022;
 }
 
 .hq-shell .admin-sidebar .sidebar-footer {
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border);
+  background: transparent;
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+.hq-shell .admin-sidebar .sidebar-sync-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.hq-shell .admin-sidebar .sidebar-sync-badge .sync-dot {
+  background: #4ade80;
 }
 
 /* Let HQ content scroll inside the main column */

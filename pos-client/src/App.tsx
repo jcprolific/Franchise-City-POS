@@ -19,6 +19,7 @@ import LoginPage from './pages/LoginPage';
 import POSPage from './pages/POSPage';
 import InventoryPage from './pages/InventoryPage';
 import DashboardPage from './pages/DashboardPage';
+import OrdersPage from './pages/OrdersPage';
 import AdminSidebar from './hq/components/AdminSidebar';
 import GlobalDashboard from './hq/pages/GlobalDashboard';
 import BranchManagement from './hq/pages/BranchManagement';
@@ -360,10 +361,7 @@ export default function App() {
         <Route element={<PosShell auth={auth} onLogout={handleLogout} />}>
           <Route path="/" element={<Navigate to="/pos" replace />} />
           <Route path="/pos" element={<POSPage />} />
-          <Route
-            path="/orders"
-            element={<HqPlaceholder title="Orders" subtitle="Order history & live queue coming soon." />}
-          />
+          <Route path="/orders" element={<OrdersPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route
@@ -384,6 +382,10 @@ export default function App() {
             <Route
               path="/hq/staff"
               element={<HqPlaceholder title="Staff Directory" subtitle="Global cashier index coming soon." />}
+            />
+            <Route
+              path="/hq/reports"
+              element={<HqPlaceholder title="Reports & Analytics" subtitle="Network sales reports coming soon." />}
             />
             <Route
               path="/hq/settings"

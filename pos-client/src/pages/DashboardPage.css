@@ -9,18 +9,57 @@
 }
 
 /* ---- Header ---- */
-.dashboard-header h1 {
-  font-family: var(--pos-font-serif, inherit);
-  font-size: var(--font-2xl);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.dashboard-header-main {
+  display: flex;
+  align-items: center;
 }
 
 .dashboard-header .branch-label {
   font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--pos-text-soft, var(--text-secondary));
+  letter-spacing: 0.01em;
+}
+
+.dashboard-header-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dashboard-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--pos-radius-pill, 999px);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dashboard-status.is-loading {
+  background: var(--pos-surface-muted, #f6f1e7);
   color: var(--text-muted);
-  margin-top: 2px;
+}
+
+.dashboard-status.is-warning {
+  background: #fff3e3;
+  color: #a06e1f;
+  border: 1px solid #f0d4a8;
+}
+
+.dashboard-status.is-live {
+  background: var(--pc-green-soft, #e8f7ec);
+  color: var(--pc-green-deep, #007a33);
+  border: 1px solid var(--pc-green-soft-border, #b8e4c4);
 }
 
 /* ---- KPI Cards ---- */
@@ -43,6 +82,11 @@
   box-shadow: var(--pos-shadow-card, var(--shadow-sm));
 }
 
+.kpi-card-highlight {
+  border-color: var(--pc-green-soft-border, #b8e4c4);
+  background: linear-gradient(160deg, #ffffff 0%, #f4fbf6 100%);
+}
+
 .kpi-card:hover {
   border-color: var(--border-light);
   transform: translateY(-2px);
@@ -57,15 +101,14 @@
 
 .kpi-card-title {
   font-size: var(--font-xs);
-  font-weight: 600;
-  color: var(--pos-accent-strong, var(--accent-dark));
+  font-weight: 700;
+  color: var(--pc-green, var(--accent-dark));
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
 
 .kpi-card-icon {
-  font-size: 14px;
-  color: var(--text-muted);
+  font-size: 16px;
 }
 
 .kpi-card-value {
@@ -80,11 +123,18 @@
 .kpi-card-change {
   font-size: var(--font-xs);
   font-weight: 600;
-  color: #1e8c4d;
+}
+
+.kpi-card-change.up {
+  color: var(--pc-green, #1e8c4d);
+}
+
+.kpi-card-change.down {
+  color: var(--danger, #e74c3c);
 }
 
 .kpi-card-change.sold {
-  color: var(--pos-accent-strong, var(--accent-dark));
+  color: var(--pc-orange, var(--accent-dark));
 }
 
 /* ---- Charts Row ---- */
@@ -118,7 +168,7 @@
   justify-content: space-between;
   gap: var(--space-md);
   height: 200px;
-  padding: var(--space-md) 0;
+  padding: var(--space-md) 0 var(--space-md) 36px;
   border-left: 1px dashed var(--border-light);
   border-bottom: 1px dashed var(--border-light);
   position: relative;
@@ -136,7 +186,7 @@
 
 .bar-chart-bar {
   width: 70%;
-  background: linear-gradient(180deg, var(--accent-light), var(--accent-dark));
+  background: linear-gradient(180deg, var(--pc-yellow, #ffd200) 0%, var(--pc-green, #008d36) 100%);
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   min-height: 4px;
   transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
@@ -144,32 +194,33 @@
 }
 
 .bar-chart-bar:hover {
-  filter: brightness(1.15);
-  box-shadow: 0 0 12px rgba(204, 138, 46, 0.3);
+  filter: brightness(1.08);
+  box-shadow: 0 4px 14px rgba(0, 141, 54, 0.28);
 }
 
 .bar-chart-label {
   font-size: var(--font-xs);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .bar-chart-y-labels {
   position: absolute;
-  left: -4px;
-  top: 0;
-  bottom: 0;
+  left: 0;
+  top: var(--space-md);
+  bottom: var(--space-md);
+  width: 32px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transform: translateX(-100%);
-  padding-right: var(--space-sm);
 }
 
 .bar-y-label {
   font-size: 0.6rem;
   color: var(--text-muted);
   white-space: nowrap;
+  text-align: right;
+  width: 100%;
 }
 
 /* ---- Donut Chart ---- */
@@ -188,14 +239,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 141, 54, 0.12);
 }
 
 .donut-chart-inner {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   background: var(--bg-card);
   position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-chart-center {
+  font-family: var(--pos-font-serif, inherit);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--pc-green);
 }
 
 .donut-legend {
@@ -293,11 +355,18 @@
 
 .transactions-table .payment-tag {
   display: inline-block;
-  padding: 2px 8px;
-  background: var(--bg-surface-alt);
-  border-radius: 4px;
+  padding: 3px 10px;
+  background: var(--pc-green-soft, #e8f7ec);
+  color: var(--pc-green-deep, #007a33);
+  border-radius: var(--pos-radius-pill, 999px);
   font-size: var(--font-xs);
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.transactions-empty {
+  text-align: center;
+  color: var(--text-muted) !important;
+  padding: var(--space-xl) !important;
 }
 
 /* ---- Low Stock Alert ---- */
@@ -335,15 +404,62 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-md);
 }
 
 .low-stock-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: var(--font-sm);
   color: var(--text-secondary);
+}
+
+.low-stock-icon {
+  font-size: 1rem;
 }
 
 .low-stock-qty {
   font-size: var(--font-sm);
   font-weight: 700;
   color: var(--danger);
+  white-space: nowrap;
+}
+
+.low-stock-ok {
+  color: var(--pc-green, var(--success));
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .charts-row,
+  .bottom-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-page {
+    padding: var(--space-lg) var(--space-lg) var(--space-2xl);
+    gap: var(--space-lg);
+  }
+
+  .kpi-card-value {
+    font-size: var(--font-xl);
+  }
+
+  .bar-chart {
+    height: 160px;
+    gap: 6px;
+  }
+
+  .transactions-table th:nth-child(2),
+  .transactions-table td:nth-child(2) {
+    display: none;
+  }
 }

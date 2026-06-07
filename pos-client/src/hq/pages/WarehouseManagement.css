@@ -14,7 +14,7 @@
   --hq-success: #1e8c4d;
   --hq-warn: #d97706;
   --hq-danger: #c0392b;
-  --hq-font-serif: 'Fraunces', 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --hq-font-display: 'Plus Jakarta Sans', var(--font-family);
 
   display: flex;
   flex-direction: column;
@@ -204,7 +204,7 @@
 
 .hq-parcel-route {
   margin-top: 6px;
-  font-family: var(--hq-font-serif);
+  font-family: var(--hq-font-display);
   font-weight: 700;
   color: var(--hq-text);
 }
@@ -247,13 +247,13 @@
 
 .hq-parcel-selected {
   margin-top: 3px;
-  font-family: var(--hq-font-serif);
+  font-family: var(--hq-font-display);
   font-weight: 800;
   color: var(--hq-text);
 }
 
 .hq-parcel-eta {
-  font-family: var(--hq-font-serif);
+  font-family: var(--hq-font-display);
   font-size: 1.2rem;
   font-weight: 800;
   color: var(--hq-accent);
@@ -293,7 +293,7 @@
 }
 
 .hq-track-title {
-  font-family: var(--hq-font-serif);
+  font-family: var(--hq-font-display);
   font-weight: 700;
   color: var(--hq-text);
 }
@@ -373,7 +373,7 @@
 }
 
 .hq-stock-title {
-  font-family: var(--hq-font-serif);
+  font-family: var(--hq-font-display);
   font-weight: 700;
   color: var(--hq-text);
   font-size: 1rem;
@@ -393,7 +393,7 @@
 
 .hq-stock-on-hand {
   display: block;
-  font-family: var(--hq-font-serif);
+  font-family: var(--hq-font-display);
   font-weight: 800;
   color: var(--hq-text);
 }
@@ -526,7 +526,7 @@
 }
 
 .hq-expiry-title {
-  font-family: var(--hq-font-serif);
+  font-family: var(--hq-font-display);
   font-weight: 700;
   display: flex;
   align-items: center;

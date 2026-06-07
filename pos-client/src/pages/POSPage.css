@@ -55,7 +55,7 @@
 
 .pos-search-input:focus {
   border-color: var(--pc-green);
-  box-shadow: 0 0 0 3px rgba(31, 139, 59, 0.15);
+  box-shadow: 0 0 0 3px rgba(0, 141, 54, 0.15);
 }
 
 .pos-search-clear {
@@ -104,5 +104,59 @@
 @media (max-width: 900px) {
   .pos-body {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .pos-page {
+    gap: 10px;
+    padding: 10px 14px 16px;
+    overflow: visible;
+    height: auto;
+    min-height: 100%;
+  }
+
+  .pos-page:has(.order-panel.has-items) {
+    padding-bottom: 168px;
+  }
+
+  .pos-body {
+    display: block;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .pos-search {
+    position: sticky;
+    top: var(--pos-sticky-offset, 90px);
+    z-index: 40;
+    background: var(--pos-bg);
+    padding: 4px 0 8px;
+    margin: 0 -14px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .category-bar {
+    position: sticky;
+    top: calc(var(--pos-sticky-offset, 90px) + 56px);
+    z-index: 39;
+    background: var(--pos-bg);
+    padding-bottom: 8px;
+    margin: 0 -14px 4px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .pos-search-input {
+    height: 44px;
+    font-size: 0.86rem;
+    padding-left: 42px;
+  }
+
+  .pos-search-icon {
+    left: 14px;
+    width: 16px;
+    height: 16px;
   }
 }

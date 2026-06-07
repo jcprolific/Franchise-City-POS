@@ -141,8 +141,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       <div className="login-card">
         {/* Brand */}
         <div className="login-brand">
-          <div className="login-logo">☕</div>
-          <h1 className="login-title">Franchise City</h1>
+          <img
+            src="/potato-corner-logo.png"
+            alt="Potato Corner"
+            className="login-logo-image"
+          />
           <p className="login-subtitle">Point of Sale System</p>
         </div>
 
@@ -302,7 +305,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         {/* Footer */}
         <div className="login-footer">
           <p className="login-footer-text">
-            Franchise City POS · <span className="version">v1.0.0</span>
+            Potato Corner POS · <span className="version">v1.0.0</span>
           </p>
         </div>
       </div>

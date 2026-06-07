@@ -39,7 +39,7 @@
   background: var(--pc-green);
   color: #fff;
   border-color: var(--pc-green);
-  box-shadow: 0 4px 12px rgba(31, 139, 59, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 141, 54, 0.25);
 }
 
 .category-pill:focus-visible {
@@ -49,4 +49,26 @@
 
 .category-pill-name {
   line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .category-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .category-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-pill {
+    flex-shrink: 0;
+    height: 36px;
+    padding: 0 16px;
+    font-size: 0.82rem;
+  }
 }

@@ -15,6 +15,26 @@ const EMPTY_SNAPSHOT: HqKpiSnapshot = {
   activeBranches: 0,
 };
 
+const HQ_TOTAL_BRANCHES = 260;
+const HQ_SAMPLE_SNAPSHOT: HqKpiSnapshot = {
+  todayRevenue: 14370385,
+  yesterdayRevenue: 13263971,
+  todayOrders: 76845,
+  yesterdayOrders: 73049,
+  avgOrderValue: 187,
+  activeBranches: 228,
+};
+
+const hqSampleRevenue: HqWeeklyRevenueItem[] = [
+  { day: 'Mon', revenue: 13800000 },
+  { day: 'Tue', revenue: 14240000 },
+  { day: 'Wed', revenue: 15120000 },
+  { day: 'Thu', revenue: 14630000 },
+  { day: 'Fri', revenue: 16280000 },
+  { day: 'Sat', revenue: 18590000 },
+  { day: 'Sun', revenue: 17940000 },
+];
+
 function computePercentChange(current: number, previous: number) {
   if (previous === 0) return current > 0 ? 100 : 0;
   return ((current - previous) / previous) * 100;
@@ -25,35 +45,44 @@ function formatPeso(value: number) {
 }
 
 const placeholderTopSellers = [
-  { rank: 1, name: 'Spanish Latte', sold: 142, revenue: 23430 },
-  { rank: 2, name: 'Caramel Macchiato', sold: 118, revenue: 20060 },
-  { rank: 3, name: 'Cappuccino', sold: 102, revenue: 15300 },
-  { rank: 4, name: 'Mocha', sold: 96, revenue: 15360 },
-  { rank: 5, name: 'Americano', sold: 84, revenue: 10080 },
+  { rank: 1, name: 'Cheese', sold: 18420, revenue: 1197300 },
+  { rank: 2, name: 'Barbecue', sold: 14982, revenue: 973830 },
+  { rank: 3, name: 'Sour Cream', sold: 12104, revenue: 786760 },
+  { rank: 4, name: 'Chili Cheese', sold: 9876, revenue: 740700 },
+  { rank: 5, name: 'Cheddar', sold: 8542, revenue: 597940 },
 ];
 
-const placeholderLocations = [
-  { id: 'fcm', name: 'Franchise City Main', meta: '4.9 star · 12 years', revenue: 89000, percent: 92, flag: 'TOP' },
-  { id: 'bgc', name: 'BGC Central', meta: '4.8 star · 5 years', revenue: 72500, percent: 78 },
-  { id: 'qc', name: 'Quezon Ave.', meta: '4.7 star · 3 years', revenue: 58600, percent: 64 },
-  { id: 'ort', name: 'Ortigas Tower', meta: '4.6 star · 4 years', revenue: 43200, percent: 52 },
-  { id: 'aln', name: 'Alabang Town', meta: '4.6 star · 2 years', revenue: 38400, percent: 46 },
+const placeholderLeaders = [
+  { id: 'smc', rank: 1, name: 'Potato Corner SM Cebu 4', meta: 'SM Cebu · Cebu', revenue: 102967 },
+  { id: 'smb', rank: 2, name: 'Potato Corner SM Baguio 11', meta: 'SM Baguio · Cordillera', revenue: 102650 },
+  { id: 'tac', rank: 3, name: 'Potato Corner Tacloban 3', meta: 'Tacloban · Eastern Visayas', revenue: 102606 },
+  { id: 'smn', rank: 4, name: 'Potato Corner SM North 3', meta: 'SM North · NCR', revenue: 101757 },
+  { id: 'nag', rank: 5, name: 'Potato Corner Naga', meta: 'Naga · Bicol', revenue: 101497 },
+];
+
+const branchesToCheck = [
+  { id: 'ort', name: 'Potato Corner Ortigas', meta: 'Terminal offline · last sync 2h ago', status: 'Offline' },
+  { id: 'smn', name: 'Potato Corner SM North', meta: 'Below target · 85% of daily goal', status: 'Needs Attention' },
+  { id: 'grh3', name: 'Potato Corner Greenhills 3', meta: 'Terminal offline · last sync 2h ago', status: 'Offline' },
+  { id: 'grh4', name: 'Potato Corner Greenhills 4', meta: 'Below target · 88% of daily goal', status: 'Needs Attention' },
+  { id: 'tri', name: 'Potato Corner Trinoma 4', meta: 'Below target · 76% of daily goal', status: 'Needs Attention' },
+  { id: 'bat', name: 'Potato Corner Batangas City 3', meta: 'Below target · 77% of daily goal', status: 'Needs Attention' },
 ];
 
 const placeholderInventoryAlerts = [
-  { id: 'esp', name: 'Espresso Beans (1kg)', branch: 'Franchise City', qty: 2, level: 'warn' as const },
-  { id: 'milk', name: 'Whole Milk', branch: 'BGC Central', qty: 0, level: 'critical' as const },
-  { id: 'syr', name: 'Caramel Syrup', branch: 'Quezon Ave.', qty: 3, level: 'warn' as const },
-  { id: 'cup', name: 'Paper Cups (16oz)', branch: 'Alabang Town', qty: 0, level: 'critical' as const },
-  { id: 'cho', name: 'Chocolate Powder', branch: 'Ortigas Tower', qty: 5, level: 'warn' as const },
+  { id: 'cup', name: 'PC Cups (Regular)', branch: 'Ortigas', qty: 120, level: 'warn' as const },
+  { id: 'lid', name: 'Cup Lids', branch: 'SM North', qty: 180, level: 'warn' as const },
+  { id: 'chi', name: 'Chili Cheese Powder', branch: 'Trinoma', qty: 0, level: 'critical' as const },
+  { id: 'oil', name: 'Fry Oil', branch: 'Greenhills', qty: 3, level: 'critical' as const },
+  { id: 'bag', name: 'Paper Bags', branch: 'Batangas City', qty: 190, level: 'warn' as const },
 ];
 
 const placeholderLiveOrders = [
-  { id: '4955', branch: 'Franchise City', items: 'Latte, Spanish Latte', total: 340, status: 'NEW', time: 'Just now' },
-  { id: '4954', branch: 'BGC Central', items: 'Mocha x2, Americano', total: 460, status: 'PREPARING', time: '3 min ago' },
-  { id: '4953', branch: 'Quezon Ave.', items: 'Cappuccino, Flat White', total: 295, status: 'PREPARING', time: '6 min ago' },
-  { id: '4952', branch: 'Alabang Town', items: 'Caramel Macchiato', total: 175, status: 'READY', time: '8 min ago' },
-  { id: '4951', branch: 'Franchise City', items: 'Espresso x3', total: 300, status: 'COMPLETED', time: '10 min ago' },
+  { id: '4955', branch: 'SM Cebu 4', items: 'Cheese Mega, BBQ Regular', total: 275, status: 'NEW', time: 'Just now' },
+  { id: '4954', branch: 'SM Baguio 11', items: 'Sour Cream x2, Chicken Pops', total: 365, status: 'PREPARING', time: '3 min ago' },
+  { id: '4953', branch: 'Tacloban 3', items: 'Cheese Giga, Iced Tea', total: 245, status: 'PREPARING', time: '6 min ago' },
+  { id: '4952', branch: 'SM North 3', items: 'Barbecue Jumbo', total: 105, status: 'READY', time: '8 min ago' },
+  { id: '4951', branch: 'Naga', items: 'Cheddar Mega, Sweet Corn Regular', total: 260, status: 'COMPLETED', time: '10 min ago' },
 ];
 
 function formatHours(value: number) {
@@ -105,12 +134,14 @@ export default function GlobalDashboard() {
     return subscribeAttendance(sync);
   }, []);
 
-  const revenueChange = computePercentChange(snapshot.todayRevenue, snapshot.yesterdayRevenue);
-  const orderChange = computePercentChange(snapshot.todayOrders, snapshot.yesterdayOrders);
+  const displaySnapshot = snapshot.todayOrders > 0 ? snapshot : HQ_SAMPLE_SNAPSHOT;
+  const displayChartData = chartData.length > 0 ? chartData : hqSampleRevenue;
+  const revenueChange = computePercentChange(displaySnapshot.todayRevenue, displaySnapshot.yesterdayRevenue);
+  const orderChange = computePercentChange(displaySnapshot.todayOrders, displaySnapshot.yesterdayOrders);
 
   const chartPoints = useMemo(() => {
-    if (chartData.length === 0) return [] as { x: number; y: number; day: string; revenue: number }[];
-    const points = chartData.map((item) => ({ ...item, revenue: item.revenue }));
+    if (displayChartData.length === 0) return [] as { x: number; y: number; day: string; revenue: number }[];
+    const points = displayChartData.map((item) => ({ ...item, revenue: item.revenue }));
     const maxY = Math.max(1, ...points.map((p) => p.revenue));
     return points.map((p, idx) => ({
       day: p.day,
@@ -118,7 +149,7 @@ export default function GlobalDashboard() {
       x: (idx / Math.max(1, points.length - 1)) * 100,
       y: 100 - (p.revenue / maxY) * 100,
     }));
-  }, [chartData]);
+  }, [displayChartData]);
 
   const linePath = useMemo(() => {
     if (chartPoints.length === 0) return '';
@@ -145,6 +176,7 @@ export default function GlobalDashboard() {
 
   const cashierName = 'Staff HQ';
   const initials = 'SH';
+  const weeklyRevenueTotal = displayChartData.reduce((sum, item) => sum + item.revenue, 0);
   const todayKey = useMemo(() => new Date().toDateString(), []);
 
   const attendanceSummary = useMemo(() => {
@@ -216,6 +248,7 @@ export default function GlobalDashboard() {
         <div className="hq-home-heading">
           <span className="hq-eyebrow">Headquarters Overview</span>
           <h1>Good morning, {cashierName}</h1>
+          <p>Here's how the network is performing today.</p>
         </div>
 
         <div className="hq-home-toolbar">
@@ -235,8 +268,8 @@ export default function GlobalDashboard() {
         </div>
       </header>
 
-      {loading && <div className="hq-status-note">Loading HQ data...</div>}
-      {errorText && <div className="hq-status-note">{errorText}</div>}
+      {loading && <div className="hq-status-note">Loading Potato Corner HQ data...</div>}
+      {errorText && <div className="hq-status-note">{errorText} Showing Potato Corner sample network view.</div>}
 
       <section className="hq-kpi-row">
         <article className="hq-stat-card hq-stat-card--dark">
@@ -244,7 +277,7 @@ export default function GlobalDashboard() {
             <span>Total Sales Today</span>
             <span className="hq-stat-icon"><Wallet size={16} /></span>
           </div>
-          <div className="hq-stat-value">{formatPeso(snapshot.todayRevenue)}</div>
+          <div className="hq-stat-value">{formatPeso(displaySnapshot.todayRevenue)}</div>
           <div className="hq-stat-trend hq-stat-trend--up">
             {revenueChange >= 0 ? '↑' : '↓'} {Math.abs(revenueChange).toFixed(1)}% vs yesterday
           </div>
@@ -255,7 +288,7 @@ export default function GlobalDashboard() {
             <span>Total Orders</span>
             <span className="hq-stat-icon"><ShoppingBag size={16} /></span>
           </div>
-          <div className="hq-stat-value">{snapshot.todayOrders.toLocaleString()}</div>
+          <div className="hq-stat-value">{displaySnapshot.todayOrders.toLocaleString()}</div>
           <div className="hq-stat-trend hq-stat-trend--up">
             {orderChange >= 0 ? '↑' : '↓'} {Math.abs(orderChange).toFixed(1)}% vs yesterday
           </div>
@@ -266,7 +299,7 @@ export default function GlobalDashboard() {
             <span>Avg Order Value</span>
             <span className="hq-stat-icon"><CreditCard size={16} /></span>
           </div>
-          <div className="hq-stat-value">₱{snapshot.avgOrderValue.toFixed(2)}</div>
+          <div className="hq-stat-value">₱{displaySnapshot.avgOrderValue.toFixed(2)}</div>
           <div className="hq-stat-trend hq-stat-trend--muted">Today global AOV</div>
         </article>
 
@@ -276,8 +309,8 @@ export default function GlobalDashboard() {
             <span className="hq-stat-icon"><Store size={16} /></span>
           </div>
           <div className="hq-stat-value hq-stat-value--split">
-            {snapshot.activeBranches}
-            <span>/5</span>
+            {displaySnapshot.activeBranches}
+            <span>/{HQ_TOTAL_BRANCHES}</span>
           </div>
           <div className="hq-stat-trend hq-stat-trend--muted">Online now</div>
         </article>
@@ -287,7 +320,8 @@ export default function GlobalDashboard() {
         <div className="hq-panel-head">
           <div>
             <span className="hq-eyebrow">Revenue Overview</span>
-            <div className="hq-panel-big-number">₱371,700</div>
+            <div className="hq-panel-big-number">{formatPeso(weeklyRevenueTotal)}</div>
+            <span className="hq-panel-subcopy">Network-wide, weekly</span>
           </div>
           <div className="hq-range-toggle">
             <button
@@ -311,8 +345,8 @@ export default function GlobalDashboard() {
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="hq-chart-svg">
             <defs>
               <linearGradient id="hqAreaFill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="rgba(217, 135, 36, 0.35)" />
-                <stop offset="100%" stopColor="rgba(217, 135, 36, 0.0)" />
+                <stop offset="0%" stopColor="rgba(0, 141, 54, 0.24)" />
+                <stop offset="100%" stopColor="rgba(0, 141, 54, 0.0)" />
               </linearGradient>
             </defs>
             {areaPath && <path d={areaPath} fill="url(#hqAreaFill)" stroke="none" />}
@@ -320,7 +354,7 @@ export default function GlobalDashboard() {
               <path
                 d={linePath}
                 fill="none"
-                stroke="#d98724"
+                stroke="#008d36"
                 strokeWidth="1.5"
                 vectorEffect="non-scaling-stroke"
               />
@@ -337,60 +371,78 @@ export default function GlobalDashboard() {
         </div>
       </section>
 
-      <section className="hq-panel">
+      <section className="hq-split-row">
+        <section className="hq-panel">
+          <div className="hq-panel-head">
+            <div>
+              <span className="hq-eyebrow">Top Performing Branches</span>
+              <h2>Today's Leaders</h2>
+            </div>
+          </div>
+
+          <ul className="hq-location-list hq-location-list--leaders">
+            {placeholderLeaders.map((loc) => (
+              <li key={loc.id}>
+                <div className="hq-location-top">
+                  <div className="hq-location-info">
+                    <span className="hq-rank hq-rank--green">{loc.rank}</span>
+                    <div>
+                      <div className="hq-location-title">{loc.name}</div>
+                      <div className="hq-location-meta">{loc.meta}</div>
+                    </div>
+                  </div>
+                  <div className="hq-location-amount">{formatPeso(loc.revenue)}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="hq-panel">
+          <div className="hq-panel-head">
+            <div>
+              <span className="hq-eyebrow">Needs Attention</span>
+              <h2>Branches to Check</h2>
+            </div>
+          </div>
+
+          <ul className="hq-alert-list hq-alert-list--branches">
+            {branchesToCheck.map((branch) => (
+              <li key={branch.id} className="hq-alert hq-alert--branch">
+                <span className="hq-alert-icon">
+                  <AlertTriangle size={14} />
+                </span>
+                <div className="hq-alert-body">
+                  <div className="hq-alert-title">{branch.name}</div>
+                  <div className="hq-alert-sub">{branch.meta}</div>
+                </div>
+                <span className={`hq-branch-status ${branch.status === 'Offline' ? 'is-offline' : 'is-warning'}`}>
+                  {branch.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </section>
+
+      <section className="hq-panel hq-panel--wide">
         <div className="hq-panel-head">
           <div>
-            <span className="hq-eyebrow">Best Sellers</span>
+            <span className="hq-eyebrow">Best Sellers — Network Wide</span>
             <h2>Top 5 Today</h2>
           </div>
           <button className="hq-ghost-btn" type="button">View all</button>
         </div>
 
-        <ul className="hq-ranked-list">
+        <ul className="hq-ranked-list hq-ranked-list--wide">
           {placeholderTopSellers.map((item) => (
             <li key={item.rank}>
               <span className="hq-rank">{item.rank}</span>
               <div className="hq-rank-body">
                 <div className="hq-rank-title">{item.name}</div>
-                <div className="hq-rank-sub">{item.sold} sold</div>
+                <div className="hq-rank-sub">{item.sold.toLocaleString()} sold</div>
               </div>
               <div className="hq-rank-amount">{formatPeso(item.revenue)}</div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="hq-panel">
-        <div className="hq-panel-head">
-          <div>
-            <span className="hq-eyebrow">Branch Performance</span>
-            <h2>All Locations</h2>
-          </div>
-          <button className="hq-ghost-btn" type="button">5 active</button>
-        </div>
-
-        <ul className="hq-location-list">
-          {placeholderLocations.map((loc) => (
-            <li key={loc.id}>
-              <div className="hq-location-top">
-                <div className="hq-location-info">
-                  <span className="hq-location-dot" />
-                  <div>
-                    <div className="hq-location-title">
-                      {loc.name}
-                      {loc.flag && <span className="hq-location-flag">{loc.flag}</span>}
-                    </div>
-                    <div className="hq-location-meta">{loc.meta}</div>
-                  </div>
-                </div>
-                <div className="hq-location-amount">
-                  {formatPeso(loc.revenue)}
-                  <span className="hq-location-orders">{Math.round(loc.revenue / 180)} orders</span>
-                </div>
-              </div>
-              <div className="hq-progress">
-                <div className="hq-progress-fill" style={{ width: `${loc.percent}%` }} />
-              </div>
             </li>
           ))}
         </ul>

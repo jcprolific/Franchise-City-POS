@@ -1,5 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Store, Coffee, Users, Settings, LogOut, Warehouse, Handshake } from 'lucide-react';
+import {
+  BarChart3,
+  BookOpen,
+  Handshake,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Store,
+  Users,
+  Warehouse,
+} from 'lucide-react';
 import './AdminSidebar.css';
 
 interface AdminSidebarProps {
@@ -11,23 +21,23 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
   const location = useLocation();
 
   const navItems = [
-    { path: '/hq', label: 'Global KPI', icon: <LayoutDashboard size={18} /> },
-    { path: '/hq/branches', label: 'Branches', icon: <Store size={18} /> },
+    { path: '/hq', label: 'Network Overview', icon: <LayoutDashboard size={18} /> },
+    { path: '/hq/branches', label: 'Franchisees', icon: <Store size={18} /> },
     { path: '/hq/warehouse', label: 'Warehouse', icon: <Warehouse size={18} /> },
     { path: '/hq/suppliers', label: 'Suppliers', icon: <Handshake size={18} /> },
-    { path: '/hq/catalog', label: 'Menu Catalog', icon: <Coffee size={18} /> },
+    { path: '/hq/catalog', label: 'Menu Catalog', icon: <BookOpen size={18} /> },
     { path: '/hq/staff', label: 'Staff Directory', icon: <Users size={18} /> },
+    { path: '/hq/reports', label: 'Reports & Analytics', icon: <BarChart3 size={18} /> },
     { path: '/hq/settings', label: 'Settings', icon: <Settings size={18} /> },
   ];
 
   return (
     <aside className="admin-sidebar">
       <div className="sidebar-brand">
-        <div className="sidebar-brand-icon">🌟</div>
-        <div className="sidebar-brand-text">
-          <span className="sidebar-brand-name">Franchise City HQ</span>
-          <span className="sidebar-brand-sub">Admin Portal</span>
+        <div className="sidebar-brand-logo">
+          <img src="/potato-corner-logo.png" alt="Potato Corner" />
         </div>
+        <span className="sidebar-brand-name">HQ Command Center</span>
       </div>
 
       <nav className="sidebar-nav">
@@ -53,10 +63,16 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
             <span className="sidebar-user-role">Super Admin</span>
           </div>
         </div>
-        <button className="sidebar-logout-btn" onClick={onLogout}>
-          <LogOut size={14} className="logout-icon" />
-          Log Out
-        </button>
+        <div className="sidebar-footer-actions">
+          <div className="sidebar-sync-badge">
+            <span className="sync-dot"></span>
+            Online · Synced
+          </div>
+          <button className="sidebar-logout-btn" onClick={onLogout}>
+            <LogOut size={14} className="logout-icon" />
+            Log Out
+          </button>
+        </div>
       </div>
     </aside>
   );

@@ -1,4 +1,5 @@
 import type { Category, Product, ProductVariant, Addon } from '../types';
+import { flavorProductImages } from './menuMockups';
 
 export const sampleCategories: Category[] = [
   { id: 'cat-1', name: 'Flavors', sort_order: 1, icon: '🍟' },
@@ -8,14 +9,14 @@ export const sampleCategories: Category[] = [
 
 export const sampleProducts: Product[] = [
   // Flavors
-  { id: 'prod-1', category_id: 'cat-1', name: 'Cheese', base_price: 65, is_active: true, image_url: null, icon: '🧀', description: 'All-time favorite cheesy fries', badge: 'BESTSELLER' },
-  { id: 'prod-2', category_id: 'cat-1', name: 'Barbecue', base_price: 65, is_active: true, image_url: null, icon: '🍖', description: 'Smoky sweet barbecue' },
-  { id: 'prod-3', category_id: 'cat-1', name: 'Sour Cream', base_price: 65, is_active: true, image_url: null, icon: '🥛', description: 'Cool and tangy' },
-  { id: 'prod-4', category_id: 'cat-1', name: 'Sour Cream & Onion', base_price: 70, is_active: true, image_url: null, icon: '🧅', description: 'Creamy with onion kick' },
-  { id: 'prod-5', category_id: 'cat-1', name: 'Cheddar', base_price: 70, is_active: true, image_url: null, icon: '🧀', description: 'Rich aged cheddar' },
-  { id: 'prod-6', category_id: 'cat-1', name: 'Sweet Corn', base_price: 65, is_active: true, image_url: null, icon: '🌽', description: 'Buttery sweet corn' },
-  { id: 'prod-7', category_id: 'cat-1', name: 'Chili Cheese', base_price: 75, is_active: true, image_url: null, icon: '🌶️', description: 'Spicy melted cheese' },
-  { id: 'prod-8', category_id: 'cat-1', name: 'Garlic Butter', base_price: 70, is_active: true, image_url: null, icon: '🧄', description: 'Savory garlic butter' },
+  { id: 'prod-1', category_id: 'cat-1', name: 'Cheese', base_price: 65, is_active: true, image_url: flavorProductImages['prod-1'], icon: '🧀', description: 'All-time favorite cheesy fries', badge: 'BESTSELLER' },
+  { id: 'prod-2', category_id: 'cat-1', name: 'Barbecue', base_price: 65, is_active: true, image_url: flavorProductImages['prod-2'], icon: '🍖', description: 'Smoky sweet barbecue' },
+  { id: 'prod-3', category_id: 'cat-1', name: 'Sour Cream', base_price: 65, is_active: true, image_url: flavorProductImages['prod-3'], icon: '🥛', description: 'Cool and tangy' },
+  { id: 'prod-4', category_id: 'cat-1', name: 'Sour Cream & Onion', base_price: 70, is_active: true, image_url: flavorProductImages['prod-4'], icon: '🧅', description: 'Creamy with onion kick' },
+  { id: 'prod-5', category_id: 'cat-1', name: 'Cheddar', base_price: 70, is_active: true, image_url: flavorProductImages['prod-5'], icon: '🧀', description: 'Rich aged cheddar' },
+  { id: 'prod-6', category_id: 'cat-1', name: 'Sweet Corn', base_price: 65, is_active: true, image_url: flavorProductImages['prod-6'], icon: '🌽', description: 'Buttery sweet corn' },
+  { id: 'prod-7', category_id: 'cat-1', name: 'Chili Cheese', base_price: 75, is_active: true, image_url: flavorProductImages['prod-7'], icon: '🌶️', description: 'Spicy melted cheese' },
+  { id: 'prod-8', category_id: 'cat-1', name: 'Garlic Butter', base_price: 70, is_active: true, image_url: flavorProductImages['prod-8'], icon: '🧄', description: 'Savory garlic butter' },
 
   // Snacks
   { id: 'prod-9', category_id: 'cat-2', name: 'Chicken Pops', base_price: 95, is_active: true, image_url: null, icon: '🍗', description: 'Bite-sized fried chicken' },

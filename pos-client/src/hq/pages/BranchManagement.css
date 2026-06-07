@@ -42,6 +42,22 @@
   padding: 8px 10px;
 }
 
+.branch-sample-note {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.branch-sync-label {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
 .branch-code-cell {
   font-weight: 700;
   color: var(--text-primary);

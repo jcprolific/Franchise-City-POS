@@ -5,6 +5,13 @@ import { supabase } from '../lib/supabase';
 import { fetchLiveDashboardData } from '../lib/dashboardRealtime';
 import './DashboardPage.css';
 
+const BRANCH_LABEL = 'Potato Corner · Eastwood City';
+
+function formatYAxis(value: number) {
+  if (value >= 1000) return `${Math.round(value / 1000)}k`;
+  return value.toLocaleString();
+}
+
 export default function DashboardPage() {
   const staticDashboard = sampleDashboard;
   const [liveDashboard, setLiveDashboard] = useState({
@@ -58,13 +65,17 @@ export default function DashboardPage() {
   }, [refreshDashboard]);
 
   const maxSales = Math.max(...staticDashboard.weeklySales.map((s) => s.amount));
+  const yAxisMax = Math.ceil(maxSales / 5000) * 5000 || 5000;
+  const yAxisTicks = useMemo(
+    () => [yAxisMax, yAxisMax * 0.75, yAxisMax * 0.5, yAxisMax * 0.25, 0],
+    [yAxisMax]
+  );
 
   const lowStockItems = useMemo(
     () => sampleInventory.filter((i) => i.quantity <= i.lowStockThreshold),
     []
   );
 
-  // Build donut chart gradient
   const totalProducts = staticDashboard.topProducts.reduce((sum, p) => sum + p.count, 0);
   const donutGradient = useMemo(() => {
     let accumulated = 0;
@@ -78,27 +89,37 @@ export default function DashboardPage() {
     return `conic-gradient(${stops.join(', ')})`;
   }, [staticDashboard.topProducts, totalProducts]);
 
+  const hasLiveOrders = liveDashboard.totalOrders > 0;
+
   return (
     <div className="dashboard-page" id="dashboard-page">
-      {/* Header */}
       <div className="dashboard-header">
-        <h1>Dashboard</h1>
-        <span className="branch-label">Franchise City · Main Branch</span>
+        <div className="dashboard-header-main">
+          <span className="branch-label">{BRANCH_LABEL}</span>
+        </div>
+        <div className="dashboard-header-badges">
+          {isLoading && <span className="dashboard-status is-loading">Syncing orders…</span>}
+          {!isLoading && loadError && (
+            <span className="dashboard-status is-warning">{loadError}</span>
+          )}
+          {!isLoading && !loadError && hasLiveOrders && (
+            <span className="dashboard-status is-live">Live · {liveDashboard.totalOrders} orders today</span>
+          )}
+        </div>
       </div>
-      {isLoading && <div className="branch-label">Loading live orders...</div>}
-      {loadError && <div className="branch-label">{loadError}</div>}
 
-      {/* KPI Cards */}
       <div className="kpi-row">
         <div className="kpi-card" style={{ animationDelay: '0ms' }}>
           <div className="kpi-card-header">
-            <span className="kpi-card-title">Today's Sales</span>
+            <span className="kpi-card-title">Today&apos;s Sales</span>
             <span className="kpi-card-icon">💰</span>
           </div>
-          <div className="kpi-card-value">₱{liveDashboard.todaySales.toLocaleString()}</div>
-          <div className="kpi-card-change">
-            {liveDashboard.todaySalesChange >= 0 ? '+' : ''}
-            {liveDashboard.todaySalesChange.toFixed(1)}%
+          <div className="kpi-card-value">
+            ₱{(hasLiveOrders ? liveDashboard.todaySales : staticDashboard.todaySales).toLocaleString()}
+          </div>
+          <div className={`kpi-card-change ${(hasLiveOrders ? liveDashboard.todaySalesChange : staticDashboard.todaySalesChange) >= 0 ? 'up' : 'down'}`}>
+            {(hasLiveOrders ? liveDashboard.todaySalesChange : staticDashboard.todaySalesChange) >= 0 ? '+' : ''}
+            {(hasLiveOrders ? liveDashboard.todaySalesChange : staticDashboard.todaySalesChange).toFixed(1)}%
           </div>
         </div>
 
@@ -107,10 +128,12 @@ export default function DashboardPage() {
             <span className="kpi-card-title">Orders</span>
             <span className="kpi-card-icon">🛒</span>
           </div>
-          <div className="kpi-card-value">{liveDashboard.totalOrders}</div>
-          <div className="kpi-card-change">
-            {liveDashboard.ordersChange >= 0 ? '+' : ''}
-            {liveDashboard.ordersChange.toFixed(1)}%
+          <div className="kpi-card-value">
+            {hasLiveOrders ? liveDashboard.totalOrders : staticDashboard.totalOrders}
+          </div>
+          <div className={`kpi-card-change ${(hasLiveOrders ? liveDashboard.ordersChange : staticDashboard.ordersChange) >= 0 ? 'up' : 'down'}`}>
+            {(hasLiveOrders ? liveDashboard.ordersChange : staticDashboard.ordersChange) >= 0 ? '+' : ''}
+            {(hasLiveOrders ? liveDashboard.ordersChange : staticDashboard.ordersChange).toFixed(1)}%
           </div>
         </div>
 
@@ -119,39 +142,39 @@ export default function DashboardPage() {
             <span className="kpi-card-title">Avg Order Value</span>
             <span className="kpi-card-icon">📈</span>
           </div>
-          <div className="kpi-card-value">₱{liveDashboard.avgOrderValue.toFixed(2)}</div>
-          <div className="kpi-card-change">
-            {liveDashboard.avgOrderChange >= 0 ? '+' : ''}
-            {liveDashboard.avgOrderChange.toFixed(1)}%
+          <div className="kpi-card-value">
+            ₱{(hasLiveOrders ? liveDashboard.avgOrderValue : staticDashboard.avgOrderValue).toFixed(2)}
+          </div>
+          <div className={`kpi-card-change ${(hasLiveOrders ? liveDashboard.avgOrderChange : staticDashboard.avgOrderChange) >= 0 ? 'up' : 'down'}`}>
+            {(hasLiveOrders ? liveDashboard.avgOrderChange : staticDashboard.avgOrderChange) >= 0 ? '+' : ''}
+            {(hasLiveOrders ? liveDashboard.avgOrderChange : staticDashboard.avgOrderChange).toFixed(1)}%
           </div>
         </div>
 
-        <div className="kpi-card" style={{ animationDelay: '180ms' }}>
+        <div className="kpi-card kpi-card-highlight" style={{ animationDelay: '180ms' }}>
           <div className="kpi-card-header">
-            <span className="kpi-card-title">Top Product</span>
-            <span className="kpi-card-icon">⭐</span>
+            <span className="kpi-card-title">Top Flavor</span>
+            <span className="kpi-card-icon">🍟</span>
           </div>
           <div className="kpi-card-value">{staticDashboard.topProductName}</div>
           <div className="kpi-card-change sold">{staticDashboard.topProductSold} sold</div>
         </div>
       </div>
 
-      {/* Charts Row */}
       <div className="charts-row">
-        {/* Bar Chart */}
         <div className="chart-card">
           <div className="chart-card-title">Weekly Sales</div>
           <div className="bar-chart">
             <div className="bar-chart-y-labels">
-              {[22000, 16500, 11000, 5500, 0].map((v) => (
-                <span key={v} className="bar-y-label">{v.toLocaleString()}</span>
+              {yAxisTicks.map((v) => (
+                <span key={v} className="bar-y-label">{formatYAxis(v)}</span>
               ))}
             </div>
             {staticDashboard.weeklySales.map((s) => (
               <div key={s.day} className="bar-chart-col">
                 <div
                   className="bar-chart-bar"
-                  style={{ height: `${(s.amount / maxSales) * 100}%` }}
+                  style={{ height: `${(s.amount / yAxisMax) * 100}%` }}
                   title={`₱${s.amount.toLocaleString()}`}
                 />
                 <span className="bar-chart-label">{s.day}</span>
@@ -160,15 +183,13 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Donut Chart */}
         <div className="chart-card">
-          <div className="chart-card-title">Top Products</div>
+          <div className="chart-card-title">Top Sellers</div>
           <div className="donut-chart-wrapper">
-            <div
-              className="donut-chart"
-              style={{ background: donutGradient }}
-            >
-              <div className="donut-chart-inner" />
+            <div className="donut-chart" style={{ background: donutGradient }}>
+              <div className="donut-chart-inner">
+                <span className="donut-chart-center">{totalProducts}</span>
+              </div>
             </div>
             <div className="donut-legend">
               {staticDashboard.topProducts.map((p) => (
@@ -183,9 +204,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bottom Row */}
       <div className="bottom-row">
-        {/* Recent Transactions */}
         <div className="transactions-card">
           <div className="transactions-card-title">Recent Transactions</div>
           <table className="transactions-table">
@@ -199,7 +218,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {liveDashboard.recentTransactions.map((tx) => (
+              {(hasLiveOrders ? liveDashboard.recentTransactions : staticDashboard.recentTransactions).map((tx) => (
                 <tr key={tx.id}>
                   <td className="order-id">{tx.id}</td>
                   <td>{tx.time}</td>
@@ -208,20 +227,17 @@ export default function DashboardPage() {
                   <td><span className="payment-tag">{tx.payment}</span></td>
                 </tr>
               ))}
-              {liveDashboard.recentTransactions.length === 0 && (
+              {(hasLiveOrders ? liveDashboard.recentTransactions : staticDashboard.recentTransactions).length === 0 && (
                 <tr>
-                  <td className="order-id">No orders yet</td>
-                  <td>--</td>
-                  <td>0</td>
-                  <td className="total">₱0.00</td>
-                  <td><span className="payment-tag">--</span></td>
+                  <td colSpan={5} className="transactions-empty">
+                    No orders yet — sample data will appear once synced.
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Low Stock Alert */}
         <div className="low-stock-card">
           <div className="low-stock-card-title">
             <span>⚠️</span> Low Stock Alert
@@ -229,16 +245,17 @@ export default function DashboardPage() {
           <div className="low-stock-list">
             {lowStockItems.map((item) => (
               <div key={item.id} className="low-stock-row">
-                <span className="low-stock-name">{item.name}</span>
+                <span className="low-stock-name">
+                  <span className="low-stock-icon" aria-hidden="true">{item.icon}</span>
+                  {item.name}
+                </span>
                 <span className="low-stock-qty">
                   {item.quantity.toLocaleString()} {item.unit}
                 </span>
               </div>
             ))}
             {lowStockItems.length === 0 && (
-              <div style={{ color: 'var(--success)', fontSize: 'var(--font-sm)' }}>
-                ✅ All items sufficiently stocked
-              </div>
+              <div className="low-stock-ok">✅ All items sufficiently stocked</div>
             )}
           </div>
         </div>

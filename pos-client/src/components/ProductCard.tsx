@@ -32,8 +32,21 @@ export default function ProductCard({ product, variants, index = 0, onAdd }: Pro
     >
       {product.badge && <span className="product-card-badge">{product.badge}</span>}
 
-      <div className="product-card-media" aria-hidden="true">
-        <span>{product.icon}</span>
+      <div
+        className={`product-card-media ${product.image_url ? 'has-image' : ''}`}
+        aria-hidden="true"
+      >
+        {product.image_url ? (
+          <img
+            src={product.image_url}
+            alt=""
+            className="product-card-image"
+            loading="lazy"
+            draggable={false}
+          />
+        ) : (
+          <span>{product.icon}</span>
+        )}
       </div>
 
       <div className="product-card-body">

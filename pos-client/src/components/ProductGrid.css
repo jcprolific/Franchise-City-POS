@@ -58,7 +58,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  box-shadow: 0 2px 6px rgba(232, 83, 31, 0.35);
+  box-shadow: 0 2px 6px rgba(243, 112, 33, 0.35);
 }
 
 /* Media / image area */
@@ -68,7 +68,24 @@
   justify-content: center;
   height: 116px;
   font-size: 48px;
-  background: linear-gradient(160deg, #fdf3d4 0%, #fbe6b8 100%);
+  background: linear-gradient(160deg, #fff8cc 0%, #ffd200 100%);
+}
+
+.product-card-media.has-image {
+  align-items: flex-end;
+  padding-bottom: 2px;
+  background: linear-gradient(160deg, #fff8cc 0%, #ffd200 100%);
+}
+
+.product-card-image {
+  max-width: 78%;
+  max-height: 112px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 8px 16px rgba(46, 29, 17, 0.18));
+  transform: translateY(4px);
 }
 
 .product-card-body {
@@ -158,7 +175,7 @@
   justify-content: center;
   cursor: pointer;
   transition: transform 120ms ease, background 160ms ease, box-shadow 160ms ease;
-  box-shadow: 0 4px 10px rgba(31, 139, 59, 0.28);
+  box-shadow: 0 4px 10px rgba(0, 141, 54, 0.28);
 }
 
 .product-card-add svg {
@@ -208,4 +225,81 @@
 
 .product-empty-subtitle {
   font-size: 0.82rem;
+}
+
+@media (max-width: 768px) {
+  .product-grid-wrapper {
+    height: auto;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .product-card {
+    border-radius: 16px;
+  }
+
+  .product-card-badge {
+    top: 8px;
+    left: 8px;
+    padding: 3px 7px;
+    font-size: 0.52rem;
+  }
+
+  .product-card-media {
+    height: 88px;
+    font-size: 36px;
+  }
+
+  .product-card-image {
+    max-width: 82%;
+    max-height: 84px;
+    transform: translateY(2px);
+  }
+
+  .product-card-body {
+    gap: 6px;
+    padding: 10px 11px 12px;
+  }
+
+  .product-card-name {
+    font-size: 0.88rem;
+  }
+
+  .product-card-description {
+    font-size: 0.68rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .product-card-sizes {
+    gap: 4px;
+  }
+
+  .product-size-pill {
+    height: 20px;
+    min-width: 30px;
+    padding: 0 5px;
+    font-size: 0.54rem;
+  }
+
+  .product-card-price {
+    font-size: 0.98rem;
+  }
+
+  .product-card-add {
+    width: 32px;
+    height: 32px;
+  }
+
+  .product-card-add svg {
+    width: 16px;
+    height: 16px;
+  }
 }

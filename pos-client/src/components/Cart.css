@@ -376,7 +376,7 @@
   border-color: var(--pc-orange);
   background: var(--pc-orange-soft);
   color: var(--pc-orange);
-  box-shadow: 0 0 0 3px rgba(232, 83, 31, 0.12);
+  box-shadow: 0 0 0 3px rgba(243, 112, 33, 0.12);
 }
 
 .order-payment-icon {
@@ -409,7 +409,7 @@
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: background 180ms ease, transform 120ms ease, box-shadow 180ms ease;
-  box-shadow: 0 6px 16px rgba(31, 139, 59, 0.28);
+  box-shadow: 0 6px 16px rgba(0, 141, 54, 0.28);
 }
 
 .order-charge:hover:not(:disabled) {
@@ -431,4 +431,83 @@
 .order-charge:focus-visible {
   outline: 2px solid var(--pc-green);
   outline-offset: 3px;
+}
+
+/* ---- Mobile: hidden when empty; fixed checkout bar when items exist ---- */
+@media (max-width: 768px) {
+  .order-panel {
+    display: none;
+    min-height: 0;
+    height: auto;
+  }
+
+  .order-panel.has-items {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    padding: 0 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .order-panel-inner {
+    border-radius: 18px 18px 14px 14px;
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.12);
+    max-height: 42vh;
+  }
+
+  .order-header {
+    padding: 12px 14px 8px;
+  }
+
+  .order-number {
+    font-size: 1.25rem;
+  }
+
+  .order-items {
+    max-height: 100px;
+    padding: 0 8px 6px;
+  }
+
+  .order-item {
+    padding: 10px 28px 10px 10px;
+  }
+
+  .order-summary {
+    padding: 10px 14px 12px;
+    gap: 10px;
+  }
+
+  .order-discount-pills {
+    gap: 5px;
+  }
+
+  .order-discount-pill {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 0.68rem;
+  }
+
+  .order-total-grand {
+    font-size: 1.05rem;
+  }
+
+  .order-total-amount {
+    font-size: 1.25rem;
+  }
+
+  .order-payment {
+    gap: 6px;
+  }
+
+  .order-payment-option {
+    padding: 8px 4px;
+    font-size: 0.68rem;
+  }
+
+  .order-charge {
+    height: 48px;
+    font-size: 0.95rem;
+  }
 }

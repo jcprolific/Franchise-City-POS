@@ -91,7 +91,7 @@ export default function Cart({
   const hasItems = items.length > 0;
 
   return (
-    <aside className="order-panel" id="cart-panel" aria-label="Current order">
+    <aside className={`order-panel${hasItems ? ' has-items' : ''}`} id="cart-panel" aria-label="Current order">
       <div className="order-panel-inner">
         <header className="order-header">
           <div>

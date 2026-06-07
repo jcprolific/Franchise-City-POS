@@ -99,6 +99,7 @@ body {
   background-color: var(--bg-app);
   color: var(--text-primary);
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -108,7 +109,16 @@ body {
 
 #root {
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
 }
 
 /* ============================================

@@ -1,10 +1,10 @@
 .top-header {
   display: flex;
   align-items: center;
-  height: 68px;
+  height: 72px;
   flex-shrink: 0;
   background: #ffffff;
-  border-bottom: 1px solid var(--pos-border);
+  border-bottom: none;
   z-index: 20;
 }
 
@@ -12,31 +12,18 @@
 .top-header-brand {
   display: flex;
   align-items: center;
-  gap: 11px;
   width: var(--sidebar-width);
-  padding: 0 18px;
+  padding: 0 20px;
   flex-shrink: 0;
-  border-right: 1px solid var(--pos-border);
   height: 100%;
-}
-
-.top-header-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--pc-yellow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 21px;
-  flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(245, 197, 24, 0.4);
+  background: var(--pc-sidebar, #008d36);
 }
 
 .top-header-brand-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
+  gap: 2px;
+  line-height: 1.15;
   min-width: 0;
 }
 
@@ -45,17 +32,18 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--pc-green);
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .top-header-franchise {
-  font-family: var(--pos-font-serif);
-  font-size: 1.02rem;
-  font-weight: 800;
-  color: var(--pos-text);
+  font-family: var(--pos-font-display, var(--font-family));
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.015em;
 }
 
 /* Title zone */
@@ -68,16 +56,12 @@
   min-width: 0;
 }
 
-.top-header-mascot {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--pos-radius-pill);
-  background: var(--pc-green-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
+.top-header-brand-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
   flex-shrink: 0;
+  display: block;
 }
 
 .top-header-title-text {
@@ -143,13 +127,13 @@
   border-radius: var(--pos-radius-pill);
   border: none;
   background: var(--pc-yellow);
-  color: #5c4a00;
+  color: #1b3022;
   font-family: inherit;
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 150ms ease, transform 120ms ease;
-  box-shadow: 0 2px 6px rgba(245, 197, 24, 0.35);
+  box-shadow: 0 2px 6px rgba(255, 210, 0, 0.4);
 }
 
 .top-header-time-btn svg {
@@ -164,7 +148,7 @@
 .top-header-time-btn.is-in {
   background: var(--pc-green);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(31, 139, 59, 0.32);
+  box-shadow: 0 2px 6px rgba(0, 141, 54, 0.32);
 }
 
 .top-header-avatar {
@@ -194,5 +178,72 @@
   }
   .top-header-meta-block {
     display: none;
+  }
+}
+
+/* ---- Mobile POS layout (matches Potato Corner mobile reference) ---- */
+@media (max-width: 768px) {
+  .top-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    align-items: center;
+    min-height: calc(88px + env(safe-area-inset-top, 0px));
+    height: auto;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 14px;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: none;
+    background: #ffffff;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
+  }
+
+  .top-header-brand {
+    display: none;
+  }
+
+  .top-header-title-zone {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    gap: 0;
+  }
+
+  .top-header-title-text {
+    display: none;
+  }
+
+  .top-header-brand-logo {
+    height: 64px;
+    max-width: min(260px, 68vw);
+    width: auto;
+    object-fit: contain;
+    object-position: left center;
+  }
+
+  .top-header-meta {
+    padding: 0;
+    gap: 8px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .top-header-time-btn {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 0.74rem;
+    gap: 5px;
+    white-space: nowrap;
+  }
+
+  .top-header-time-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .top-header-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.88rem;
   }
 }
