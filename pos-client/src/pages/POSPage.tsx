@@ -1,95 +1,32 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useState, useCallback, useMemo } from 'react';
 import type {
   Product,
   ProductVariant,
   CartItem,
-  CartItemAddon,
-  SugarLevel,
-  IceLevel,
   DiscountType,
   PaymentMethod,
+  OrderType,
 } from '../types';
-import type { PosOutletContext } from '../App';
-import { sampleCategories, sampleProducts, sampleVariants, sampleAddons } from '../data/sampleData';
+import { sampleCategories, sampleProducts, sampleVariants } from '../data/sampleData';
 import { supabase } from '../lib/supabase';
 import { getInsertPayloadForPosOrder, resolvePosOrderColumns } from '../lib/dashboardRealtime';
-import {
-  addAttendanceEntry,
-  getLatestAttendanceStatus,
-  getTotalHoursToday,
-  subscribeAttendance,
-} from '../lib/attendanceStore';
 import CategoryBar from '../components/CategoryBar';
 import ProductGrid from '../components/ProductGrid';
 import Cart from '../components/Cart';
-import CustomizationModal from '../components/CustomizationModal';
 import CheckoutModal from '../components/CheckoutModal';
 import './POSPage.css';
 
-// Philippine VAT is typically 12%. Set to 0 to disable tax row in the order panel.
-const TAX_RATE = 0;
-
-function formatToday(d: Date) {
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0 || !parts[0]) return 'C';
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-}
-
 export default function POSPage() {
-  const outletCtx = useOutletContext<PosOutletContext | undefined>();
-  const cashierName = outletCtx?.userName || 'Cashier';
-  const displayName =
-    cashierName.length > 0
-      ? cashierName.charAt(0).toUpperCase() + cashierName.slice(1)
-      : 'Cashier';
-
   // ---- State ----
   const [activeCategoryId, setActiveCategoryId] = useState(sampleCategories[0].id);
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<DiscountType>('NONE');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [orderType, setOrderType] = useState<OrderType>('DINE_IN');
   const [showCheckout, setShowCheckout] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
-  const [today, setToday] = useState(() => new Date());
   const [orderNumber] = useState(() => 4800 + Math.floor(Math.random() * 200));
-  const [attendanceStatus, setAttendanceStatus] = useState<'IN' | 'OUT'>(() => {
-    const status = getLatestAttendanceStatus(displayName);
-    return status ?? 'OUT';
-  });
-  const [hoursToday, setHoursToday] = useState(0);
-
-  // Keep date fresh around midnight
-  useEffect(() => {
-    const timer = setInterval(() => setToday(new Date()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const syncAttendance = () => {
-      const status = getLatestAttendanceStatus(displayName) ?? 'OUT';
-      setAttendanceStatus(status);
-      setHoursToday(getTotalHoursToday(displayName));
-    };
-    syncAttendance();
-    const cleanup = subscribeAttendance(syncAttendance);
-    const timer = setInterval(syncAttendance, 60_000);
-    return () => {
-      cleanup();
-      clearInterval(timer);
-    };
-  }, [displayName]);
 
   // ---- Derived Data ----
   const filteredProducts = useMemo(() => {
@@ -108,58 +45,56 @@ export default function POSPage() {
 
   const activeCategory = sampleCategories.find((c) => c.id === activeCategoryId);
 
-  const productVariants = useMemo(
-    () => (selectedProduct ? sampleVariants.filter((v) => v.product_id === selectedProduct.id) : []),
-    [selectedProduct]
-  );
-
   // ---- Cart Calculations ----
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.line_total, 0),
     [cartItems]
   );
 
+  const itemCount = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    [cartItems]
+  );
+
   const discountAmount = useMemo(() => {
     if (discountType === 'NONE' || subtotal === 0) return 0;
-    // PWD and Senior = 20% discount, Promo = 10%
     const rate = discountType === 'PROMO' ? 0.1 : 0.2;
     return subtotal * rate;
   }, [discountType, subtotal]);
 
-  const taxable = Math.max(0, subtotal - discountAmount);
-  const taxAmount = useMemo(() => taxable * TAX_RATE, [taxable]);
-  const total = taxable + taxAmount;
+  const total = Math.max(0, subtotal - discountAmount);
 
   // ---- Handlers ----
-  const handleAddToCart = useCallback(
-    (
-      product: Product,
-      variant: ProductVariant | null,
-      sugar: SugarLevel,
-      ice: IceLevel,
-      addons: CartItemAddon[]
-    ) => {
-      const basePrice = product.base_price;
-      const variantPrice = variant ? variant.additional_price : 0;
-      const addonsPrice = addons.reduce((sum, a) => sum + a.price, 0);
-      const lineTotal = basePrice + variantPrice + addonsPrice;
-
+  const handleAddProduct = useCallback((product: Product, variant: ProductVariant | null) => {
+    const lineTotal = product.base_price + (variant?.additional_price ?? 0);
+    setCartItems((prev) => {
+      const existing = prev.find(
+        (item) => item.product.id === product.id && item.variant?.id === (variant?.id ?? null)
+      );
+      if (existing) {
+        return prev.map((item) =>
+          item.id === existing.id
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                line_total: lineTotal * (item.quantity + 1),
+              }
+            : item
+        );
+      }
       const newItem: CartItem = {
         id: `cart-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         product,
         variant,
         quantity: 1,
-        sugar_level: sugar,
-        ice_level: ice,
-        addons,
+        sugar_level: '0%',
+        ice_level: 'NONE',
+        addons: [],
         line_total: lineTotal,
       };
-
-      setCartItems((prev) => [...prev, newItem]);
-      setSelectedProduct(null);
-    },
-    []
-  );
+      return [...prev, newItem];
+    });
+  }, []);
 
   const handleChangeQuantity = useCallback((itemId: string, delta: number) => {
     setCartItems((prev) =>
@@ -185,15 +120,6 @@ export default function POSPage() {
     }
   };
 
-  const handleToggleAttendance = () => {
-    const nextStatus = attendanceStatus === 'IN' ? 'OUT' : 'IN';
-    addAttendanceEntry({
-      staffName: displayName,
-      role: outletCtx?.userRole || 'Cashier',
-      status: nextStatus,
-    });
-  };
-
   const handleConfirmCheckout = async ({ paymentReference }: { paymentReference?: string }) => {
     if (cartItems.length === 0 || isSavingOrder) {
       return;
@@ -212,7 +138,7 @@ export default function POSPage() {
         subtotal,
         discountAmount,
         total,
-        itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+        itemCount,
         cashierId: user?.id,
       });
 
@@ -237,7 +163,6 @@ export default function POSPage() {
         window.alert(`Order not synced: ${message}. Continuing to New Order.`);
       }
 
-      // Keep cashier flow moving even when cloud sync fails.
       setCartItems([]);
       setDiscountType('NONE');
       setPaymentMethod('CASH');
@@ -251,44 +176,6 @@ export default function POSPage() {
 
   return (
     <div className="pos-page" id="pos-page">
-      <header className="pos-header">
-        <div className="pos-brand">
-          <div className="pos-brand-mark" aria-hidden="true">
-            <span>☕</span>
-          </div>
-          <div className="pos-brand-text">
-            <div className="pos-brand-title">COFTEA</div>
-            <div className="pos-brand-subtitle">POINT OF SALE</div>
-          </div>
-        </div>
-
-        <div className="pos-header-meta">
-          <div className="pos-meta-block">
-            <span className="pos-meta-label">Today</span>
-            <span className="pos-meta-value">{formatToday(today)}</span>
-          </div>
-          <div className="pos-meta-divider" aria-hidden="true" />
-          <div className="pos-meta-block">
-            <span className="pos-meta-label">Cashier</span>
-            <span className="pos-meta-value">{displayName}</span>
-          </div>
-          <div className="pos-meta-divider" aria-hidden="true" />
-          <div className="pos-attendance">
-            <button
-              type="button"
-              className={`pos-attendance-btn ${attendanceStatus === 'IN' ? 'is-in' : 'is-out'}`}
-              onClick={handleToggleAttendance}
-            >
-              {attendanceStatus === 'IN' ? 'Time Out' : 'Time In'}
-            </button>
-            <span className="pos-attendance-hours">{hoursToday.toFixed(1)}h today</span>
-          </div>
-          <div className="pos-avatar" aria-hidden="true">
-            {getInitials(displayName)}
-          </div>
-        </div>
-      </header>
-
       <div className="pos-search">
         <svg
           className="pos-search-icon"
@@ -307,7 +194,7 @@ export default function POSPage() {
           type="text"
           className="pos-search-input"
           id="pos-search-input"
-          placeholder="Search menu..."
+          placeholder="Search flavors, snacks, beverages..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="Search menu"
@@ -335,41 +222,31 @@ export default function POSPage() {
       <div className="pos-body">
         <ProductGrid
           products={filteredProducts}
+          variants={sampleVariants}
           categoryName={isSearching ? `"${searchQuery}"` : activeCategory?.name || ''}
           isSearching={isSearching}
-          onSelectProduct={setSelectedProduct}
+          onAddProduct={handleAddProduct}
         />
 
         <Cart
           items={cartItems}
           orderNumber={orderNumber}
+          orderType={orderType}
           discountType={discountType}
           paymentMethod={paymentMethod}
           subtotal={subtotal}
           discountAmount={discountAmount}
-          taxRate={TAX_RATE}
-          taxAmount={taxAmount}
           total={total}
+          itemCount={itemCount}
           onChangeQuantity={handleChangeQuantity}
           onRemoveItem={handleRemoveItem}
           onSetDiscount={setDiscountType}
           onSetPayment={setPaymentMethod}
+          onSetOrderType={setOrderType}
           onCheckout={handleCheckout}
         />
       </div>
 
-      {/* Customization Modal */}
-      {selectedProduct && (
-        <CustomizationModal
-          product={selectedProduct}
-          variants={productVariants}
-          addons={sampleAddons}
-          onAddToCart={handleAddToCart}
-          onClose={() => setSelectedProduct(null)}
-        />
-      )}
-
-      {/* Checkout Modal */}
       {showCheckout && (
         <CheckoutModal
           total={total}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Navigate,
   Outlet,
@@ -9,6 +9,12 @@ import {
 } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import Sidebar from './components/Sidebar';
+import TopHeader from './components/TopHeader';
+import {
+  addAttendanceEntry,
+  getLatestAttendanceStatus,
+  subscribeAttendance,
+} from './lib/attendanceStore';
 import LoginPage from './pages/LoginPage';
 import POSPage from './pages/POSPage';
 import InventoryPage from './pages/InventoryPage';
@@ -67,10 +73,50 @@ function RequireHq({ isHq }: HqGuardProps) {
   return <Outlet />;
 }
 
+const FRANCHISE_NAME = 'Eastwood City';
+
+function formatToday(d: Date) {
+  return d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function getHeaderTitle(pathname: string): { title: string; subtitle: string } {
+  if (pathname.startsWith('/orders')) return { title: 'Orders', subtitle: 'Branch Terminal · T-01' };
+  if (pathname.startsWith('/inventory')) return { title: 'Inventory', subtitle: 'Branch Terminal · T-01' };
+  if (pathname.startsWith('/dashboard')) return { title: 'Dashboard', subtitle: 'Branch Terminal · T-01' };
+  if (pathname.startsWith('/promotions')) return { title: 'Promotions', subtitle: 'Branch Terminal · T-01' };
+  return { title: 'Point of Sale', subtitle: 'Branch Terminal · T-01' };
+}
+
 function PosShell({ auth, onLogout }: PosShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [bannerMessage, setBannerMessage] = useState('');
+  const [today, setToday] = useState(() => new Date());
+
+  const displayName = auth.userName
+    ? auth.userName.charAt(0).toUpperCase() + auth.userName.slice(1)
+    : 'Cashier';
+  const roleLabel = auth.role === 'hq_admin' ? 'HQ Admin' : 'Cashier';
+
+  const [attendanceStatus, setAttendanceStatus] = useState<'IN' | 'OUT'>(
+    () => getLatestAttendanceStatus(displayName) ?? 'OUT'
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => setToday(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setAttendanceStatus(getLatestAttendanceStatus(displayName) ?? 'OUT');
+    sync();
+    const cleanup = subscribeAttendance(sync);
+    return cleanup;
+  }, [displayName]);
 
   useEffect(() => {
     const state = location.state as LoginLocationState | null;
@@ -80,18 +126,39 @@ function PosShell({ auth, onLogout }: PosShellProps) {
     }
   }, [location, navigate]);
 
+  const handleToggleAttendance = useCallback(() => {
+    const nextStatus = attendanceStatus === 'IN' ? 'OUT' : 'IN';
+    addAttendanceEntry({ staffName: displayName, role: roleLabel, status: nextStatus });
+  }, [attendanceStatus, displayName, roleLabel]);
+
+  const { title, subtitle } = useMemo(
+    () => getHeaderTitle(location.pathname),
+    [location.pathname]
+  );
+
   return (
     <div className="app-layout pos-shell" id="app-root">
-      <Sidebar
-        userName={auth.userName}
-        userRole={auth.role === 'hq_admin' ? 'HQ Admin' : 'Cashier'}
-        canAccessHq={auth.role === 'hq_admin'}
-        onLogout={onLogout}
+      <TopHeader
+        franchiseName={FRANCHISE_NAME}
+        title={title}
+        subtitle={subtitle}
+        dateLabel={formatToday(today)}
+        cashierName={displayName}
+        attendanceStatus={attendanceStatus}
+        onToggleAttendance={handleToggleAttendance}
       />
-      <main className="app-main">
-        {bannerMessage && <div className="access-banner">{bannerMessage}</div>}
-        <Outlet context={{ userName: auth.userName, userRole: auth.role === 'hq_admin' ? 'HQ Admin' : 'Cashier' }} />
-      </main>
+      <div className="pos-shell-body">
+        <Sidebar
+          userName={auth.userName}
+          userRole={roleLabel}
+          canAccessHq={auth.role === 'hq_admin'}
+          onLogout={onLogout}
+        />
+        <main className="app-main">
+          {bannerMessage && <div className="access-banner">{bannerMessage}</div>}
+          <Outlet context={{ userName: auth.userName, userRole: roleLabel }} />
+        </main>
+      </div>
     </div>
   );
 }
@@ -272,7 +339,7 @@ export default function App() {
         fontFamily: 'var(--font-family)',
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>☕</div>
+          <div style={{ fontSize: '48px', marginBottom: '12px' }}>🍟</div>
           <div>Loading...</div>
         </div>
       </div>
@@ -293,8 +360,16 @@ export default function App() {
         <Route element={<PosShell auth={auth} onLogout={handleLogout} />}>
           <Route path="/" element={<Navigate to="/pos" replace />} />
           <Route path="/pos" element={<POSPage />} />
+          <Route
+            path="/orders"
+            element={<HqPlaceholder title="Orders" subtitle="Order history & live queue coming soon." />}
+          />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route
+            path="/promotions"
+            element={<HqPlaceholder title="Promotions" subtitle="Discounts & combo deals coming soon." />}
+          />
         </Route>
         <Route element={<RequireHq isHq={auth.role === 'hq_admin'} />}>
           <Route element={<HqShell userName={auth.userName} onLogout={handleLogout} />}>

@@ -14,12 +14,14 @@ export interface Product {
   image_url: string | null;
   icon: string;
   description?: string;
+  badge?: string;
 }
 
 export interface ProductVariant {
   id: string;
   product_id: string;
   name: string;
+  abbr: string;
   additional_price: number;
 }
 
@@ -34,6 +36,7 @@ export type SugarLevel = '0%' | '25%' | '50%' | '75%' | '100%';
 export type IceLevel = 'NONE' | 'LESS' | 'NORMAL' | 'EXTRA';
 export type DiscountType = 'NONE' | 'PWD' | 'SENIOR' | 'PROMO';
 export type PaymentMethod = 'CASH' | 'GCASH' | 'CARD';
+export type OrderType = 'DINE_IN' | 'TAKE_OUT';
 
 export interface CartItemAddon {
   addon: Addon;

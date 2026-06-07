@@ -28,6 +28,25 @@ function PosIcon() {
   );
 }
 
+function OrdersIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M9 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="2" width="6" height="4" rx="1" />
+      <path d="M9 12h6M9 16h4" />
+    </svg>
+  );
+}
+
+function PromotionsIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3.5 12 12 3.5h6.5V10L10 18.5 3.5 12Z" />
+      <circle cx="15.5" cy="8.5" r="1.2" />
+    </svg>
+  );
+}
+
 function InventoryIcon() {
   return (
     <svg {...iconProps}>
@@ -77,11 +96,6 @@ export default function Sidebar({ userName, userRole, canAccessHq, onLogout }: S
 
   return (
     <aside className="sidebar" id="sidebar-nav">
-      <div className="sidebar-brand">
-        <div className="sidebar-brand-icon">☕</div>
-        <span className="sidebar-brand-name">Franchise City</span>
-      </div>
-
       <nav className="sidebar-nav">
         <NavLink
           id="nav-pos"
@@ -90,6 +104,14 @@ export default function Sidebar({ userName, userRole, canAccessHq, onLogout }: S
         >
           <span className="nav-icon"><PosIcon /></span>
           POS
+        </NavLink>
+        <NavLink
+          id="nav-orders"
+          className={navClassName}
+          to="/orders"
+        >
+          <span className="nav-icon"><OrdersIcon /></span>
+          Orders
         </NavLink>
         <NavLink
           id="nav-inventory"
@@ -106,6 +128,14 @@ export default function Sidebar({ userName, userRole, canAccessHq, onLogout }: S
         >
           <span className="nav-icon"><DashboardIcon /></span>
           Dashboard
+        </NavLink>
+        <NavLink
+          id="nav-promotions"
+          className={navClassName}
+          to="/promotions"
+        >
+          <span className="nav-icon"><PromotionsIcon /></span>
+          Promotions
         </NavLink>
         {canAccessHq && (
           <NavLink

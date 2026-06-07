@@ -1,89 +1,95 @@
 import type { Category, Product, ProductVariant, Addon } from '../types';
 
 export const sampleCategories: Category[] = [
-  { id: 'cat-1', name: 'Coffee', sort_order: 1, icon: '☕' },
-  { id: 'cat-2', name: 'Milk Tea', sort_order: 2, icon: '🧋' },
-  { id: 'cat-3', name: 'Fruit Tea', sort_order: 3, icon: '🍹' },
-  { id: 'cat-4', name: 'Snacks', sort_order: 4, icon: '🍪' },
+  { id: 'cat-1', name: 'Flavors', sort_order: 1, icon: '🍟' },
+  { id: 'cat-2', name: 'Snacks', sort_order: 2, icon: '🍗' },
+  { id: 'cat-3', name: 'Beverages', sort_order: 3, icon: '🥤' },
 ];
 
 export const sampleProducts: Product[] = [
-  // Coffee
-  { id: 'prod-1', category_id: 'cat-1', name: 'Americano', base_price: 120, is_active: true, image_url: null, icon: '☕', description: 'Rich espresso with hot water' },
-  { id: 'prod-2', category_id: 'cat-1', name: 'Latte', base_price: 150, is_active: true, image_url: null, icon: '☕', description: 'Smooth & creamy' },
-  { id: 'prod-3', category_id: 'cat-1', name: 'Cappuccino', base_price: 150, is_active: true, image_url: null, icon: '☕', description: 'Foam-forward classic' },
-  { id: 'prod-4', category_id: 'cat-1', name: 'Espresso', base_price: 100, is_active: true, image_url: null, icon: '☕', description: 'Single shot, rich crema' },
-  { id: 'prod-5', category_id: 'cat-1', name: 'Mocha', base_price: 160, is_active: true, image_url: null, icon: '☕', description: 'Chocolate, espresso, milk' },
-  { id: 'prod-6', category_id: 'cat-1', name: 'Caramel Macchiato', base_price: 170, is_active: true, image_url: null, icon: '☕', description: 'Espresso with caramel & milk foam' },
-  { id: 'prod-7', category_id: 'cat-1', name: 'Flat White', base_price: 155, is_active: true, image_url: null, icon: '☕', description: 'Velvety microfoam' },
-  { id: 'prod-8', category_id: 'cat-1', name: 'Spanish Latte', base_price: 165, is_active: true, image_url: null, icon: '☕', description: 'Sweetened condensed milk latte' },
-  // Milk Tea
-  { id: 'prod-9', category_id: 'cat-2', name: 'Classic Milk Tea', base_price: 130, is_active: true, image_url: null, icon: '🧋', description: 'House-brewed black tea & milk' },
-  { id: 'prod-10', category_id: 'cat-2', name: 'Taro Milk Tea', base_price: 140, is_active: true, image_url: null, icon: '🧋', description: 'Creamy taro blend' },
-  { id: 'prod-11', category_id: 'cat-2', name: 'Matcha Latte', base_price: 150, is_active: true, image_url: null, icon: '🧋', description: 'Premium matcha with milk' },
-  { id: 'prod-12', category_id: 'cat-2', name: 'Brown Sugar MT', base_price: 155, is_active: true, image_url: null, icon: '🧋', description: 'Caramelized brown sugar' },
-  { id: 'prod-13', category_id: 'cat-2', name: 'Wintermelon', base_price: 130, is_active: true, image_url: null, icon: '🧋', description: 'Sweet & refreshing' },
-  { id: 'prod-14', category_id: 'cat-2', name: 'Okinawa', base_price: 145, is_active: true, image_url: null, icon: '🧋', description: 'Roasted brown sugar tea' },
-  // Fruit Tea
-  { id: 'prod-15', category_id: 'cat-3', name: 'Mango Fruit Tea', base_price: 130, is_active: true, image_url: null, icon: '🥭', description: 'Fresh mango pulp & tea' },
-  { id: 'prod-16', category_id: 'cat-3', name: 'Passion Fruit', base_price: 130, is_active: true, image_url: null, icon: '🍑', description: 'Tangy tropical blend' },
-  { id: 'prod-17', category_id: 'cat-3', name: 'Lychee Tea', base_price: 135, is_active: true, image_url: null, icon: '🍹', description: 'Lychee with jasmine green tea' },
-  { id: 'prod-18', category_id: 'cat-3', name: 'Green Apple', base_price: 130, is_active: true, image_url: null, icon: '🍏', description: 'Crisp & refreshing' },
+  // Flavors
+  { id: 'prod-1', category_id: 'cat-1', name: 'Cheese', base_price: 65, is_active: true, image_url: null, icon: '🧀', description: 'All-time favorite cheesy fries', badge: 'BESTSELLER' },
+  { id: 'prod-2', category_id: 'cat-1', name: 'Barbecue', base_price: 65, is_active: true, image_url: null, icon: '🍖', description: 'Smoky sweet barbecue' },
+  { id: 'prod-3', category_id: 'cat-1', name: 'Sour Cream', base_price: 65, is_active: true, image_url: null, icon: '🥛', description: 'Cool and tangy' },
+  { id: 'prod-4', category_id: 'cat-1', name: 'Sour Cream & Onion', base_price: 70, is_active: true, image_url: null, icon: '🧅', description: 'Creamy with onion kick' },
+  { id: 'prod-5', category_id: 'cat-1', name: 'Cheddar', base_price: 70, is_active: true, image_url: null, icon: '🧀', description: 'Rich aged cheddar' },
+  { id: 'prod-6', category_id: 'cat-1', name: 'Sweet Corn', base_price: 65, is_active: true, image_url: null, icon: '🌽', description: 'Buttery sweet corn' },
+  { id: 'prod-7', category_id: 'cat-1', name: 'Chili Cheese', base_price: 75, is_active: true, image_url: null, icon: '🌶️', description: 'Spicy melted cheese' },
+  { id: 'prod-8', category_id: 'cat-1', name: 'Garlic Butter', base_price: 70, is_active: true, image_url: null, icon: '🧄', description: 'Savory garlic butter' },
+
   // Snacks
-  { id: 'prod-19', category_id: 'cat-4', name: 'Fries', base_price: 80, is_active: true, image_url: null, icon: '🍟', description: 'Golden crispy fries' },
-  { id: 'prod-20', category_id: 'cat-4', name: 'Chicken Pops', base_price: 95, is_active: true, image_url: null, icon: '🍗', description: 'Bite-sized fried chicken' },
-  { id: 'prod-21', category_id: 'cat-4', name: 'Nachos', base_price: 85, is_active: true, image_url: null, icon: '🧀', description: 'Loaded cheese nachos' },
-  { id: 'prod-22', category_id: 'cat-4', name: 'Fish Balls', base_price: 60, is_active: true, image_url: null, icon: '🐟', description: 'Classic street snack' },
+  { id: 'prod-9', category_id: 'cat-2', name: 'Chicken Pops', base_price: 95, is_active: true, image_url: null, icon: '🍗', description: 'Bite-sized fried chicken' },
+  { id: 'prod-10', category_id: 'cat-2', name: 'Cheese Sticks', base_price: 85, is_active: true, image_url: null, icon: '🧀', description: 'Crispy mozzarella sticks' },
+  { id: 'prod-11', category_id: 'cat-2', name: 'Nachos', base_price: 85, is_active: true, image_url: null, icon: '🌮', description: 'Loaded cheese nachos' },
+  { id: 'prod-12', category_id: 'cat-2', name: 'Onion Rings', base_price: 80, is_active: true, image_url: null, icon: '🧅', description: 'Golden crispy rings' },
+
+  // Beverages
+  { id: 'prod-13', category_id: 'cat-3', name: 'Iced Tea', base_price: 45, is_active: true, image_url: null, icon: '🧋', description: 'House-brewed iced tea' },
+  { id: 'prod-14', category_id: 'cat-3', name: 'Coke Float', base_price: 60, is_active: true, image_url: null, icon: '🥤', description: 'Soda with ice cream' },
+  { id: 'prod-15', category_id: 'cat-3', name: 'Lemonade', base_price: 50, is_active: true, image_url: null, icon: '🍋', description: 'Fresh squeezed lemonade' },
+  { id: 'prod-16', category_id: 'cat-3', name: 'Bottled Water', base_price: 25, is_active: true, image_url: null, icon: '💧', description: 'Purified drinking water' },
+];
+
+// Potato Corner fries sizes: Regular, Large, Jumbo, Mega, Giga, Tera
+const friesSizes: { abbr: string; name: string; add: number }[] = [
+  { abbr: 'REG', name: 'Regular', add: 0 },
+  { abbr: 'LRG', name: 'Large', add: 20 },
+  { abbr: 'JBO', name: 'Jumbo', add: 40 },
+  { abbr: 'MEG', name: 'Mega', add: 70 },
+  { abbr: 'GIG', name: 'Giga', add: 110 },
+  { abbr: 'TRA', name: 'Tera', add: 160 },
+];
+
+// How many sizes each flavor offers (matches reference UI)
+const flavorSizeCount: Record<string, number> = {
+  'prod-1': 6,
+  'prod-2': 4,
+  'prod-3': 3,
+  'prod-4': 3,
+  'prod-5': 3,
+  'prod-6': 3,
+  'prod-7': 4,
+  'prod-8': 3,
+};
+
+function buildFlavorVariants(): ProductVariant[] {
+  const variants: ProductVariant[] = [];
+  let counter = 1;
+  for (const [productId, count] of Object.entries(flavorSizeCount)) {
+    friesSizes.slice(0, count).forEach((size) => {
+      variants.push({
+        id: `var-${counter++}`,
+        product_id: productId,
+        name: size.name,
+        abbr: size.abbr,
+        additional_price: size.add,
+      });
+    });
+  }
+  return variants;
+}
+
+const beverageSizes: { abbr: string; name: string; add: number }[] = [
+  { abbr: 'REG', name: 'Regular', add: 0 },
+  { abbr: 'LRG', name: 'Large', add: 15 },
 ];
 
 export const sampleVariants: ProductVariant[] = [
-  // sizes for drinks
-  { id: 'var-1', product_id: 'prod-1', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-2', product_id: 'prod-1', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-3', product_id: 'prod-2', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-4', product_id: 'prod-2', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-5', product_id: 'prod-3', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-6', product_id: 'prod-3', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-7', product_id: 'prod-4', name: 'Solo', additional_price: 0 },
-  { id: 'var-8', product_id: 'prod-4', name: 'Double', additional_price: 30 },
-  { id: 'var-9', product_id: 'prod-5', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-10', product_id: 'prod-5', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-11', product_id: 'prod-6', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-12', product_id: 'prod-6', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-13', product_id: 'prod-7', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-14', product_id: 'prod-7', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-15', product_id: 'prod-8', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-16', product_id: 'prod-8', name: 'Large (22oz)', additional_price: 30 },
-  // milk tea
-  { id: 'var-17', product_id: 'prod-9', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-18', product_id: 'prod-9', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-19', product_id: 'prod-10', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-20', product_id: 'prod-10', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-21', product_id: 'prod-11', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-22', product_id: 'prod-11', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-23', product_id: 'prod-12', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-24', product_id: 'prod-12', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-25', product_id: 'prod-13', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-26', product_id: 'prod-13', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-27', product_id: 'prod-14', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-28', product_id: 'prod-14', name: 'Large (22oz)', additional_price: 30 },
-  // fruit tea
-  { id: 'var-29', product_id: 'prod-15', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-30', product_id: 'prod-15', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-31', product_id: 'prod-16', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-32', product_id: 'prod-16', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-33', product_id: 'prod-17', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-34', product_id: 'prod-17', name: 'Large (22oz)', additional_price: 30 },
-  { id: 'var-35', product_id: 'prod-18', name: 'Medium (16oz)', additional_price: 0 },
-  { id: 'var-36', product_id: 'prod-18', name: 'Large (22oz)', additional_price: 30 },
+  ...buildFlavorVariants(),
+  // Beverages get Regular / Large
+  { id: 'var-b1', product_id: 'prod-13', name: 'Regular', abbr: 'REG', additional_price: 0 },
+  { id: 'var-b2', product_id: 'prod-13', name: 'Large', abbr: 'LRG', additional_price: 15 },
+  { id: 'var-b3', product_id: 'prod-14', name: 'Regular', abbr: 'REG', additional_price: 0 },
+  { id: 'var-b4', product_id: 'prod-14', name: 'Large', abbr: 'LRG', additional_price: 15 },
+  { id: 'var-b5', product_id: 'prod-15', name: 'Regular', abbr: 'REG', additional_price: 0 },
+  { id: 'var-b6', product_id: 'prod-15', name: 'Large', abbr: 'LRG', additional_price: 15 },
 ];
 
+void beverageSizes;
+
 export const sampleAddons: Addon[] = [
-  { id: 'add-1', name: 'Pearls', price: 15, is_active: true },
-  { id: 'add-2', name: 'Nata de Coco', price: 15, is_active: true },
-  { id: 'add-3', name: 'Cream Cheese', price: 25, is_active: true },
-  { id: 'add-4', name: 'Coffee Jelly', price: 15, is_active: true },
-  { id: 'add-5', name: 'Pudding', price: 20, is_active: true },
-  { id: 'add-6', name: 'Extra Shot', price: 25, is_active: true },
-  { id: 'add-7', name: 'Whipped Cream', price: 20, is_active: true },
+  { id: 'add-1', name: 'Extra Cheese', price: 15, is_active: true },
+  { id: 'add-2', name: 'Extra Seasoning', price: 10, is_active: true },
+  { id: 'add-3', name: 'Cheese Dip', price: 20, is_active: true },
+  { id: 'add-4', name: 'Spicy Mayo', price: 15, is_active: true },
 ];

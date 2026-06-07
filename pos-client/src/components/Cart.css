@@ -41,24 +41,31 @@
   font-family: var(--pos-font-serif);
   font-size: 1.55rem;
   font-weight: 800;
-  color: var(--pos-text);
+  color: var(--pc-green);
   line-height: 1;
 }
 
-.order-header-icon {
-  width: 40px;
-  height: 40px;
+.order-type-toggle {
+  padding: 6px 14px;
   border-radius: var(--pos-radius-pill);
-  background: var(--pos-surface-soft);
-  color: var(--pos-text-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms ease;
 }
 
-.order-header-icon svg {
-  width: 18px;
-  height: 18px;
+.order-type-toggle.is-dine-in {
+  background: var(--pc-green-soft);
+  border-color: var(--pc-green-soft-border);
+  color: var(--pc-green);
+}
+
+.order-type-toggle.is-take-out {
+  background: var(--pc-yellow-soft);
+  border-color: var(--pc-yellow-dark);
+  color: #946a00;
 }
 
 /* ---------- Items area ---------- */
@@ -82,14 +89,14 @@
 }
 
 .order-empty-icon {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   border-radius: var(--pos-radius-pill);
-  background: var(--pos-surface-soft);
+  background: var(--pc-green-soft);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 32px;
   margin-bottom: 4px;
 }
 
@@ -177,7 +184,7 @@
 .order-item-price {
   font-family: var(--pos-font-serif);
   font-weight: 700;
-  color: var(--pos-accent);
+  color: var(--pc-orange);
   font-size: 0.92rem;
 }
 
@@ -287,9 +294,9 @@
 }
 
 .order-discount-pill.active {
-  background: var(--pos-ink);
-  color: #f9ecd4;
-  border-color: var(--pos-ink);
+  background: var(--pc-green);
+  color: #fff;
+  border-color: var(--pc-green);
 }
 
 .order-totals {
@@ -307,7 +314,7 @@
 }
 
 .order-total-discount {
-  color: var(--pos-accent-strong);
+  color: var(--pc-orange);
 }
 
 .order-total-divider {
@@ -321,16 +328,17 @@
 
 .order-total-grand {
   font-family: var(--pos-font-serif);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: var(--pos-text);
+  margin-top: 2px;
 }
 
 .order-total-amount {
   font-family: var(--pos-font-serif);
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: 800;
-  color: var(--pos-text);
+  color: var(--pc-green);
 }
 
 /* ---------- Payment tabs ---------- */
@@ -365,10 +373,10 @@
 }
 
 .order-payment-option.active {
-  border-color: var(--pos-accent);
-  background: var(--pos-accent-soft);
-  color: var(--pos-accent-strong);
-  box-shadow: 0 0 0 3px rgba(217, 135, 36, 0.12);
+  border-color: var(--pc-orange);
+  background: var(--pc-orange-soft);
+  color: var(--pc-orange);
+  box-shadow: 0 0 0 3px rgba(232, 83, 31, 0.12);
 }
 
 .order-payment-icon {
@@ -392,20 +400,20 @@
   width: 100%;
   height: 54px;
   border: none;
-  border-radius: var(--pos-radius-pill);
-  background: var(--pos-ink);
-  color: #f7ead1;
+  border-radius: var(--pos-radius-md);
+  background: var(--pc-green);
+  color: #fff;
   font-family: var(--pos-font-serif);
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 800;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: background 180ms ease, transform 120ms ease, box-shadow 180ms ease;
-  box-shadow: 0 6px 16px rgba(46, 29, 17, 0.18);
+  box-shadow: 0 6px 16px rgba(31, 139, 59, 0.28);
 }
 
 .order-charge:hover:not(:disabled) {
-  background: var(--pos-ink-hover);
+  background: var(--pc-green-deep);
   transform: translateY(-1px);
 }
 
@@ -414,12 +422,13 @@
 }
 
 .order-charge:disabled {
-  opacity: 0.55;
+  background: #e9e6df;
+  color: #a89f8e;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .order-charge:focus-visible {
-  outline: 2px solid var(--pos-accent);
+  outline: 2px solid var(--pc-green);
   outline-offset: 3px;
 }

@@ -24,20 +24,26 @@
     transform 120ms ease;
 }
 
-.category-pill:hover {
+.category-pill {
+  border: 1px solid var(--pos-border);
   background: var(--pos-surface);
-  color: var(--pos-text);
+}
+
+.category-pill:hover {
+  background: var(--pc-green-soft);
+  color: var(--pc-green);
+  border-color: var(--pc-green-soft-border);
 }
 
 .category-pill.active {
-  background: var(--pos-ink);
-  color: #f9ecd4;
-  border-color: var(--pos-ink);
-  box-shadow: var(--pos-shadow-card);
+  background: var(--pc-green);
+  color: #fff;
+  border-color: var(--pc-green);
+  box-shadow: 0 4px 12px rgba(31, 139, 59, 0.25);
 }
 
 .category-pill:focus-visible {
-  outline: 2px solid var(--pos-accent);
+  outline: 2px solid var(--pc-green);
   outline-offset: 2px;
 }
 
