@@ -1,179 +1,110 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, Phone, Mail, MapPin } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import type { FormEvent } from 'react';
+import { Plus, Search, Phone, Mail, MapPin, X } from 'lucide-react';
+import { useBrand } from '../../context/BrandContext';
+import { getHqDemoData, type HqSupplierRow } from '../data/getHqDemoData';
+import {
+  createSupplier,
+  ensureSampleSuppliers,
+  fetchSuppliers,
+} from '../lib/supplierService';
 import './SupplierManagement.css';
 
-interface SupplierRow {
-  id: string;
-  name: string;
-  contact_person: string | null;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-  category: string | null;
-  is_active: boolean | null;
-  created_at: string | null;
-}
-
-const SAMPLE_SUPPLIERS: SupplierRow[] = [
-  {
-    id: 's-pc-001',
-    name: 'PC Commissary',
-    contact_person: 'Rica Mendoza',
-    phone: '+63 917 800 1201',
-    email: 'supply@potatocorner.ph',
-    address: 'Laguna Technopark, Biñan, Laguna',
-    category: 'Flavor Powder & Seasonings',
-    is_active: true,
-    created_at: null,
-  },
-  {
-    id: 's-pc-002',
-    name: 'McCain Philippines',
-    contact_person: 'Jonas Villanueva',
-    phone: '+63 2 8888 4410',
-    email: 'orders.ph@mccain.com',
-    address: 'Taguig City, Metro Manila',
-    category: 'Frozen Fries & Potatoes',
-    is_active: true,
-    created_at: null,
-  },
-  {
-    id: 's-pc-003',
-    name: 'PackPro Packaging',
-    contact_person: 'Lea Domingo',
-    phone: '+63 928 441 2290',
-    email: 'sales@packpro.ph',
-    address: 'Caloocan City, Metro Manila',
-    category: 'Cups, Lids & Paper Bags',
-    is_active: true,
-    created_at: null,
-  },
-  {
-    id: 's-pc-004',
-    name: 'Golden Fry Oils',
-    contact_person: 'Marco Dela Cruz',
-    phone: '+63 905 220 8844',
-    email: 'distribution@goldenfry.ph',
-    address: 'Muntinlupa City, Metro Manila',
-    category: 'Fry Oil & Cooking Supplies',
-    is_active: true,
-    created_at: null,
-  },
-  {
-    id: 's-pc-005',
-    name: 'Bounty Fresh Food Corp.',
-    contact_person: 'Hannah Soriano',
-    phone: '+63 917 555 9033',
-    email: 'foodservice@bountyfresh.com',
-    address: 'Santa Rosa, Laguna',
-    category: 'Chicken Pops & Snacks',
-    is_active: true,
-    created_at: null,
-  },
-  {
-    id: 's-pc-006',
-    name: 'Coca-Cola FEMSA',
-    contact_person: 'Paolo Neri',
-    phone: '+63 2 8888 1200',
-    email: 'partners@coca-cola.com.ph',
-    address: 'Makati City, Metro Manila',
-    category: 'Beverages',
-    is_active: true,
-    created_at: null,
-  },
-  {
-    id: 's-pc-007',
-    name: 'Metro Packaging Hub',
-    contact_person: 'Grace Tan',
-    phone: '+63 927 118 4402',
-    email: 'orders@metropackhub.ph',
-    address: 'Quezon City, Metro Manila',
-    category: 'Napkins & Consumables',
-    is_active: true,
-    created_at: null,
-  },
-  {
-    id: 's-pc-008',
-    name: 'ColdChain Logistics PH',
-    contact_person: 'Enzo Reyes',
-    phone: '+63 918 330 7711',
-    email: 'dispatch@coldchain.ph',
-    address: 'Parañaque City, Metro Manila',
-    category: 'Cold Storage & Delivery',
-    is_active: true,
-    created_at: null,
-  },
-  {
-    id: 's-pc-009',
-    name: 'FlavorMix Ingredients',
-    contact_person: 'Bianca Ortiz',
-    phone: '+63 906 771 0028',
-    email: 'procurement@flavormix.ph',
-    address: 'Cebu City, Cebu',
-    category: 'Specialty Seasonings',
-    is_active: false,
-    created_at: null,
-  },
-  {
-    id: 's-pc-010',
-    name: 'Eastwood City Mall Admin',
-    contact_person: 'Ronald Aquino',
-    phone: '+63 2 709 0888',
-    email: 'tenancy@eastwoodcity.com',
-    address: 'Eastwood City, Quezon City',
-    category: 'Mall Operations',
-    is_active: true,
-    created_at: null,
-  },
+const SUPPLIER_CATEGORIES = [
+  'Tea Leaves & Base Ingredients',
+  'Espresso Beans & Coffee',
+  'Tapioca Pearls & Boba',
+  'Syrups & Flavorings',
+  'Milk & Dairy',
+  'Cups, Lids & Packaging',
+  'Cold Storage & Delivery',
+  'Mall Operations',
+  'General',
 ];
 
+const emptyForm = {
+  name: '',
+  category: '',
+  contactPerson: '',
+  phone: '',
+  email: '',
+  address: '',
+  isActive: true,
+};
+
 export default function SupplierManagement() {
-  const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
+  const { brand } = useBrand();
+  const demo = useMemo(() => getHqDemoData(brand.slug), [brand.slug]);
+
+  const [suppliers, setSuppliers] = useState<HqSupplierRow[]>([]);
   const [query, setQuery] = useState('');
-  const [syncing, setSyncing] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [noticeText, setNoticeText] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [fromLocal, setFromLocal] = useState(false);
+
+  const sampleSuppliers = useMemo(
+    () =>
+      demo.sampleSuppliers.map((supplier) => ({
+        name: supplier.name,
+        contact_person: supplier.contact_person,
+        phone: supplier.phone,
+        email: supplier.email,
+        address: supplier.address,
+        category: supplier.category,
+        is_active: supplier.is_active,
+      })),
+    [demo.sampleSuppliers]
+  );
 
   const loadSuppliers = useCallback(async (options?: { background?: boolean }) => {
     const background = options?.background ?? false;
     if (!background) {
       setErrorText('');
     }
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase
-        .from('supplier')
-        .select('id,name,contact_person,phone,email,address,category,is_active,created_at')
-        .order('created_at', { ascending: false });
 
-      if (error) {
-        if (!background) {
-          setErrorText('Using sample supplier list. Connect Supabase `supplier` table for live data.');
-        }
-      } else if ((data?.length ?? 0) > 0) {
-        setSuppliers(data as SupplierRow[]);
+    const localRows = ensureSampleSuppliers(brand.dbBrandId, sampleSuppliers);
+    setSuppliers(localRows);
+    setFromLocal(true);
+
+    try {
+      const { rows, error, fromLocal: remoteFromLocal } = await fetchSuppliers(brand.dbBrandId);
+
+      if (rows && rows.length > 0) {
+        setSuppliers(rows);
+        setFromLocal(Boolean(remoteFromLocal));
         setErrorText('');
+        if (remoteFromLocal && !background) {
+          setNoticeText(
+            'Supplier list saved on this device. Connect Supabase to sync with live HQ data.'
+          );
+        }
+      } else if (error) {
+        if (!background) {
+          setErrorText(error);
+        }
+        setSuppliers(localRows);
+        setFromLocal(true);
       }
     } catch {
       if (!background) {
-        setErrorText('Failed to sync suppliers. Showing sample supplier list.');
+        setErrorText('Could not load suppliers.');
       }
-    } finally {
-      setSyncing(false);
+      setSuppliers(localRows);
+      setFromLocal(true);
     }
-  }, []);
+  }, [brand.dbBrandId, sampleSuppliers]);
 
   useEffect(() => {
     void loadSuppliers({ background: true });
   }, [loadSuppliers]);
 
-  const displaySuppliers = suppliers.length > 0 ? suppliers : SAMPLE_SUPPLIERS;
-  const usingSampleData = suppliers.length === 0;
-
   const filteredSuppliers = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return displaySuppliers;
-    return displaySuppliers.filter((supplier) => {
+    if (!q) return suppliers;
+    return suppliers.filter((supplier) => {
       const fields = [
         supplier.name,
         supplier.contact_person ?? '',
@@ -184,16 +115,184 @@ export default function SupplierManagement() {
       ];
       return fields.some((field) => field.toLowerCase().includes(q));
     });
-  }, [displaySuppliers, query]);
+  }, [suppliers, query]);
+
+  const updateField = <K extends keyof typeof emptyForm>(
+    key: K,
+    value: (typeof emptyForm)[K]
+  ) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setForm(emptyForm);
+  };
+
+  const validateForm = () => {
+    if (!form.name.trim()) {
+      setErrorText('Supplier name is required.');
+      return false;
+    }
+    if (!form.contactPerson.trim()) {
+      setErrorText('Contact person is required.');
+      return false;
+    }
+    if (!form.phone.trim() && !form.email.trim()) {
+      setErrorText('Add at least one contact detail (phone or email).');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!validateForm()) return;
+
+    setSaving(true);
+    setErrorText('');
+    setNoticeText('');
+
+    const result = await createSupplier({
+      brandId: brand.dbBrandId,
+      name: form.name,
+      category: form.category,
+      contactPerson: form.contactPerson,
+      phone: form.phone,
+      email: form.email,
+      address: form.address,
+      isActive: form.isActive,
+    });
+
+    setSaving(false);
+
+    if (!result.ok) {
+      setErrorText(result.error ?? 'Failed to add supplier.');
+      return;
+    }
+
+    const savedName = form.name.trim();
+    closeForm();
+
+    if (result.savedLocally) {
+      setFromLocal(true);
+      setNoticeText(
+        `Added ${savedName} on this device. Run supabase-supplier-setup.sql to sync with live HQ data.`
+      );
+    } else {
+      setNoticeText(`Added ${savedName} successfully.`);
+    }
+
+    if (result.supplier) {
+      setSuppliers((prev) => [result.supplier!, ...prev]);
+    } else {
+      await loadSuppliers({ background: true });
+    }
+  };
 
   return (
     <div className="page-container">
       <div className="page-header">
         <div className="page-title">
           <h1>Supplier Management</h1>
-          <p>Database of suppliers with complete contact details and quick lookup.</p>
+          <p>{brand.name} supplier directory with contact details and quick lookup.</p>
         </div>
+        <button
+          className="btn-primary"
+          type="button"
+          onClick={() => {
+            setShowForm((value) => !value);
+            setErrorText('');
+            setNoticeText('');
+            if (showForm) {
+              setForm(emptyForm);
+            }
+          }}
+        >
+          <Plus size={15} /> {showForm ? 'Close' : 'Add Supplier'}
+        </button>
       </div>
+
+      {showForm && (
+        <form className="supplier-form-card" onSubmit={handleSubmit}>
+          <h2>New Supplier</h2>
+          <div className="supplier-form-grid">
+            <label className="supplier-field">
+              <span>Supplier name</span>
+              <input
+                value={form.name}
+                onChange={(event) => updateField('name', event.target.value)}
+                placeholder="e.g. PearlPro Ingredients"
+              />
+            </label>
+            <label className="supplier-field">
+              <span>Category</span>
+              <select
+                value={form.category}
+                onChange={(event) => updateField('category', event.target.value)}
+              >
+                <option value="">Select category</option>
+                {SUPPLIER_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="supplier-field">
+              <span>Contact person</span>
+              <input
+                value={form.contactPerson}
+                onChange={(event) => updateField('contactPerson', event.target.value)}
+                placeholder="e.g. Lea Domingo"
+              />
+            </label>
+            <label className="supplier-field">
+              <span>Phone</span>
+              <input
+                value={form.phone}
+                onChange={(event) => updateField('phone', event.target.value)}
+                placeholder="+63 917 000 0000"
+              />
+            </label>
+            <label className="supplier-field">
+              <span>Email</span>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(event) => updateField('email', event.target.value)}
+                placeholder="sales@supplier.ph"
+              />
+            </label>
+            <label className="supplier-field supplier-field-wide">
+              <span>Address</span>
+              <input
+                value={form.address}
+                onChange={(event) => updateField('address', event.target.value)}
+                placeholder="City, region"
+              />
+            </label>
+          </div>
+          <div className="supplier-form-footer">
+            <label className="supplier-checkbox-row">
+              <input
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(event) => updateField('isActive', event.target.checked)}
+              />
+              Active supplier
+            </label>
+            <div className="supplier-form-actions">
+              <button className="supplier-cancel-btn" type="button" onClick={closeForm}>
+                <X size={14} /> Cancel
+              </button>
+              <button className="btn-primary" type="submit" disabled={saving}>
+                {saving ? 'Saving...' : 'Add Supplier'}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
 
       <div className="supplier-toolbar">
         <div className="supplier-search">
@@ -204,17 +303,13 @@ export default function SupplierManagement() {
             placeholder="Search supplier, contact person, phone, email..."
           />
         </div>
-        <button className="btn-primary" type="button" onClick={() => void loadSuppliers()} disabled={syncing}>
-          {syncing ? 'Syncing...' : 'Refresh'}
-        </button>
       </div>
 
-      {usingSampleData && (
-        <div className="supplier-note">
-          Showing sample supplier records for Potato Corner network operations.
-        </div>
+      {noticeText && <div className="supplier-note supplier-note-accent">{noticeText}</div>}
+      {fromLocal && !noticeText && (
+        <div className="supplier-note">{demo.demoDataMessage}</div>
       )}
-      {errorText && <div className="supplier-note">{errorText}</div>}
+      {errorText && <div className="supplier-note supplier-note-error">{errorText}</div>}
 
       <div className="admin-table-container">
         <table className="admin-table">

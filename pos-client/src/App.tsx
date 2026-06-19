@@ -8,6 +8,7 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import { supabase } from './lib/supabase';
+import { useBrand } from './context/BrandContext';
 import Sidebar from './components/Sidebar';
 import TopHeader from './components/TopHeader';
 import {
@@ -25,6 +26,14 @@ import GlobalDashboard from './hq/pages/GlobalDashboard';
 import BranchManagement from './hq/pages/BranchManagement';
 import WarehouseManagement from './hq/pages/WarehouseManagement';
 import SupplierManagement from './hq/pages/SupplierManagement';
+import MenuCatalogPage from './hq/pages/MenuCatalogPage';
+import StaffDirectoryPage from './hq/pages/StaffDirectoryPage';
+import ReportsAnalyticsPage from './hq/pages/ReportsAnalyticsPage';
+import {
+  clearStoredAuthSession,
+  readStoredAuthSession,
+  writeStoredAuthSession,
+} from './lib/authSessionStore';
 import './App.css';
 
 type LoginMode = 'guest' | 'pin' | 'email' | null;
@@ -74,8 +83,6 @@ function RequireHq({ isHq }: HqGuardProps) {
   return <Outlet />;
 }
 
-const FRANCHISE_NAME = 'Eastwood City';
-
 function formatToday(d: Date) {
   return d.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -84,15 +91,16 @@ function formatToday(d: Date) {
   });
 }
 
-function getHeaderTitle(pathname: string): { title: string; subtitle: string } {
-  if (pathname.startsWith('/orders')) return { title: 'Orders', subtitle: 'Branch Terminal · T-01' };
-  if (pathname.startsWith('/inventory')) return { title: 'Inventory', subtitle: 'Branch Terminal · T-01' };
-  if (pathname.startsWith('/dashboard')) return { title: 'Dashboard', subtitle: 'Branch Terminal · T-01' };
-  if (pathname.startsWith('/promotions')) return { title: 'Promotions', subtitle: 'Branch Terminal · T-01' };
-  return { title: 'Point of Sale', subtitle: 'Branch Terminal · T-01' };
+function getHeaderTitle(pathname: string, terminalLabel: string): { title: string; subtitle: string } {
+  if (pathname.startsWith('/orders')) return { title: 'Orders', subtitle: terminalLabel };
+  if (pathname.startsWith('/inventory')) return { title: 'Inventory', subtitle: terminalLabel };
+  if (pathname.startsWith('/dashboard')) return { title: 'Dashboard', subtitle: terminalLabel };
+  if (pathname.startsWith('/promotions')) return { title: 'Promotions', subtitle: terminalLabel };
+  return { title: 'Point of Sale', subtitle: terminalLabel };
 }
 
 function PosShell({ auth, onLogout }: PosShellProps) {
+  const { brand } = useBrand();
   const location = useLocation();
   const navigate = useNavigate();
   const [bannerMessage, setBannerMessage] = useState('');
@@ -133,20 +141,23 @@ function PosShell({ auth, onLogout }: PosShellProps) {
   }, [attendanceStatus, displayName, roleLabel]);
 
   const { title, subtitle } = useMemo(
-    () => getHeaderTitle(location.pathname),
-    [location.pathname]
+    () => getHeaderTitle(location.pathname, brand.terminalLabel),
+    [location.pathname, brand.terminalLabel]
   );
 
   return (
-    <div className="app-layout pos-shell" id="app-root">
+    <div className={`app-layout pos-shell brand-${brand.slug}`} id="app-root">
       <TopHeader
-        franchiseName={FRANCHISE_NAME}
+        franchiseName={brand.franchiseName}
+        brandName={brand.name}
+        logoUrl={brand.logoUrl}
         title={title}
         subtitle={subtitle}
         dateLabel={formatToday(today)}
         cashierName={displayName}
         attendanceStatus={attendanceStatus}
         onToggleAttendance={handleToggleAttendance}
+        onLogout={onLogout}
       />
       <div className="pos-shell-body">
         <Sidebar
@@ -170,8 +181,10 @@ export interface PosOutletContext {
 }
 
 function HqShell({ userName, onLogout }: HqShellProps) {
+  const { brand } = useBrand();
+
   return (
-    <div className="app-layout hq-shell" id="app-root">
+    <div className={`app-layout hq-shell brand-${brand.slug}`} id="app-root">
       <AdminSidebar userName={userName} onLogout={onLogout} />
       <main className="app-main">
         <Outlet />
@@ -199,6 +212,7 @@ function HqPlaceholder({ title, subtitle }: { title: string; subtitle: string })
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { brand, resolveBrandFromProfile, setBrandSlug } = useBrand();
   const [preferredArea, setPreferredArea] = useState<'pos' | 'hq'>('pos');
   const [auth, setAuth] = useState<AuthState>({
     isLoggedIn: false,
@@ -222,7 +236,9 @@ export default function App() {
 
   const syncSessionUser = useCallback(
     async (user: { id: string; email?: string | null }) => {
+      clearStoredAuthSession();
       const role = await resolveUserRole(user.id);
+      await resolveBrandFromProfile(user.id);
       setAuth({
         isLoggedIn: true,
         userName: user.email?.split('@')[0] || 'User',
@@ -232,7 +248,7 @@ export default function App() {
       });
       return role;
     },
-    [resolveUserRole]
+    [resolveUserRole, resolveBrandFromProfile]
   );
 
   useEffect(() => {
@@ -240,21 +256,39 @@ export default function App() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
       if (session?.user) {
         await syncSessionUser(session.user);
-      } else {
-        setAuth((prev) => ({ ...prev, isLoading: false }));
+        return;
       }
+
+      const stored = readStoredAuthSession();
+      if (stored) {
+        setAuth({
+          isLoggedIn: true,
+          userName: stored.userName,
+          loginMode: stored.loginMode,
+          role: stored.role,
+          isLoading: false,
+        });
+        return;
+      }
+
+      setAuth((prev) => ({ ...prev, isLoading: false }));
     };
 
     void checkSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         void syncSessionUser(session.user);
-      } else {
+        return;
+      }
+      // Only clear auth on explicit sign-out — not during initial hydration.
+      if (event === 'SIGNED_OUT') {
+        clearStoredAuthSession();
         setAuth({
           isLoggedIn: false,
           userName: '',
@@ -280,16 +314,28 @@ export default function App() {
         }
         return;
       }
+      if (mode === 'pin' && targetArea === 'hq') {
+        setBrandSlug('coftea');
+      }
+      const role = mode === 'pin' && targetArea === 'hq' ? 'hq_admin' : 'cashier';
+      const userName = name || 'User';
+      if (mode === 'pin' || mode === 'guest') {
+        writeStoredAuthSession({ userName, loginMode: mode, role });
+      }
       setAuth({
         isLoggedIn: true,
-        userName: name || 'User',
+        userName,
         loginMode: mode,
-        role: mode === 'pin' && targetArea === 'hq' ? 'hq_admin' : 'cashier',
+        role,
         isLoading: false,
       });
-      navigate(mode === 'pin' && targetArea === 'hq' ? '/hq' : '/pos', { replace: true });
+      if (mode === 'pin' && targetArea === 'hq') {
+        navigate('/hq', { replace: true });
+        return;
+      }
+      navigate('/pos', { replace: true });
     },
-    [navigate, syncSessionUser]
+    [navigate, setBrandSlug, syncSessionUser]
   );
 
   useEffect(() => {
@@ -314,6 +360,7 @@ export default function App() {
   }, [auth.isLoading, auth.isLoggedIn, auth.role, location.pathname, navigate, preferredArea]);
 
   const handleLogout = useCallback(async () => {
+    clearStoredAuthSession();
     if (auth.loginMode === 'email') {
       await supabase.auth.signOut();
     }
@@ -340,7 +387,7 @@ export default function App() {
         fontFamily: 'var(--font-family)',
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>🍟</div>
+          <div style={{ fontSize: '48px', marginBottom: '12px' }}>{brand.menu.loadingEmoji}</div>
           <div>Loading...</div>
         </div>
       </div>
@@ -375,18 +422,9 @@ export default function App() {
             <Route path="/hq/branches" element={<BranchManagement />} />
             <Route path="/hq/warehouse" element={<WarehouseManagement />} />
             <Route path="/hq/suppliers" element={<SupplierManagement />} />
-            <Route
-              path="/hq/catalog"
-              element={<HqPlaceholder title="Menu Catalog" subtitle="Centralized product engine coming soon." />}
-            />
-            <Route
-              path="/hq/staff"
-              element={<HqPlaceholder title="Staff Directory" subtitle="Global cashier index coming soon." />}
-            />
-            <Route
-              path="/hq/reports"
-              element={<HqPlaceholder title="Reports & Analytics" subtitle="Network sales reports coming soon." />}
-            />
+            <Route path="/hq/catalog" element={<MenuCatalogPage />} />
+            <Route path="/hq/staff" element={<StaffDirectoryPage />} />
+            <Route path="/hq/reports" element={<ReportsAnalyticsPage />} />
             <Route
               path="/hq/settings"
               element={<HqPlaceholder title="Settings" subtitle="HQ config coming soon." />}

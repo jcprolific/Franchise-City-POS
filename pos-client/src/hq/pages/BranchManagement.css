@@ -1,12 +1,53 @@
-.branch-add-form {
-  display: grid;
-  grid-template-columns: 1.2fr 1.6fr auto auto;
-  gap: 10px;
-  align-items: center;
+.franchisee-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 18px;
+}
+
+.franchisee-fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px 16px;
+  margin: 0;
+}
+
+.franchisee-fieldset legend {
+  padding: 0 8px;
+  font-size: var(--font-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.franchisee-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.franchisee-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.franchisee-field-wide {
+  grid-column: 1 / -1;
+}
+
+.franchisee-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .branch-input {
@@ -30,6 +71,16 @@
   gap: 8px;
   font-size: var(--font-sm);
   color: var(--text-secondary);
+}
+
+.branch-notice {
+  margin-top: -8px;
+  font-size: var(--font-sm);
+  color: #2f6b3a;
+  background: #edf7ef;
+  border: 1px solid #b8dfc2;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
 }
 
 .branch-error {
@@ -73,13 +124,119 @@
   font-weight: 600;
 }
 
+.branch-owner-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.branch-owner-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.branch-owner-contact {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.branch-stage-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+}
+
+.franchisee-form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.franchisee-form-heading h2 {
+  margin: 0;
+  font-size: var(--font-lg);
+  color: var(--text-primary);
+}
+
+.franchisee-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.branch-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.branch-cancel-btn:hover {
+  background: var(--bg-surface-alt);
+}
+
+.branch-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .branch-edit-btn {
   padding: 6px 12px;
-  opacity: 0.7;
+}
+
+.branch-delete-btn {
+  padding: 6px 12px;
+  border: 1px solid #e8b4b0;
+  border-radius: var(--radius-sm);
+  background: #fff5f4;
+  color: #b4372f;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.branch-delete-btn:hover:not(:disabled) {
+  background: #fdecea;
+}
+
+.branch-delete-btn:disabled,
+.branch-edit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.branch-row-demo {
+  opacity: 0.72;
+}
+
+.branch-empty-cell {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
 }
 
 @media (max-width: 900px) {
-  .branch-add-form {
+  .franchisee-grid {
     grid-template-columns: 1fr;
+  }
+
+  .franchisee-form-footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

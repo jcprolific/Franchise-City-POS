@@ -273,6 +273,15 @@
 .success-order-id {
   font-size: var(--font-sm);
   color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.success-payment-method {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
   margin-bottom: var(--space-2xl);
 }
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type {
   Product,
   ProductVariant,
@@ -6,19 +6,62 @@ import type {
   DiscountType,
   PaymentMethod,
   OrderType,
+  SugarLevel,
+  IceLevel,
+  CartItemAddon,
 } from '../types';
-import { sampleCategories, sampleProducts, sampleVariants } from '../data/sampleData';
+import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
-import { getInsertPayloadForPosOrder, resolvePosOrderColumns } from '../lib/dashboardRealtime';
+import { getInsertPayloadForPosOrder, preloadPosOrderColumns, resolvePosOrderColumns } from '../lib/dashboardRealtime';
+import { fetchMenuCatalog, type CatalogBundle } from '../hq/lib/menuCatalogService';
 import CategoryBar from '../components/CategoryBar';
 import ProductGrid from '../components/ProductGrid';
 import Cart from '../components/Cart';
 import CheckoutModal from '../components/CheckoutModal';
+import CustomizationModal from '../components/CustomizationModal';
 import './POSPage.css';
 
+type OrderSnapshot = {
+  orderNumber: number;
+  paymentMethod: PaymentMethod;
+  paymentReference?: string;
+  subtotal: number;
+  discountAmount: number;
+  total: number;
+  itemCount: number;
+};
+
 export default function POSPage() {
-  // ---- State ----
-  const [activeCategoryId, setActiveCategoryId] = useState(sampleCategories[0].id);
+  const { brand } = useBrand();
+  const { searchPlaceholder, emptyIcon } = brand.menu;
+
+  // Prefer the Supabase-managed HQ catalog; fall back to the static brand menu
+  // when the catalog tables are missing/empty or Supabase is unreachable.
+  const [catalog, setCatalog] = useState<CatalogBundle | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCatalog(null);
+    fetchMenuCatalog(brand.dbBrandId)
+      .then((bundle) => {
+        if (!cancelled && bundle && bundle.products.length > 0) {
+          setCatalog(bundle);
+        }
+      })
+      .catch(() => {
+        /* keep static fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [brand.dbBrandId]);
+
+  const categories = catalog?.categories ?? brand.menu.categories;
+  const products = catalog?.products ?? brand.menu.products;
+  const variants = catalog?.variants ?? brand.menu.variants;
+  const addons = catalog?.addons ?? brand.menu.addons;
+
+  const [activeCategoryId, setActiveCategoryId] = useState(categories[0]?.id ?? '');
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<DiscountType>('NONE');
@@ -26,12 +69,22 @@ export default function POSPage() {
   const [orderType, setOrderType] = useState<OrderType>('DINE_IN');
   const [showCheckout, setShowCheckout] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
-  const [orderNumber] = useState(() => 4800 + Math.floor(Math.random() * 200));
+  const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
+  const [orderNumber, setOrderNumber] = useState(() => 4800 + Math.floor(Math.random() * 200));
 
-  // ---- Derived Data ----
+  useEffect(() => {
+    preloadPosOrderColumns();
+  }, []);
+
+  useEffect(() => {
+    if (categories.length > 0 && !categories.some((c) => c.id === activeCategoryId)) {
+      setActiveCategoryId(categories[0].id);
+    }
+  }, [categories, activeCategoryId]);
+
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return sampleProducts.filter((p) => {
+    return products.filter((p) => {
       if (!p.is_active) return false;
       if (query) {
         return (
@@ -41,11 +94,10 @@ export default function POSPage() {
       }
       return p.category_id === activeCategoryId;
     });
-  }, [activeCategoryId, searchQuery]);
+  }, [activeCategoryId, searchQuery, products]);
 
-  const activeCategory = sampleCategories.find((c) => c.id === activeCategoryId);
+  const activeCategory = categories.find((c) => c.id === activeCategoryId);
 
-  // ---- Cart Calculations ----
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.line_total, 0),
     [cartItems]
@@ -64,37 +116,75 @@ export default function POSPage() {
 
   const total = Math.max(0, subtotal - discountAmount);
 
-  // ---- Handlers ----
-  const handleAddProduct = useCallback((product: Product, variant: ProductVariant | null) => {
-    const lineTotal = product.base_price + (variant?.additional_price ?? 0);
+  const addCartItem = useCallback((item: CartItem) => {
     setCartItems((prev) => {
       const existing = prev.find(
-        (item) => item.product.id === product.id && item.variant?.id === (variant?.id ?? null)
+        (entry) =>
+          entry.product.id === item.product.id &&
+          entry.variant?.id === (item.variant?.id ?? null) &&
+          entry.sugar_level === item.sugar_level &&
+          entry.ice_level === item.ice_level &&
+          entry.addons.map((a) => a.addon.id).join(',') === item.addons.map((a) => a.addon.id).join(',')
       );
+
       if (existing) {
-        return prev.map((item) =>
-          item.id === existing.id
+        const unitPrice = existing.line_total / existing.quantity;
+        return prev.map((entry) =>
+          entry.id === existing.id
             ? {
-                ...item,
-                quantity: item.quantity + 1,
-                line_total: lineTotal * (item.quantity + 1),
+                ...entry,
+                quantity: entry.quantity + item.quantity,
+                line_total: unitPrice * (entry.quantity + item.quantity),
               }
-            : item
+            : entry
         );
       }
-      const newItem: CartItem = {
-        id: `cart-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        product,
-        variant,
-        quantity: 1,
-        sugar_level: '0%',
-        ice_level: 'NONE',
-        addons: [],
-        line_total: lineTotal,
-      };
-      return [...prev, newItem];
+
+      return [...prev, item];
     });
   }, []);
+
+  const handleAddProduct = useCallback((product: Product, variant: ProductVariant | null) => {
+    if (product.customizable) {
+      setCustomizingProduct(product);
+      return;
+    }
+
+    const lineTotal = product.base_price + (variant?.additional_price ?? 0);
+    addCartItem({
+      id: `cart-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      product,
+      variant,
+      quantity: 1,
+      sugar_level: '0%',
+      ice_level: 'NONE',
+      addons: [],
+      line_total: lineTotal,
+    });
+  }, [addCartItem]);
+
+  const handleAddCustomized = useCallback((
+    product: Product,
+    variant: ProductVariant | null,
+    sugar: SugarLevel,
+    ice: IceLevel,
+    selectedAddons: CartItemAddon[]
+  ) => {
+    const addonTotal = selectedAddons.reduce((sum, entry) => sum + entry.price, 0);
+    const lineTotal = product.base_price + (variant?.additional_price ?? 0) + addonTotal;
+
+    addCartItem({
+      id: `cart-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      product,
+      variant,
+      quantity: 1,
+      sugar_level: sugar,
+      ice_level: ice,
+      addons: selectedAddons,
+      line_total: lineTotal,
+    });
+    setCustomizingProduct(null);
+  }, [addCartItem]);
 
   const handleChangeQuantity = useCallback((itemId: string, delta: number) => {
     setCartItems((prev) =>
@@ -120,37 +210,58 @@ export default function POSPage() {
     }
   };
 
-  const handleConfirmCheckout = async ({ paymentReference }: { paymentReference?: string }) => {
-    if (cartItems.length === 0 || isSavingOrder) {
-      return;
+  const clearCartForSuccess = useCallback(() => {
+    setCartItems([]);
+    setDiscountType('NONE');
+    setPaymentMethod('CASH');
+    setOrderType('DINE_IN');
+  }, []);
+
+  const persistOrder = useCallback(async (snapshot: OrderSnapshot) => {
+    const [columns, userResult] = await Promise.all([
+      resolvePosOrderColumns(),
+      supabase.auth.getUser(),
+    ]);
+
+    const payload = getInsertPayloadForPosOrder(columns, {
+      orderNumber: snapshot.orderNumber,
+      paymentMethod: snapshot.paymentMethod,
+      paymentReference: snapshot.paymentReference,
+      subtotal: snapshot.subtotal,
+      discountAmount: snapshot.discountAmount,
+      total: snapshot.total,
+      itemCount: snapshot.itemCount,
+      cashierId: userResult.data.user?.id,
+      brandId: brand.dbBrandId,
+      brandName: brand.name,
+    });
+
+    const { error } = await supabase.from('pos_order').insert(payload);
+    if (error) {
+      throw error;
     }
+  }, [brand.dbBrandId, brand.name]);
+
+  const handleConfirmCheckout = async ({ paymentReference }: { paymentReference?: string }): Promise<boolean> => {
+    if (cartItems.length === 0 || isSavingOrder) {
+      return false;
+    }
+
+    const snapshot: OrderSnapshot = {
+      orderNumber,
+      paymentMethod,
+      paymentReference,
+      subtotal,
+      discountAmount,
+      total,
+      itemCount,
+    };
 
     try {
       setIsSavingOrder(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const columns = await resolvePosOrderColumns();
-      const payload = getInsertPayloadForPosOrder(columns, {
-        orderNumber,
-        paymentMethod,
-        paymentReference,
-        subtotal,
-        discountAmount,
-        total,
-        itemCount,
-        cashierId: user?.id,
-      });
-
-      const { error } = await supabase.from('pos_order').insert(payload);
-      if (error) {
-        throw error;
-      }
-
-      setCartItems([]);
-      setDiscountType('NONE');
-      setPaymentMethod('CASH');
-      setShowCheckout(false);
+      await persistOrder(snapshot);
+      clearCartForSuccess();
+      return true;
     } catch (error) {
       console.error('Failed to save order:', error);
       const message =
@@ -163,16 +274,22 @@ export default function POSPage() {
         window.alert(`Order not synced: ${message}. Continuing to New Order.`);
       }
 
-      setCartItems([]);
-      setDiscountType('NONE');
-      setPaymentMethod('CASH');
-      setShowCheckout(false);
+      clearCartForSuccess();
+      return true;
     } finally {
       setIsSavingOrder(false);
     }
   };
 
+  const handleStartNewOrder = () => {
+    setOrderNumber((n) => n + 1);
+    setShowCheckout(false);
+  };
+
   const isSearching = searchQuery.trim().length > 0;
+  const customizingVariants = customizingProduct
+    ? variants.filter((v) => v.product_id === customizingProduct.id)
+    : [];
 
   return (
     <div className="pos-page" id="pos-page">
@@ -194,7 +311,7 @@ export default function POSPage() {
           type="text"
           className="pos-search-input"
           id="pos-search-input"
-          placeholder="Search flavors, snacks, beverages..."
+          placeholder={searchPlaceholder}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="Search menu"
@@ -213,7 +330,7 @@ export default function POSPage() {
 
       {!isSearching && (
         <CategoryBar
-          categories={sampleCategories}
+          categories={categories}
           activeCategoryId={activeCategoryId}
           onSelectCategory={setActiveCategoryId}
         />
@@ -222,9 +339,10 @@ export default function POSPage() {
       <div className="pos-body">
         <ProductGrid
           products={filteredProducts}
-          variants={sampleVariants}
+          variants={variants}
           categoryName={isSearching ? `"${searchQuery}"` : activeCategory?.name || ''}
           isSearching={isSearching}
+          emptyIcon={emptyIcon}
           onAddProduct={handleAddProduct}
         />
 
@@ -251,8 +369,21 @@ export default function POSPage() {
         <CheckoutModal
           total={total}
           paymentMethod={paymentMethod}
+          orderNumber={orderNumber}
           onConfirm={handleConfirmCheckout}
+          onNewOrder={handleStartNewOrder}
           onCancel={() => setShowCheckout(false)}
+          isProcessing={isSavingOrder}
+        />
+      )}
+
+      {customizingProduct && (
+        <CustomizationModal
+          product={customizingProduct}
+          variants={customizingVariants}
+          addons={addons}
+          onAddToCart={handleAddCustomized}
+          onClose={() => setCustomizingProduct(null)}
         />
       )}
     </div>

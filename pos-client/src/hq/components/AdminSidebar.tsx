@@ -10,6 +10,7 @@ import {
   Users,
   Warehouse,
 } from 'lucide-react';
+import { useBrand } from '../../context/BrandContext';
 import './AdminSidebar.css';
 
 interface AdminSidebarProps {
@@ -19,6 +20,7 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) {
   const location = useLocation();
+  const { brand } = useBrand();
 
   const navItems = [
     { path: '/hq', label: 'Network Overview', icon: <LayoutDashboard size={18} /> },
@@ -35,9 +37,9 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
     <aside className="admin-sidebar">
       <div className="sidebar-brand">
         <div className="sidebar-brand-logo">
-          <img src="/potato-corner-logo.png" alt="Potato Corner" />
+          <img src={brand.logoUrl} alt={brand.name} />
         </div>
-        <span className="sidebar-brand-name">HQ Command Center</span>
+        <span className="sidebar-brand-name">{brand.name} HQ</span>
       </div>
 
       <nav className="sidebar-nav">
@@ -60,14 +62,12 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
           </div>
           <div className="sidebar-user-details">
             <span className="sidebar-user-name">{userName}</span>
-            <span className="sidebar-user-role">Super Admin</span>
+            <span className="sidebar-user-role">
+              {userName.includes('Demo') ? 'Coftea HQ Demo' : 'HQ Admin'}
+            </span>
           </div>
         </div>
         <div className="sidebar-footer-actions">
-          <div className="sidebar-sync-badge">
-            <span className="sync-dot"></span>
-            Online · Synced
-          </div>
           <button className="sidebar-logout-btn" onClick={onLogout}>
             <LogOut size={14} className="logout-icon" />
             Log Out

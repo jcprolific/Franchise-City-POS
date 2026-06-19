@@ -7,6 +7,7 @@ interface ProductGridProps {
   variants: ProductVariant[];
   categoryName: string;
   isSearching?: boolean;
+  emptyIcon?: string;
   onAddProduct: (product: Product, variant: ProductVariant | null) => void;
 }
 
@@ -15,6 +16,7 @@ export default function ProductGrid({
   variants,
   categoryName,
   isSearching = false,
+  emptyIcon = '🍟',
   onAddProduct,
 }: ProductGridProps) {
   return (
@@ -33,7 +35,7 @@ export default function ProductGrid({
 
       {products.length === 0 && (
         <div className="product-empty">
-          <div className="product-empty-icon">{isSearching ? '🔎' : '🍟'}</div>
+          <div className="product-empty-icon">{isSearching ? '🔎' : emptyIcon}</div>
           <div className="product-empty-title">
             {isSearching ? 'No matches found' : `No items in ${categoryName}`}
           </div>

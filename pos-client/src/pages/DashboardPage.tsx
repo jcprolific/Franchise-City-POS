@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { sampleDashboard } from '../data/inventoryDashboardData';
 import { sampleInventory } from '../data/inventoryDashboardData';
+import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
 import { fetchLiveDashboardData } from '../lib/dashboardRealtime';
 import './DashboardPage.css';
-
-const BRANCH_LABEL = 'Potato Corner · Eastwood City';
 
 function formatYAxis(value: number) {
   if (value >= 1000) return `${Math.round(value / 1000)}k`;
@@ -13,6 +12,7 @@ function formatYAxis(value: number) {
 }
 
 export default function DashboardPage() {
+  const { brand } = useBrand();
   const staticDashboard = sampleDashboard;
   const [liveDashboard, setLiveDashboard] = useState({
     todaySales: 0,
@@ -95,7 +95,7 @@ export default function DashboardPage() {
     <div className="dashboard-page" id="dashboard-page">
       <div className="dashboard-header">
         <div className="dashboard-header-main">
-          <span className="branch-label">{BRANCH_LABEL}</span>
+          <span className="branch-label">{brand.branchLabel}</span>
         </div>
         <div className="dashboard-header-badges">
           {isLoading && <span className="dashboard-status is-loading">Syncing orders…</span>}

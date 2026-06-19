@@ -83,7 +83,41 @@
   --pos-font-display: 'Plus Jakarta Sans', var(--font-family);
   --hq-font-display: 'Plus Jakarta Sans', var(--font-family);
 
-  /* ----- Potato Corner official palette ----- */
+  background: var(--bg-app);
+  color: var(--text-primary);
+}
+
+/* ----- Coftea: warm amber palette (from a4efc94) ----- */
+.pos-shell.brand-coftea {
+  --bg-app: #f6efe4;
+  --bg-sidebar: #ffffff;
+  --bg-surface-alt: #faf4ea;
+  --bg-cart-footer: #faf4ea;
+  --pos-bg: #f6efe4;
+  --pos-surface-muted: #faf4ea;
+  --pos-surface-soft: #f1e8d7;
+  --pos-border: #eadfc9;
+  --pos-border-strong: #ddcdb0;
+  --pos-text: #2a1d12;
+  --pos-text-soft: #5c4a38;
+  --pos-text-muted: #a0907a;
+  --pos-ink: #2e1d11;
+  --pos-ink-hover: #3a261a;
+  --pc-green: #d98724;
+  --pc-green-deep: #b86f16;
+  --pc-green-soft: #fff3e3;
+  --pc-green-soft-border: #ddcdb0;
+  --pc-sidebar: #ffffff;
+  --pc-sidebar-hover: #faf4ea;
+  --pc-yellow: #e8a24d;
+  --pc-yellow-dark: #d98724;
+  --pc-yellow-soft: #fff3e3;
+  --pc-orange: #e8a24d;
+  --pc-orange-soft: #fff3e3;
+}
+
+/* ----- Potato Corner: official green/yellow palette ----- */
+.pos-shell.brand-potato-corner {
   --pc-green: #008d36;
   --pc-green-deep: #007a33;
   --pc-green-soft: #e8f7ec;
@@ -98,7 +132,6 @@
 
   /* Warmer-neutral surfaces to match reference */
   --pos-bg: #fbf7ef;
-  --pos-surface: #ffffff;
   --pos-surface-muted: #f6f1e7;
   --pos-surface-soft: #f0ebe0;
   --pos-border: #ece6da;
@@ -106,9 +139,36 @@
   --pos-text: #23311f;
   --pos-text-soft: #4f5a48;
   --pos-text-muted: #98a08f;
+}
 
-  background: var(--bg-app);
-  color: var(--text-primary);
+.hq-shell.brand-coftea {
+  --accent: #d98724;
+  --accent-light: #e8a24d;
+  --accent-dark: #b86f16;
+  --pc-green: #d98724;
+  --pc-green-deep: #b86f16;
+  --pc-green-soft: #fff3e3;
+  --pc-green-soft-border: #ddcdb0;
+  --pc-sidebar: #ffffff;
+  --pc-sidebar-hover: #faf4ea;
+  --pc-yellow: #e8a24d;
+  --pc-yellow-soft: #fff3e3;
+  --pc-orange: #e8a24d;
+  --pc-orange-soft: #fff3e3;
+}
+
+.hq-shell.brand-potato-corner {
+  --pc-green: #008d36;
+  --pc-green-deep: #007a33;
+  --pc-green-soft: #e8f7ec;
+  --pc-green-soft-border: #b8e4c4;
+  --pc-sidebar: #008d36;
+  --pc-sidebar-hover: #007a33;
+  --pc-yellow: #ffd200;
+  --pc-yellow-dark: #e6bc00;
+  --pc-yellow-soft: #fff8cc;
+  --pc-orange: #f37021;
+  --pc-orange-soft: #fff0e6;
 }
 
 /* ============================================
@@ -141,9 +201,138 @@
 }
 
 /* ============================================
-   Sidebar (Potato Corner dark green) inside .pos-shell
+   Coftea sidebar – light amber (a4efc94)
    ============================================ */
-.pos-shell .sidebar {
+.pos-shell.brand-coftea .sidebar {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  height: auto;
+  align-self: stretch;
+  padding-top: 10px;
+}
+
+.pos-shell.brand-coftea .sidebar-brand {
+  border-bottom: 1px solid var(--border);
+}
+
+.pos-shell.brand-coftea .sidebar-brand-icon {
+  background: var(--pos-surface-soft);
+  color: var(--pos-text);
+}
+
+.pos-shell.brand-coftea .sidebar-brand-name {
+  color: var(--pos-text);
+  font-family: var(--pos-font-serif);
+  font-weight: 800;
+}
+
+.pos-shell.brand-coftea .sidebar-nav-item {
+  color: var(--pos-text-soft);
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.pos-shell.brand-coftea .sidebar-nav-item:hover {
+  background: var(--pos-surface-muted);
+  color: var(--pos-text);
+}
+
+.pos-shell.brand-coftea .sidebar-nav-item.active {
+  background: var(--pos-ink);
+  color: #f9ecd4;
+  font-weight: 700;
+}
+
+.pos-shell.brand-coftea .sidebar-footer {
+  border-top: 1px solid var(--border);
+}
+
+.pos-shell.brand-coftea .sidebar-user-avatar {
+  background: var(--pos-ink);
+  color: #f4e6d0;
+}
+
+.pos-shell.brand-coftea .sidebar-user-name {
+  color: var(--pos-text);
+}
+
+.pos-shell.brand-coftea .sidebar-user-role {
+  color: var(--pos-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+}
+
+.pos-shell.brand-coftea .sidebar-sync-badge {
+  background: var(--pos-surface-muted);
+  color: var(--pos-text-soft);
+  border: 1px solid var(--pos-border);
+}
+
+.pos-shell.brand-coftea .sidebar-logout-btn {
+  background: transparent;
+  border: 1px solid var(--pos-border);
+  color: var(--pos-text-soft);
+}
+
+.pos-shell.brand-coftea .sidebar-logout-btn:hover {
+  background: rgba(231, 76, 60, 0.08);
+  border-color: rgba(231, 76, 60, 0.35);
+  color: #c0392b;
+}
+
+.pos-shell.brand-coftea .top-header-brand {
+  background: #ffffff;
+  border-right: 1px solid var(--pos-border);
+}
+
+.pos-shell.brand-coftea .top-header-brand-logo,
+.hq-shell.brand-coftea .admin-sidebar .sidebar-brand-logo img,
+.login-page.brand-coftea .login-logo-image {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.pos-shell.brand-coftea .top-header-brand-logo {
+  width: 48px;
+  height: 48px;
+}
+
+.login-page.brand-coftea .login-logo-image {
+  width: 132px;
+  height: 132px;
+}
+
+.pos-shell.brand-coftea .top-header-eyebrow {
+  color: var(--pos-text-muted);
+}
+
+.pos-shell.brand-coftea .top-header-franchise {
+  color: var(--pos-text);
+}
+
+.pos-shell.brand-coftea .top-header-time-btn {
+  background: var(--pc-yellow);
+  color: #2a1d12;
+  box-shadow: 0 2px 6px rgba(217, 135, 36, 0.28);
+}
+
+.pos-shell.brand-coftea .top-header-time-btn.is-in {
+  background: var(--pc-green);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(184, 111, 22, 0.32);
+}
+
+.pos-shell.brand-coftea .product-card-media,
+.pos-shell.brand-coftea .product-card-media.has-image {
+  background: linear-gradient(160deg, #fff3e3 0%, #e8a24d 100%);
+}
+
+/* ============================================
+   Potato Corner sidebar – dark green
+   ============================================ */
+.pos-shell.brand-potato-corner .sidebar {
   background: var(--pc-sidebar);
   border-right: none;
   height: auto;
@@ -151,74 +340,75 @@
   padding-top: 10px;
 }
 
-.pos-shell .sidebar-nav {
+.pos-shell.brand-coftea .sidebar-nav,
+.pos-shell.brand-potato-corner .sidebar-nav {
   padding: 12px 14px;
   gap: 6px;
 }
 
-.pos-shell .sidebar-nav-item {
+.pos-shell.brand-potato-corner .sidebar-nav-item {
   color: rgba(255, 255, 255, 0.82);
   font-weight: 600;
   border-radius: 12px;
 }
 
-.pos-shell .sidebar-nav-item .nav-icon {
+.pos-shell.brand-potato-corner .sidebar-nav-item .nav-icon {
   opacity: 0.9;
 }
 
-.pos-shell .sidebar-nav-item:hover {
+.pos-shell.brand-potato-corner .sidebar-nav-item:hover {
   background: var(--pc-sidebar-hover);
   color: #ffffff;
 }
 
-.pos-shell .sidebar-nav-item.active {
+.pos-shell.brand-potato-corner .sidebar-nav-item.active {
   background: var(--pc-yellow);
   color: #1b3022;
   font-weight: 700;
 }
 
-.pos-shell .sidebar-nav-item.active .nav-icon {
+.pos-shell.brand-potato-corner .sidebar-nav-item.active .nav-icon {
   opacity: 1;
 }
 
-.pos-shell .sidebar-footer {
+.pos-shell.brand-potato-corner .sidebar-footer {
   background: transparent;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.pos-shell .sidebar-user-avatar {
+.pos-shell.brand-potato-corner .sidebar-user-avatar {
   background: var(--pc-yellow);
   color: #1b3022;
 }
 
-.pos-shell .sidebar-user-name {
+.pos-shell.brand-potato-corner .sidebar-user-name {
   color: #ffffff;
 }
 
-.pos-shell .sidebar-user-role {
+.pos-shell.brand-potato-corner .sidebar-user-role {
   color: rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.62rem;
 }
 
-.pos-shell .sidebar-sync-badge {
+.pos-shell.brand-potato-corner .sidebar-sync-badge {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.85);
   border: none;
 }
 
-.pos-shell .sidebar-sync-badge .sync-dot {
+.pos-shell.brand-potato-corner .sidebar-sync-badge .sync-dot {
   background: #4ade80;
 }
 
-.pos-shell .sidebar-logout-btn {
+.pos-shell.brand-potato-corner .sidebar-logout-btn {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.85);
 }
 
-.pos-shell .sidebar-logout-btn:hover {
+.pos-shell.brand-potato-corner .sidebar-logout-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.35);
   color: #ffffff;
@@ -296,21 +486,124 @@
   --pos-font-serif: 'Fraunces', 'Playfair Display', Georgia, 'Times New Roman', serif;
   --hq-font-display: 'Plus Jakarta Sans', var(--font-family);
 
-  /* ----- Potato Corner official palette (shared with POS sidebar) ----- */
-  --pc-green: #008d36;
-  --pc-green-deep: #007a33;
-  --pc-green-soft: #e8f7ec;
-  --pc-green-soft-border: #b8e4c4;
-  --pc-sidebar: #008d36;
-  --pc-sidebar-hover: #007a33;
-  --pc-yellow: #ffd200;
-  --pc-yellow-dark: #e6bc00;
-  --pc-yellow-soft: #fff8cc;
-  --pc-orange: #f37021;
-  --pc-orange-soft: #fff0e6;
-
   background: var(--bg-app);
   color: var(--text-primary);
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar {
+  background: var(--pc-green);
+  border-right: none;
+}
+
+.hq-shell.brand-coftea .admin-sidebar {
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-brand {
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-brand-name {
+  color: #ffffff;
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-nav-item {
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 600;
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-nav-item:hover {
+  background: var(--pc-sidebar-hover);
+  color: #ffffff;
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-nav-item.active {
+  background: var(--pc-yellow);
+  color: #1b3022;
+  border-color: var(--pc-yellow);
+  font-weight: 700;
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-nav-item.active .nav-icon {
+  color: #1b3022;
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-footer {
+  background: transparent;
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-sync-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.hq-shell.brand-potato-corner .admin-sidebar .sidebar-sync-badge .sync-dot {
+  background: #4ade80;
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-brand {
+  border-bottom-color: var(--border);
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-brand-name {
+  color: var(--text-primary);
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-brand-logo img {
+  width: 56px;
+  height: 56px;
+  max-height: none;
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-nav-item {
+  color: var(--text-secondary);
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-nav-item:hover {
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-nav-item.active {
+  background: #2e1d11;
+  color: #f9ecd4;
+  border-color: #2e1d11;
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-footer {
+  border-top-color: var(--border);
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-user-avatar {
+  background: #2e1d11;
+  color: #f4e6d0;
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-user-name {
+  color: var(--text-primary);
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-user-role {
+  color: var(--text-muted);
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-logout-btn {
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-logout-btn:hover {
+  background: rgba(231, 76, 60, 0.08);
+  border-color: rgba(231, 76, 60, 0.35);
+  color: #c0392b;
+}
+
+.hq-shell.brand-coftea .admin-sidebar .sidebar-sync-badge {
+  background: var(--bg-surface-alt);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 
 .hq-shell .page-container {
@@ -321,54 +614,6 @@
   font-family: var(--hq-font-display);
   font-weight: 700;
   letter-spacing: -0.025em;
-}
-
-.hq-shell .admin-sidebar {
-  background: var(--pc-green);
-  border-right: none;
-}
-
-.hq-shell .admin-sidebar .sidebar-brand {
-  border-bottom-color: rgba(255, 255, 255, 0.14);
-}
-
-.hq-shell .admin-sidebar .sidebar-brand-name {
-  color: #ffffff;
-}
-
-.hq-shell .admin-sidebar .sidebar-nav-item {
-  color: rgba(255, 255, 255, 0.82);
-  font-weight: 600;
-}
-
-.hq-shell .admin-sidebar .sidebar-nav-item:hover {
-  background: var(--pc-sidebar-hover);
-  color: #ffffff;
-}
-
-.hq-shell .admin-sidebar .sidebar-nav-item.active {
-  background: var(--pc-yellow);
-  color: #1b3022;
-  border-color: var(--pc-yellow);
-  font-weight: 700;
-}
-
-.hq-shell .admin-sidebar .sidebar-nav-item.active .nav-icon {
-  color: #1b3022;
-}
-
-.hq-shell .admin-sidebar .sidebar-footer {
-  background: transparent;
-  border-top-color: rgba(255, 255, 255, 0.12);
-}
-
-.hq-shell .admin-sidebar .sidebar-sync-badge {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.hq-shell .admin-sidebar .sidebar-sync-badge .sync-dot {
-  background: #4ade80;
 }
 
 /* Let HQ content scroll inside the main column */

@@ -28,6 +28,7 @@ const ORDER_NUMBER_COLUMNS = ['order_number', 'receipt_number', 'reference_no'];
 const PRIMARY_KEY_COLUMNS = ['id'];
 const ITEM_COUNT_COLUMNS = ['item_count', 'items_count', 'total_items', 'quantity'];
 const BRANCH_COLUMNS = ['branch_id', 'branch_name', 'store_id', 'location_id'];
+const BRAND_COLUMNS = ['brand_id', 'brand_name'];
 
 interface ColumnMap {
   primaryKey?: string;
@@ -37,12 +38,59 @@ interface ColumnMap {
   orderNo?: string;
   itemCount?: string;
   branch?: string;
+  brand?: string;
+  brandName?: string;
   subtotal?: string;
   discountAmount?: string;
   status?: string;
   paymentStatus?: string;
   cashierId?: string;
   paymentReference?: string;
+}
+
+const DEFAULT_POS_ORDER_COLUMNS: ColumnMap = {
+  primaryKey: 'id',
+  date: 'created_at',
+  total: 'total_amount',
+  payment: 'payment_method',
+  orderNo: 'order_number',
+  itemCount: 'item_count',
+  branch: 'branch_id',
+  brand: 'brand_id',
+  brandName: 'brand_name',
+  subtotal: 'subtotal',
+  discountAmount: 'discount_amount',
+  status: 'status',
+  paymentStatus: 'payment_status',
+  cashierId: 'cashier_id',
+  paymentReference: 'payment_reference',
+};
+
+let cachedColumns: ColumnMap | null = null;
+
+function pickColumn(keys: Set<string>, candidates: string[]) {
+  return candidates.find((candidate) => keys.has(candidate));
+}
+
+function buildColumnMapFromRow(row: RowRecord): ColumnMap {
+  const keys = new Set(Object.keys(row));
+  return {
+    primaryKey: pickColumn(keys, PRIMARY_KEY_COLUMNS),
+    date: pickColumn(keys, DATE_COLUMNS),
+    total: pickColumn(keys, TOTAL_COLUMNS),
+    payment: pickColumn(keys, PAYMENT_COLUMNS),
+    orderNo: pickColumn(keys, ORDER_NUMBER_COLUMNS),
+    itemCount: pickColumn(keys, ITEM_COUNT_COLUMNS),
+    branch: pickColumn(keys, BRANCH_COLUMNS),
+    brand: pickColumn(keys, BRAND_COLUMNS),
+    brandName: pickColumn(keys, ['brand_name']),
+    subtotal: pickColumn(keys, ['subtotal']),
+    discountAmount: pickColumn(keys, ['discount_amount']),
+    status: pickColumn(keys, ['status']),
+    paymentStatus: pickColumn(keys, ['payment_status']),
+    cashierId: pickColumn(keys, ['cashier_id']),
+    paymentReference: pickColumn(keys, ['payment_reference', 'reference_no', 'gcash_reference_no', 'transaction_reference']),
+  };
 }
 
 function toNumber(value: unknown) {
@@ -57,39 +105,23 @@ function asString(value: unknown, fallback = '') {
   return fallback;
 }
 
-async function columnExists(column: string) {
-  const { error } = await supabase.from('pos_order').select(column).limit(1);
-  return !error;
-}
-
-async function pickFirstExistingColumn(candidates: string[]) {
-  for (const candidate of candidates) {
-    // eslint-disable-next-line no-await-in-loop
-    if (await columnExists(candidate)) {
-      return candidate;
-    }
-  }
-  return undefined;
-}
-
 export async function resolvePosOrderColumns(): Promise<ColumnMap> {
-  const [primaryKey, date, total, payment, orderNo, itemCount, branch, subtotal, discountAmount, status, paymentStatus, cashierId, paymentReference] = await Promise.all([
-    pickFirstExistingColumn(PRIMARY_KEY_COLUMNS),
-    pickFirstExistingColumn(DATE_COLUMNS),
-    pickFirstExistingColumn(TOTAL_COLUMNS),
-    pickFirstExistingColumn(PAYMENT_COLUMNS),
-    pickFirstExistingColumn(ORDER_NUMBER_COLUMNS),
-    pickFirstExistingColumn(ITEM_COUNT_COLUMNS),
-    pickFirstExistingColumn(BRANCH_COLUMNS),
-    pickFirstExistingColumn(['subtotal']),
-    pickFirstExistingColumn(['discount_amount']),
-    pickFirstExistingColumn(['status']),
-    pickFirstExistingColumn(['payment_status']),
-    pickFirstExistingColumn(['cashier_id']),
-    pickFirstExistingColumn(['payment_reference', 'reference_no', 'gcash_reference_no', 'transaction_reference']),
-  ]);
+  if (cachedColumns) {
+    return cachedColumns;
+  }
 
-  return { primaryKey, date, total, payment, orderNo, itemCount, branch, subtotal, discountAmount, status, paymentStatus, cashierId, paymentReference };
+  const { data, error } = await supabase.from('pos_order').select('*').limit(1);
+  if (!error && data?.[0]) {
+    cachedColumns = buildColumnMapFromRow(data[0] as RowRecord);
+    return cachedColumns;
+  }
+
+  cachedColumns = { ...DEFAULT_POS_ORDER_COLUMNS };
+  return cachedColumns;
+}
+
+export function preloadPosOrderColumns() {
+  void resolvePosOrderColumns();
 }
 
 function toTransaction(row: RowRecord, columns: ColumnMap): DashboardTransaction {
@@ -198,6 +230,8 @@ export function getInsertPayloadForPosOrder(
     total: number;
     itemCount: number;
     branchValue?: string;
+    brandId?: string;
+    brandName?: string;
     cashierId?: string;
   }
 ) {
@@ -208,6 +242,8 @@ export function getInsertPayloadForPosOrder(
   if (columns.itemCount) data[columns.itemCount] = payload.itemCount;
   if (columns.date) data[columns.date] = new Date().toISOString();
   if (columns.branch && payload.branchValue) data[columns.branch] = payload.branchValue;
+  if (columns.brand && payload.brandId) data[columns.brand] = payload.brandId;
+  if (columns.brandName && payload.brandName) data[columns.brandName] = payload.brandName;
   if (columns.subtotal) data[columns.subtotal] = payload.subtotal;
   if (columns.discountAmount) data[columns.discountAmount] = payload.discountAmount;
   if (columns.status) data[columns.status] = 'COMPLETED';

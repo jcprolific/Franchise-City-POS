@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { BRAND_LIST } from '../brands';
+import { useBrand } from '../context/BrandContext';
 import './LoginPage.css';
 
 interface LoginPageProps {
@@ -9,21 +11,19 @@ interface LoginPageProps {
 type LoginTab = 'email' | 'pin';
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  const { brand, brandSlug, setBrandSlug } = useBrand();
   const [activeTab, setActiveTab] = useState<LoginTab>('email');
   const [targetArea, setTargetArea] = useState<'pos' | 'hq'>('pos');
 
-  // Email state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [hqHint, setHqHint] = useState('');
 
-  // PIN state
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
 
-  // ---- Email Login ----
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -49,7 +49,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     await onLogin('email', userName, targetArea);
   };
 
-  // ---- Email Sign Up ----
   const handleSignUp = async () => {
     if (!email || !password) {
       setEmailError('Please enter email and password');
@@ -74,7 +73,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       return;
     }
 
-    // Auto-login after signup
     const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -89,20 +87,21 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     await onLogin('email', userName, targetArea);
   };
 
-  // ---- PIN Login ----
   const submitPinLogin = (enteredPin: string) => {
     if (enteredPin.length !== 4) {
       setPinError('Enter 4-digit PIN');
       return;
     }
 
-    // Registered HQ PIN
-    if (enteredPin === '4200') {
-      onLogin('pin', 'Staff HQ', 'hq');
+    if (enteredPin === '1234') {
+      if (brandSlug !== 'coftea') {
+        setPinError('HQ demo PIN is available for Coftea only. Select Coftea above first.');
+        return;
+      }
+      onLogin('pin', 'Coftea HQ Demo', 'hq');
       return;
     }
 
-    // Other valid staff PINs still go to POS order-taking.
     onLogin('pin', 'Staff', 'pos');
   };
 
@@ -124,7 +123,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setPinError('');
   };
 
-  // ---- Guest ----
   const handleGuestEntry = () => {
     onLogin('guest', 'Guest', 'pos');
   };
@@ -133,23 +131,41 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setTargetArea('hq');
     setActiveTab('email');
     setEmailError('');
-    setHqHint('Sign in with your HQ account to open the HQ dashboard.');
+    setHqHint(
+      brandSlug === 'coftea'
+        ? 'Sign in with your Coftea HQ account, or use your staff PIN for Coftea HQ Demo.'
+        : 'HQ demo is available for Coftea. Select Coftea above, then sign in or use your staff PIN.'
+    );
   };
 
   return (
-    <div className="login-page" id="login-page">
+    <div className={`login-page brand-${brandSlug}`} id="login-page">
       <div className="login-card">
-        {/* Brand */}
+        <div className="login-brand-switcher" role="tablist" aria-label="Select brand">
+          {BRAND_LIST.map((option) => (
+            <button
+              key={option.slug}
+              type="button"
+              role="tab"
+              aria-selected={brandSlug === option.slug}
+              className={`login-brand-option ${brandSlug === option.slug ? 'active' : ''}`}
+              onClick={() => setBrandSlug(option.slug)}
+            >
+              <img src={option.logoUrl} alt="" className="login-brand-option-logo" />
+              <span>{option.shortName}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="login-brand">
           <img
-            src="/potato-corner-logo.png"
-            alt="Potato Corner"
+            src={brand.logoUrl}
+            alt={brand.name}
             className="login-logo-image"
           />
           <p className="login-subtitle">Point of Sale System</p>
         </div>
 
-        {/* Tab Switcher */}
         <div className="login-tabs">
           <button
             className={`login-tab ${activeTab === 'email' ? 'active' : ''}`}
@@ -165,7 +181,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </button>
         </div>
 
-        {/* ---- EMAIL TAB ---- */}
         {activeTab === 'email' && (
           <form className="login-form" onSubmit={handleEmailLogin}>
             <div className="login-field">
@@ -220,11 +235,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </form>
         )}
 
-        {/* ---- PIN TAB ---- */}
         {activeTab === 'pin' && (
           <div className="login-pin-section">
             <span className="login-label">Enter Staff PIN</span>
-
             <div className="pin-dots">
               {[0, 1, 2, 3].map((i) => (
                 <div
@@ -276,14 +289,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </div>
         )}
 
-        {/* Divider */}
         <div className="login-divider">
           <div className="login-divider-line" />
           <span className="login-divider-text">or</span>
           <div className="login-divider-line" />
         </div>
 
-        {/* Guest Entry */}
         <div className="login-guest-section">
           <button
             className="login-guest-btn"
@@ -302,10 +313,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </button>
         </div>
 
-        {/* Footer */}
         <div className="login-footer">
           <p className="login-footer-text">
-            Potato Corner POS · <span className="version">v1.0.0</span>
+            {brand.footerText} · <span className="version">v1.0.0</span>
           </p>
         </div>
       </div>

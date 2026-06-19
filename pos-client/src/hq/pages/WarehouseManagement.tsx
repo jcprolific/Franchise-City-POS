@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -12,32 +13,20 @@ import {
   Search,
   ShieldAlert,
   Truck,
+  X,
 } from 'lucide-react';
+import { useBrand } from '../../context/BrandContext';
+import {
+  createDelivery,
+  createStockProduct,
+  ensureSampleDeliveries,
+  ensureSampleStock,
+  type DeliveryDirection,
+  type DeliveryRow,
+  type DeliveryStatus,
+  type StockRow,
+} from '../lib/warehouseService';
 import './WarehouseManagement.css';
-
-type DeliveryStatus = 'SCHEDULED' | 'IN_TRANSIT' | 'RECEIVED' | 'DISPATCHED';
-type DeliveryDirection = 'IN' | 'OUT';
-
-interface DeliveryRow {
-  id: string;
-  reference: string;
-  party: string;
-  date: string;
-  items: number;
-  status: DeliveryStatus;
-  direction: DeliveryDirection;
-  notes?: string;
-}
-
-interface StockRow {
-  id: string;
-  name: string;
-  unit: string;
-  onHand: number;
-  parLevel: number;
-  reorderPoint: number;
-  location: string;
-}
 
 interface ExpiryRow {
   id: string;
@@ -72,6 +61,27 @@ interface ParcelRow {
 
 const EXPIRY_WARN_DAYS = 90;
 const EXPIRY_CRITICAL_DAYS = 30;
+
+const STORAGE_LOCATIONS = ['Main Warehouse', 'Cold Storage A', 'Dry Storage'];
+const STOCK_UNITS = ['kg', 'L', 'bottle', 'pc', 'can', 'box'];
+
+const emptyDeliveryForm = {
+  direction: 'IN' as DeliveryDirection,
+  party: '',
+  date: new Date().toISOString().slice(0, 10),
+  items: '1',
+  status: 'SCHEDULED' as DeliveryStatus,
+  notes: '',
+};
+
+const emptyProductForm = {
+  name: '',
+  unit: 'kg',
+  onHand: '',
+  parLevel: '',
+  reorderPoint: '',
+  location: 'Main Warehouse',
+};
 
 const sampleDeliveries: DeliveryRow[] = [
   {
@@ -245,27 +255,46 @@ function parcelStatusLabel(status: ParcelRow['status']) {
 }
 
 export default function WarehouseManagement() {
+  const { brand } = useBrand();
+
+  const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
+  const [stock, setStock] = useState<StockRow[]>([]);
   const [deliveryFilter, setDeliveryFilter] = useState<'ALL' | DeliveryDirection>('ALL');
   const [stockQuery, setStockQuery] = useState('');
   const [selectedParcelId, setSelectedParcelId] = useState(sampleParcels[0].id);
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [deliveryForm, setDeliveryForm] = useState(emptyDeliveryForm);
+  const [productForm, setProductForm] = useState(emptyProductForm);
+  const [noticeText, setNoticeText] = useState('');
+  const [errorText, setErrorText] = useState('');
+
+  const loadWarehouseData = useCallback(() => {
+    setDeliveries(ensureSampleDeliveries(brand.dbBrandId, sampleDeliveries));
+    setStock(ensureSampleStock(brand.dbBrandId, sampleStock));
+  }, [brand.dbBrandId]);
+
+  useEffect(() => {
+    loadWarehouseData();
+  }, [loadWarehouseData]);
 
   const filteredDeliveries = useMemo(
     () =>
       deliveryFilter === 'ALL'
-        ? sampleDeliveries
-        : sampleDeliveries.filter((d) => d.direction === deliveryFilter),
-    [deliveryFilter]
+        ? deliveries
+        : deliveries.filter((d) => d.direction === deliveryFilter),
+    [deliveries, deliveryFilter]
   );
 
   const filteredStock = useMemo(() => {
     const q = stockQuery.trim().toLowerCase();
-    if (!q) return sampleStock;
-    return sampleStock.filter(
+    if (!q) return stock;
+    return stock.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.location.toLowerCase().includes(q)
     );
-  }, [stockQuery]);
+  }, [stock, stockQuery]);
 
   const sortedExpiry = useMemo(
     () =>
@@ -280,22 +309,105 @@ export default function WarehouseManagement() {
   );
 
   const kpis = useMemo(() => {
-    const totalSkus = sampleStock.length;
-    const incoming = sampleDeliveries.filter(
+    const totalSkus = stock.length;
+    const incoming = deliveries.filter(
       (d) => d.direction === 'IN' && (d.status === 'SCHEDULED' || d.status === 'IN_TRANSIT')
     ).length;
-    const outgoing = sampleDeliveries.filter(
+    const outgoing = deliveries.filter(
       (d) => d.direction === 'OUT' && (d.status === 'SCHEDULED' || d.status === 'DISPATCHED')
     ).length;
     const expiringSoon = sampleExpiry.filter((e) => {
       const d = daysBetween(e.expiresOn);
       return d >= 0 && d <= EXPIRY_WARN_DAYS;
     }).length;
-    const lowStock = sampleStock.filter(
+    const lowStock = stock.filter(
       (s) => getStockLevel(s.onHand, s.parLevel, s.reorderPoint) === 'low'
     ).length;
     return { totalSkus, incoming, outgoing, expiringSoon, lowStock };
-  }, []);
+  }, [deliveries, stock]);
+
+  const closeDeliveryForm = () => {
+    setShowDeliveryForm(false);
+    setDeliveryForm({ ...emptyDeliveryForm, date: new Date().toISOString().slice(0, 10) });
+  };
+
+  const closeProductForm = () => {
+    setShowProductForm(false);
+    setProductForm(emptyProductForm);
+  };
+
+  const handleLogDelivery = (event: FormEvent) => {
+    event.preventDefault();
+    setErrorText('');
+    setNoticeText('');
+
+    if (!deliveryForm.party.trim()) {
+      setErrorText('Party name is required (supplier or branch).');
+      return;
+    }
+
+    const items = Number(deliveryForm.items);
+    if (!Number.isFinite(items) || items < 1) {
+      setErrorText('Item count must be at least 1.');
+      return;
+    }
+
+    const row = createDelivery({
+      brandId: brand.dbBrandId,
+      direction: deliveryForm.direction,
+      party: deliveryForm.party,
+      date: deliveryForm.date,
+      items,
+      status: deliveryForm.status,
+      notes: deliveryForm.notes,
+    });
+
+    setDeliveries((prev) => [row, ...prev]);
+    closeDeliveryForm();
+    setNoticeText(`Logged delivery ${row.reference} for ${row.party}.`);
+  };
+
+  const handleAddProduct = (event: FormEvent) => {
+    event.preventDefault();
+    setErrorText('');
+    setNoticeText('');
+
+    if (!productForm.name.trim()) {
+      setErrorText('Product name is required.');
+      return;
+    }
+
+    const onHand = Number(productForm.onHand);
+    const parLevel = Number(productForm.parLevel);
+    const reorderPoint = Number(productForm.reorderPoint);
+
+    if (!Number.isFinite(onHand) || onHand < 0) {
+      setErrorText('On-hand quantity must be zero or greater.');
+      return;
+    }
+    if (!Number.isFinite(parLevel) || parLevel < 1) {
+      setErrorText('Par level must be at least 1.');
+      return;
+    }
+    if (!Number.isFinite(reorderPoint) || reorderPoint < 0) {
+      setErrorText('Reorder point must be zero or greater.');
+      return;
+    }
+
+    const row = createStockProduct({
+      brandId: brand.dbBrandId,
+      name: productForm.name,
+      unit: productForm.unit,
+      onHand,
+      parLevel,
+      reorderPoint,
+      location: productForm.location,
+    });
+
+    setStock((prev) => [row, ...prev]);
+    closeProductForm();
+    setNoticeText(`Added ${row.name} to warehouse stock.`);
+  };
 
   return (
     <div className="hq-warehouse" id="hq-warehouse">
@@ -309,16 +421,196 @@ export default function WarehouseManagement() {
         </div>
 
         <div className="hq-home-toolbar">
-          <button type="button" className="hq-primary-btn">
+          <button
+            type="button"
+            className="hq-primary-btn"
+            onClick={() => {
+              setShowDeliveryForm((value) => !value);
+              setShowProductForm(false);
+              setErrorText('');
+              setNoticeText('');
+              if (showDeliveryForm) closeDeliveryForm();
+            }}
+          >
             <Plus size={14} />
-            Log Delivery
+            {showDeliveryForm ? 'Close' : 'Log Delivery'}
           </button>
-          <button type="button" className="hq-secondary-btn">
+          <button
+            type="button"
+            className="hq-secondary-btn"
+            onClick={() => {
+              setShowProductForm((value) => !value);
+              setShowDeliveryForm(false);
+              setErrorText('');
+              setNoticeText('');
+              if (showProductForm) closeProductForm();
+            }}
+          >
             <Package size={14} />
-            Add Product
+            {showProductForm ? 'Close' : 'Add Product'}
           </button>
         </div>
       </header>
+
+      {showDeliveryForm && (
+        <form className="hq-warehouse-form" onSubmit={handleLogDelivery}>
+          <h2>Log Delivery</h2>
+          <div className="hq-warehouse-form-grid">
+            <label className="hq-warehouse-field">
+              <span>Direction</span>
+              <select
+                value={deliveryForm.direction}
+                onChange={(event) =>
+                  setDeliveryForm({ ...deliveryForm, direction: event.target.value as DeliveryDirection })
+                }
+              >
+                <option value="IN">Incoming (from supplier)</option>
+                <option value="OUT">Outgoing (to branch)</option>
+              </select>
+            </label>
+            <label className="hq-warehouse-field">
+              <span>{deliveryForm.direction === 'IN' ? 'Supplier' : 'Branch'}</span>
+              <input
+                value={deliveryForm.party}
+                onChange={(event) => setDeliveryForm({ ...deliveryForm, party: event.target.value })}
+                placeholder={deliveryForm.direction === 'IN' ? 'e.g. Bean Origin Trading' : 'e.g. BGC Central'}
+              />
+            </label>
+            <label className="hq-warehouse-field">
+              <span>Date</span>
+              <input
+                type="date"
+                value={deliveryForm.date}
+                onChange={(event) => setDeliveryForm({ ...deliveryForm, date: event.target.value })}
+              />
+            </label>
+            <label className="hq-warehouse-field">
+              <span>Item count</span>
+              <input
+                type="number"
+                min={1}
+                value={deliveryForm.items}
+                onChange={(event) => setDeliveryForm({ ...deliveryForm, items: event.target.value })}
+              />
+            </label>
+            <label className="hq-warehouse-field">
+              <span>Status</span>
+              <select
+                value={deliveryForm.status}
+                onChange={(event) =>
+                  setDeliveryForm({ ...deliveryForm, status: event.target.value as DeliveryStatus })
+                }
+              >
+                <option value="SCHEDULED">Scheduled</option>
+                <option value="IN_TRANSIT">In transit</option>
+                <option value="RECEIVED">Received</option>
+                <option value="DISPATCHED">Dispatched</option>
+              </select>
+            </label>
+            <label className="hq-warehouse-field hq-warehouse-field-wide">
+              <span>Notes</span>
+              <input
+                value={deliveryForm.notes}
+                onChange={(event) => setDeliveryForm({ ...deliveryForm, notes: event.target.value })}
+                placeholder="Optional shipment details"
+              />
+            </label>
+          </div>
+          <div className="hq-warehouse-form-footer">
+            <button type="button" className="hq-warehouse-cancel-btn" onClick={closeDeliveryForm}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="hq-primary-btn">
+              Log Delivery
+            </button>
+          </div>
+        </form>
+      )}
+
+      {showProductForm && (
+        <form className="hq-warehouse-form" onSubmit={handleAddProduct}>
+          <h2>Add Product</h2>
+          <div className="hq-warehouse-form-grid">
+            <label className="hq-warehouse-field">
+              <span>Product name</span>
+              <input
+                value={productForm.name}
+                onChange={(event) => setProductForm({ ...productForm, name: event.target.value })}
+                placeholder="e.g. Arabica Espresso Beans"
+              />
+            </label>
+            <label className="hq-warehouse-field">
+              <span>Unit</span>
+              <select
+                value={productForm.unit}
+                onChange={(event) => setProductForm({ ...productForm, unit: event.target.value })}
+              >
+                {STOCK_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="hq-warehouse-field">
+              <span>Storage location</span>
+              <select
+                value={productForm.location}
+                onChange={(event) => setProductForm({ ...productForm, location: event.target.value })}
+              >
+                {STORAGE_LOCATIONS.map((location) => (
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="hq-warehouse-field">
+              <span>On hand</span>
+              <input
+                type="number"
+                min={0}
+                value={productForm.onHand}
+                onChange={(event) => setProductForm({ ...productForm, onHand: event.target.value })}
+                placeholder="0"
+              />
+            </label>
+            <label className="hq-warehouse-field">
+              <span>Par level</span>
+              <input
+                type="number"
+                min={1}
+                value={productForm.parLevel}
+                onChange={(event) => setProductForm({ ...productForm, parLevel: event.target.value })}
+                placeholder="60"
+              />
+            </label>
+            <label className="hq-warehouse-field">
+              <span>Reorder point</span>
+              <input
+                type="number"
+                min={0}
+                value={productForm.reorderPoint}
+                onChange={(event) =>
+                  setProductForm({ ...productForm, reorderPoint: event.target.value })
+                }
+                placeholder="20"
+              />
+            </label>
+          </div>
+          <div className="hq-warehouse-form-footer">
+            <button type="button" className="hq-warehouse-cancel-btn" onClick={closeProductForm}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="hq-primary-btn">
+              Add Product
+            </button>
+          </div>
+        </form>
+      )}
+
+      {noticeText && <div className="hq-warehouse-note hq-warehouse-note--success">{noticeText}</div>}
+      {errorText && <div className="hq-warehouse-note hq-warehouse-note--error">{errorText}</div>}
 
       <section className="hq-kpi-row">
         <article className="hq-stat-card hq-stat-card--dark">

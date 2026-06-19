@@ -118,7 +118,7 @@ function buildFallbackFromRows(rows: PosOrderRow[]): {
   };
 }
 
-export async function fetchHqKpiData() {
+export async function fetchHqKpiData(brandDbId?: string) {
   const globalRpc = await supabase.rpc('hq_global_kpi', { p_tz: 'Asia/Manila' });
   const weeklyRpc = await supabase.rpc('hq_weekly_revenue', { p_tz: 'Asia/Manila' });
 
@@ -143,10 +143,16 @@ export async function fetchHqKpiData() {
     };
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('pos_order')
-    .select('created_at,total_amount,branch_id,payment_status,status')
+    .select('created_at,total_amount,branch_id,payment_status,status,brand_id')
     .limit(5000);
+
+  if (brandDbId) {
+    query = query.eq('brand_id', brandDbId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
 
   const fallback = buildFallbackFromRows((data as PosOrderRow[] | null) ?? []);

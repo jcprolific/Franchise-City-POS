@@ -5,14 +5,27 @@ import './CheckoutModal.css';
 interface CheckoutModalProps {
   total: number;
   paymentMethod: PaymentMethod;
-  onConfirm: (payload: { paymentReference?: string }) => void;
+  orderNumber: number;
+  onConfirm: (payload: { paymentReference?: string }) => Promise<boolean>;
+  onNewOrder: () => void;
   onCancel: () => void;
+  isProcessing?: boolean;
 }
 
-export default function CheckoutModal({ total, paymentMethod, onConfirm, onCancel }: CheckoutModalProps) {
+export default function CheckoutModal({
+  total,
+  paymentMethod,
+  orderNumber,
+  onConfirm,
+  onNewOrder,
+  onCancel,
+  isProcessing = false,
+}: CheckoutModalProps) {
   const [cashTendered, setCashTendered] = useState<string>('');
   const [paymentReference, setPaymentReference] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [completedOrderNumber, setCompletedOrderNumber] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const cashAmount = parseFloat(cashTendered) || 0;
   const change = cashAmount - total;
@@ -23,16 +36,24 @@ export default function CheckoutModal({ total, paymentMethod, onConfirm, onCance
 
   const quickAmounts = [100, 200, 500, 1000];
 
-  const handleConfirm = () => {
-    setShowSuccess(true);
-    setTimeout(() => {
-      onConfirm({
-        paymentReference: referenceValue || undefined,
-      });
-    }, 2000);
+  const handleConfirm = async () => {
+    const payload = { paymentReference: referenceValue || undefined };
+
+    setIsSaving(true);
+    try {
+      const saved = await onConfirm(payload);
+      if (!saved) return;
+
+      setCompletedOrderNumber(orderNumber);
+      setShowSuccess(true);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const orderId = `#${Math.floor(1000 + Math.random() * 9000)}`;
+  const handleNewOrder = () => {
+    onNewOrder();
+  };
 
   if (showSuccess) {
     return (
@@ -41,7 +62,10 @@ export default function CheckoutModal({ total, paymentMethod, onConfirm, onCance
           <div className="checkout-success">
             <div className="success-icon">✅</div>
             <div className="success-title">Order Complete!</div>
-            <div className="success-order-id">Order {orderId}</div>
+            <div className="success-order-id">Order #{completedOrderNumber ?? orderNumber}</div>
+            {!isCash && (
+              <div className="success-payment-method">Paid via {paymentMethod}</div>
+            )}
             {isCash && change > 0 && (
               <div style={{ marginBottom: '24px', color: 'var(--success)', fontSize: 'var(--font-lg)', fontWeight: 700 }}>
                 Change: ₱{change.toFixed(2)}
@@ -49,11 +73,8 @@ export default function CheckoutModal({ total, paymentMethod, onConfirm, onCance
             )}
             <button
               className="success-done-btn"
-              onClick={() =>
-                onConfirm({
-                  paymentReference: referenceValue || undefined,
-                })
-              }
+              onClick={handleNewOrder}
+              id="new-order-btn"
             >
               New Order
             </button>
@@ -139,10 +160,14 @@ export default function CheckoutModal({ total, paymentMethod, onConfirm, onCance
           <button
             className="checkout-confirm-btn"
             onClick={handleConfirm}
-            disabled={!canConfirm}
+            disabled={!canConfirm || isProcessing || isSaving}
             id="confirm-checkout-btn"
           >
-            {isCash ? 'Complete Sale' : `Pay via ${paymentMethod}`}
+            {isProcessing || isSaving
+              ? 'Saving...'
+              : isCash
+                ? 'Complete Sale'
+                : `Pay via ${paymentMethod}`}
           </button>
         </div>
       </div>

@@ -5,9 +5,9 @@ import {
   type OrderStatus,
   type PlacementOrder,
 } from '../data/ordersMockData';
+import { useBrand } from '../context/BrandContext';
 import './OrdersPage.css';
 
-const BRANCH_LABEL = 'Potato Corner · Eastwood City';
 type StatusFilter = 'ALL' | OrderStatus;
 
 const statusFilters: { id: StatusFilter; label: string }[] = [
@@ -27,6 +27,7 @@ function countByStatus(orders: PlacementOrder[], status: OrderStatus) {
 }
 
 export default function OrdersPage() {
+  const { brand } = useBrand();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [search, setSearch] = useState('');
 
@@ -54,7 +55,7 @@ export default function OrdersPage() {
     <div className="orders-page" id="orders-page">
       <div className="orders-header">
         <div className="orders-header-main">
-          <span className="orders-branch-label">{BRANCH_LABEL}</span>
+          <span className="orders-branch-label">{brand.branchLabel}</span>
           <span className="orders-live-badge">Live queue · {activeCount} active</span>
         </div>
       </div>

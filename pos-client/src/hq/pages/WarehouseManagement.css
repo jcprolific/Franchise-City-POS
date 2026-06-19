@@ -68,6 +68,104 @@
   color: var(--hq-text);
 }
 
+.hq-warehouse-form {
+  background: var(--hq-surface);
+  border: 1px solid var(--hq-border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.hq-warehouse-form h2 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  color: var(--hq-ink);
+}
+
+.hq-warehouse-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hq-warehouse-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--hq-text-soft);
+}
+
+.hq-warehouse-field-wide {
+  grid-column: span 2;
+}
+
+.hq-warehouse-field input,
+.hq-warehouse-field select {
+  height: 38px;
+  border: 1px solid var(--hq-border);
+  border-radius: 10px;
+  background: var(--hq-surface-muted);
+  color: var(--hq-text);
+  font: inherit;
+  padding: 0 12px;
+}
+
+.hq-warehouse-field input:focus,
+.hq-warehouse-field select:focus {
+  outline: 2px solid rgba(217, 135, 36, 0.25);
+  border-color: var(--hq-accent);
+}
+
+.hq-warehouse-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.hq-warehouse-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--hq-border);
+  border-radius: 999px;
+  background: var(--hq-surface);
+  color: var(--hq-text-soft);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hq-warehouse-cancel-btn:hover {
+  background: var(--hq-surface-muted);
+  color: var(--hq-text);
+  border-color: var(--hq-border-strong);
+}
+
+.hq-warehouse-note {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--hq-border);
+  font-size: 0.82rem;
+}
+
+.hq-warehouse-note--success {
+  background: #f3fbf5;
+  border-left: 3px solid var(--hq-success);
+  color: var(--hq-text-soft);
+}
+
+.hq-warehouse-note--error {
+  background: #fff5f4;
+  border-left: 3px solid var(--hq-danger);
+  color: var(--hq-danger);
+}
+
 .hq-search--compact {
   min-width: 220px;
   max-width: 280px;
@@ -663,5 +761,13 @@
   .hq-expiry-meta {
     text-align: left;
     width: 100%;
+  }
+
+  .hq-warehouse-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hq-warehouse-field-wide {
+    grid-column: span 1;
   }
 }

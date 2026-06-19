@@ -15,6 +15,7 @@ export interface Product {
   icon: string;
   description?: string;
   badge?: string;
+  customizable?: boolean;
 }
 
 export interface ProductVariant {
@@ -30,6 +31,26 @@ export interface Addon {
   name: string;
   price: number;
   is_active: boolean;
+}
+
+export interface RawMaterial {
+  id: string;
+  brand_id: string;
+  name: string;
+  unit: string;
+  on_hand_qty: number;
+  low_stock_qty: number;
+  icon?: string | null;
+}
+
+export interface RecipeLine {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  raw_material_id: string;
+  quantity_per_cup: number;
+  unit: string;
+  yield_notes?: string | null;
 }
 
 export type SugarLevel = '0%' | '25%' | '50%' | '75%' | '100%';
