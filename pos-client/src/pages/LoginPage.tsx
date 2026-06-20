@@ -173,13 +173,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             className={`login-tab ${activeTab === 'email' ? 'active' : ''}`}
             onClick={() => setActiveTab('email')}
           >
-            ✉️ Email Login
+            Email Login
           </button>
           <button
             className={`login-tab ${activeTab === 'pin' ? 'active' : ''}`}
             onClick={() => setActiveTab('pin')}
           >
-            🔢 Staff PIN
+            Staff PIN
           </button>
         </div>
 
