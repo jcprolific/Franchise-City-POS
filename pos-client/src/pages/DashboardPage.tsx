@@ -112,7 +112,6 @@ export default function DashboardPage() {
         <div className="kpi-card" style={{ animationDelay: '0ms' }}>
           <div className="kpi-card-header">
             <span className="kpi-card-title">Today&apos;s Sales</span>
-            <span className="kpi-card-icon">💰</span>
           </div>
           <div className="kpi-card-value">
             ₱{(hasLiveOrders ? liveDashboard.todaySales : staticDashboard.todaySales).toLocaleString()}
@@ -126,7 +125,6 @@ export default function DashboardPage() {
         <div className="kpi-card" style={{ animationDelay: '60ms' }}>
           <div className="kpi-card-header">
             <span className="kpi-card-title">Orders</span>
-            <span className="kpi-card-icon">🛒</span>
           </div>
           <div className="kpi-card-value">
             {hasLiveOrders ? liveDashboard.totalOrders : staticDashboard.totalOrders}
@@ -140,7 +138,6 @@ export default function DashboardPage() {
         <div className="kpi-card" style={{ animationDelay: '120ms' }}>
           <div className="kpi-card-header">
             <span className="kpi-card-title">Avg Order Value</span>
-            <span className="kpi-card-icon">📈</span>
           </div>
           <div className="kpi-card-value">
             ₱{(hasLiveOrders ? liveDashboard.avgOrderValue : staticDashboard.avgOrderValue).toFixed(2)}
@@ -154,7 +151,6 @@ export default function DashboardPage() {
         <div className="kpi-card kpi-card-highlight" style={{ animationDelay: '180ms' }}>
           <div className="kpi-card-header">
             <span className="kpi-card-title">Top Flavor</span>
-            <span className="kpi-card-icon">🍟</span>
           </div>
           <div className="kpi-card-value">{staticDashboard.topProductName}</div>
           <div className="kpi-card-change sold">{staticDashboard.topProductSold} sold</div>

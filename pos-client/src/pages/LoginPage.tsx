@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { BRAND_LIST } from '../brands';
+import { LOGIN_BRAND_LIST } from '../brands';
 import { useBrand } from '../context/BrandContext';
 import './LoginPage.css';
 
@@ -12,6 +12,14 @@ type LoginTab = 'email' | 'pin';
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const { brand, brandSlug, setBrandSlug } = useBrand();
+  const showBrandSwitcher = LOGIN_BRAND_LIST.length > 1;
+
+  useEffect(() => {
+    if (brandSlug !== 'coftea') {
+      setBrandSlug('coftea');
+    }
+  }, [brandSlug, setBrandSlug]);
+
   const [activeTab, setActiveTab] = useState<LoginTab>('email');
   const [targetArea, setTargetArea] = useState<'pos' | 'hq'>('pos');
 
@@ -94,10 +102,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     if (enteredPin === '1234') {
-      if (brandSlug !== 'coftea') {
-        setPinError('HQ demo PIN is available for Coftea only. Select Coftea above first.');
-        return;
-      }
       onLogin('pin', 'Coftea HQ Demo', 'hq');
       return;
     }
@@ -131,31 +135,29 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setTargetArea('hq');
     setActiveTab('email');
     setEmailError('');
-    setHqHint(
-      brandSlug === 'coftea'
-        ? 'Sign in with your Coftea HQ account, or use your staff PIN for Coftea HQ Demo.'
-        : 'HQ demo is available for Coftea. Select Coftea above, then sign in or use your staff PIN.'
-    );
+    setHqHint('Sign in with your Coftea HQ account, or use staff PIN 1234 for Coftea HQ Demo.');
   };
 
   return (
     <div className={`login-page brand-${brandSlug}`} id="login-page">
       <div className="login-card">
-        <div className="login-brand-switcher" role="tablist" aria-label="Select brand">
-          {BRAND_LIST.map((option) => (
-            <button
-              key={option.slug}
-              type="button"
-              role="tab"
-              aria-selected={brandSlug === option.slug}
-              className={`login-brand-option ${brandSlug === option.slug ? 'active' : ''}`}
-              onClick={() => setBrandSlug(option.slug)}
-            >
-              <img src={option.logoUrl} alt="" className="login-brand-option-logo" />
-              <span>{option.shortName}</span>
-            </button>
-          ))}
-        </div>
+        {showBrandSwitcher && (
+          <div className="login-brand-switcher" role="tablist" aria-label="Select brand">
+            {LOGIN_BRAND_LIST.map((option) => (
+              <button
+                key={option.slug}
+                type="button"
+                role="tab"
+                aria-selected={brandSlug === option.slug}
+                className={`login-brand-option ${brandSlug === option.slug ? 'active' : ''}`}
+                onClick={() => setBrandSlug(option.slug)}
+              >
+                <img src={option.logoUrl} alt="" className="login-brand-option-logo" />
+                <span>{option.shortName}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="login-brand">
           <img

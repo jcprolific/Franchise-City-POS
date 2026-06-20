@@ -107,10 +107,6 @@
   letter-spacing: 0.12em;
 }
 
-.kpi-card-icon {
-  font-size: 16px;
-}
-
 .kpi-card-value {
   font-family: var(--pos-font-serif, inherit);
   font-size: var(--font-2xl);
