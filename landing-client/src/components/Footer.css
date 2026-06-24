@@ -1,0 +1,12 @@
+.footer { background: var(--fc-black); color: var(--fc-on-dark-muted); padding: 56px 0 28px; }
+.footer__inner { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 32px; }
+.footer__logo { display: inline-flex; align-items: center; gap: 8px; font-family: var(--fc-font-display); font-weight: 800; color: var(--fc-on-dark); }
+.footer__logo svg, .footer__logo span { color: var(--fc-orange); }
+.footer__brand p { margin-top: 14px; max-width: 320px; font-size: 14px; line-height: 1.6; }
+.footer__col h4 { font-family: var(--fc-font-display); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--fc-on-dark); margin-bottom: 14px; }
+.footer__col a, .footer__linkbtn { display: block; color: var(--fc-on-dark-muted); font-size: 14px; margin-bottom: 10px; background: none; border: none; padding: 0; cursor: pointer; font: inherit; text-align: left; }
+.footer__col a:hover, .footer__linkbtn:hover { color: var(--fc-on-dark); }
+.footer__social { display: flex; gap: 12px; }
+.footer__social a { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 999px; background: rgba(255,255,255,.06); }
+.footer__copy { margin-top: 40px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: 13px; text-align: center; }
+@media (max-width: 760px) { .footer__inner { grid-template-columns: 1fr; } }

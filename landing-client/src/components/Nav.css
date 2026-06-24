@@ -1,0 +1,10 @@
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(26,20,16,.92); backdrop-filter: blur(8px); }
+.nav__inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.nav__logo { display: flex; align-items: center; gap: 8px; font-family: var(--fc-font-display); font-weight: 800; letter-spacing: .04em; color: var(--fc-on-dark); }
+.nav__logo svg { color: var(--fc-orange); }
+.nav__logo span { color: var(--fc-orange); margin-left: 4px; }
+.nav__links { display: flex; gap: 28px; }
+.nav__links a { color: var(--fc-on-dark-muted); font-size: 14px; font-weight: 500; }
+.nav__links a:hover { color: var(--fc-on-dark); }
+.nav__cta { padding: 9px 18px; font-size: 14px; }
+@media (max-width: 760px) { .nav__links { display: none; } }
