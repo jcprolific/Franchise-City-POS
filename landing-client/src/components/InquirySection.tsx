@@ -20,9 +20,9 @@ export default function InquirySection({ selectedBrand }: { selectedBrand: strin
     const input = { fullName, email, phone, interestedBrand: selectedBrand }
     const found = validateInquiry(input)
     setErrors(found)
+    setServerError('')
     if (Object.keys(found).length > 0) return
     setStatus('sending')
-    setServerError('')
     const result = await submitInquiry(input)
     if (result.ok) {
       setStatus('done')
@@ -54,20 +54,20 @@ export default function InquirySection({ selectedBrand }: { selectedBrand: strin
             <label>
               Full name
               <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Juan Dela Cruz" />
-              {errors.fullName && <span className="inquiry__err">{errors.fullName}</span>}
+              {errors.fullName && <span className="inquiry__err" role="alert">{errors.fullName}</span>}
             </label>
             <label>
               Email
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="juan@email.com" />
-              {errors.email && <span className="inquiry__err">{errors.email}</span>}
+              {errors.email && <span className="inquiry__err" role="alert">{errors.email}</span>}
             </label>
             <label>
               Phone
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0917 123 4567" />
-              {errors.phone && <span className="inquiry__err">{errors.phone}</span>}
+              {errors.phone && <span className="inquiry__err" role="alert">{errors.phone}</span>}
             </label>
             {!configured && <p className="inquiry__err">Form temporarily unavailable (missing configuration).</p>}
-            {status === 'error' && <p className="inquiry__err">{serverError}</p>}
+            {status === 'error' && <p className="inquiry__err" role="alert">{serverError}</p>}
             <button className="fc-btn fc-btn-primary inquiry__submit" disabled={!configured || status === 'sending'}>
               {status === 'sending' ? 'Sending…' : 'Submit Inquiry'}
             </button>

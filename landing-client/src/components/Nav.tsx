@@ -5,7 +5,7 @@ export default function Nav({ onApply }: { onApply: () => void }) {
   return (
     <header className="nav">
       <div className="fc-container nav__inner">
-        <a href="#top" className="nav__logo"><Flame size={20} /> FRANCHISE<span>CITY</span></a>
+        <a href="#top" className="nav__logo"><Flame size={20} aria-hidden={true} /> FRANCHISE<span>CITY</span></a>
         <nav className="nav__links">
           <a href="#brands">Brands</a>
           <a href="#why">Why Us</a>

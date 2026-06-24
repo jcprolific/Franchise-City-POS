@@ -6,7 +6,7 @@ export default function Footer({ onApply }: { onApply: () => void }) {
     <footer className="footer">
       <div className="fc-container footer__inner">
         <div className="footer__brand">
-          <a href="#top" className="footer__logo"><Flame size={18} /> FRANCHISE<span>CITY</span></a>
+          <a href="#top" className="footer__logo"><Flame size={18} aria-hidden={true} /> FRANCHISE<span>CITY</span></a>
           <p>A Filipino franchising platform helping entrepreneurs launch proven brands across the Philippines.</p>
         </div>
         <div className="footer__col">
@@ -19,9 +19,9 @@ export default function Footer({ onApply }: { onApply: () => void }) {
         <div className="footer__col">
           <h4>Follow</h4>
           <div className="footer__social">
-            <a href="#" aria-label="Facebook"><Globe size={18} /></a>
-            <a href="#" aria-label="Instagram"><Camera size={18} /></a>
-            <a href="#" aria-label="Twitter"><AtSign size={18} /></a>
+            <a href="#" aria-label="Facebook" onClick={(e) => e.preventDefault()}><Globe size={18} /></a>
+            <a href="#" aria-label="Instagram" onClick={(e) => e.preventDefault()}><Camera size={18} /></a>
+            <a href="#" aria-label="Twitter" onClick={(e) => e.preventDefault()}><AtSign size={18} /></a>
           </div>
         </div>
       </div>

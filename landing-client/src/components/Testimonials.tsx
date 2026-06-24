@@ -11,8 +11,8 @@ export default function Testimonials() {
         <div className="tm__grid">
           {testimonials.map((t) => (
             <figure className="tm__card" key={t.name}>
-              <div className="tm__stars">
-                {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={15} fill="currentColor" />)}
+              <div className="tm__stars" aria-label="5 out of 5 stars">
+                {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={15} fill="currentColor" aria-hidden={true} />)}
               </div>
               <blockquote>"{t.quote}"</blockquote>
               <figcaption className="tm__person">

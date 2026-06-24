@@ -20,7 +20,7 @@ export function validateInquiry(input: InquiryInput): ValidationErrors {
   if (!input.fullName.trim()) errors.fullName = 'Pakilagay ang iyong pangalan.';
   if (!input.email.trim()) errors.email = 'Pakilagay ang iyong email.';
   else if (!EMAIL_RE.test(input.email.trim())) errors.email = 'Hindi wastong email address.';
-  if (input.phone.replace(/\D/g, '').length < 7) errors.phone = 'Pakilagay ang wastong contact number.';
+  if (input.phone.replace(/\D/g, '').length < 10) errors.phone = 'Pakilagay ang wastong contact number.';
   return errors;
 }
 

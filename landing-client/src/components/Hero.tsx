@@ -16,7 +16,7 @@ export default function Hero({ onApply }: { onApply: () => void }) {
           launch a successful business — anywhere in the Philippines.
         </p>
         <div className="hero__cta">
-          <button className="fc-btn fc-btn-primary" onClick={onApply}>Franchise Now <ArrowRight size={16} /></button>
+          <button className="fc-btn fc-btn-primary" onClick={onApply}>Franchise Now <ArrowRight size={16} aria-hidden={true} /></button>
           <a className="fc-btn fc-btn-ghost" href="#brands">Explore Brands</a>
         </div>
         <ul className="hero__stats">

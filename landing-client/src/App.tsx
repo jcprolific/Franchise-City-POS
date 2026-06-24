@@ -25,14 +25,16 @@ export default function App() {
   return (
     <>
       <Nav onApply={scrollToInquiry} />
-      <Hero onApply={scrollToInquiry} />
-      <BrandsSection onGetStarted={handleGetStarted} />
-      <WhyChoose />
-      <StatsBand />
-      <HowToStart />
-      <Testimonials />
-      <InquirySection selectedBrand={selectedBrand} />
-      <FinalCTA onApply={scrollToInquiry} />
+      <main>
+        <Hero onApply={scrollToInquiry} />
+        <BrandsSection onGetStarted={handleGetStarted} />
+        <WhyChoose />
+        <StatsBand />
+        <HowToStart />
+        <Testimonials />
+        <InquirySection key={selectedBrand} selectedBrand={selectedBrand} />
+        <FinalCTA onApply={scrollToInquiry} />
+      </main>
       <Footer onApply={scrollToInquiry} />
     </>
   )
