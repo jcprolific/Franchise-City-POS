@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export interface InquiryInput {
   fullName: string;
   email: string;
@@ -36,4 +38,19 @@ export function buildInquiryPayload(input: InquiryInput): InquiryRow {
     phone: input.phone.trim(),
     interested_brand: input.interestedBrand,
   };
+}
+
+export interface SubmitResult {
+  ok: boolean;
+  error?: string;
+}
+
+export async function submitInquiry(input: InquiryInput): Promise<SubmitResult> {
+  const payload = buildInquiryPayload(input);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('franchise_inquiries').insert(payload as any);
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }
