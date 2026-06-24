@@ -21,3 +21,19 @@ export function validateInquiry(input: InquiryInput): ValidationErrors {
   if (input.phone.replace(/\D/g, '').length < 7) errors.phone = 'Pakilagay ang wastong contact number.';
   return errors;
 }
+
+export interface InquiryRow {
+  full_name: string;
+  email: string;
+  phone: string;
+  interested_brand: string | null;
+}
+
+export function buildInquiryPayload(input: InquiryInput): InquiryRow {
+  return {
+    full_name: input.fullName.trim(),
+    email: input.email.trim(),
+    phone: input.phone.trim(),
+    interested_brand: input.interestedBrand,
+  };
+}
