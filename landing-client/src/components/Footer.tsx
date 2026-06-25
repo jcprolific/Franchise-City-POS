@@ -15,7 +15,7 @@ export default function Footer() {
           <h4>Navigate</h4>
           <a href="#top">Home</a>
           <a href="#brands">Brands</a>
-          <a href="#how">Franchising</a>
+          <a href="#franchising">Franchising</a>
           <a href="#locations">Store Locations</a>
           <a href="#about">About Us</a>
           <a href="#contact">Contact Us</a>

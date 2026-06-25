@@ -5,7 +5,7 @@ import AboutUs from './components/AboutUs'
 import BrandsSection from './components/BrandsSection'
 import WhyChoose from './components/WhyChoose'
 import StatsBand from './components/StatsBand'
-import HowToStart from './components/HowToStart'
+import Franchising from './components/Franchising'
 import StoreLocations from './components/StoreLocations'
 import Testimonials from './components/Testimonials'
 import InquirySection from './components/InquirySection'
@@ -34,7 +34,7 @@ export default function App() {
         <BrandsSection onGetStarted={handleGetStarted} />
         <WhyChoose />
         <StatsBand />
-        <HowToStart />
+        <Franchising onApply={scrollToInquiry} />
         <StoreLocations onApply={scrollToInquiry} />
         <Testimonials />
         <InquirySection key={selectedBrand} selectedBrand={selectedBrand} />
