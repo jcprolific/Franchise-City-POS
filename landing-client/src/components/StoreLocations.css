@@ -1,0 +1,13 @@
+.locations { background: var(--fc-black); color: var(--fc-on-dark); }
+.locations__eyebrow { display: block; text-align: center; }
+.locations__title { color: var(--fc-on-dark); margin-top: 10px; }
+.locations__sub { color: var(--fc-on-dark-muted); }
+.locations__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 44px; }
+.locations__card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: var(--fc-radius); padding: 24px; text-align: center; }
+.locations__card svg { color: var(--fc-orange); }
+.locations__card h3 { font-size: 17px; font-weight: 700; margin-top: 12px; color: var(--fc-on-dark); }
+.locations__card span { display: block; margin-top: 4px; font-size: 13px; color: var(--fc-on-dark-muted); }
+.locations__cta { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 44px; flex-wrap: wrap; }
+.locations__cta p { color: var(--fc-on-dark-muted); font-family: var(--fc-font-display); font-weight: 700; }
+@media (max-width: 860px) { .locations__grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .locations__grid { grid-template-columns: 1fr; } }

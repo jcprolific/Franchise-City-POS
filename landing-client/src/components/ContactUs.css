@@ -1,0 +1,11 @@
+.contact { background: var(--fc-peach); }
+.contact__eyebrow { display: block; text-align: center; }
+.contact__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 44px; }
+.contact__card { background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.75); border-radius: var(--fc-radius); padding: 24px; text-align: center; transition: transform .15s ease, box-shadow .15s ease; }
+.contact__card:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(40,30,20,.08); }
+.contact__icon { width: 46px; height: 46px; margin: 0 auto 14px; border-radius: 12px; display: grid; place-items: center; background: #fff; color: var(--fc-orange-solid); }
+.contact__label { display: block; font-family: var(--fc-font-display); font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--fc-text); }
+.contact__value { display: block; margin-top: 6px; font-size: 14px; color: var(--fc-text-muted); word-break: break-word; }
+.contact__cta { display: flex; justify-content: center; margin-top: 40px; }
+@media (max-width: 860px) { .contact__grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .contact__grid { grid-template-columns: 1fr; } }

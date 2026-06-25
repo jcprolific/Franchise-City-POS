@@ -1,7 +1,7 @@
 import { Globe, Camera, AtSign } from 'lucide-react'
 import './Footer.css'
 
-export default function Footer({ onApply }: { onApply: () => void }) {
+export default function Footer() {
   return (
     <footer className="footer">
       <div className="fc-container footer__inner">
@@ -15,8 +15,10 @@ export default function Footer({ onApply }: { onApply: () => void }) {
           <h4>Navigate</h4>
           <a href="#top">Home</a>
           <a href="#brands">Brands</a>
-          <a href="#how">How It Works</a>
-          <button className="footer__linkbtn" onClick={onApply}>Franchise Now</button>
+          <a href="#how">Franchising</a>
+          <a href="#locations">Store Locations</a>
+          <a href="#about">About Us</a>
+          <a href="#contact">Contact Us</a>
         </div>
         <div className="footer__col">
           <h4>Follow</h4>
