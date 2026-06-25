@@ -1,11 +1,12 @@
-import { Flame } from 'lucide-react'
 import './Nav.css'
 
 export default function Nav({ onApply }: { onApply: () => void }) {
   return (
     <header className="nav">
       <div className="fc-container nav__inner">
-        <a href="#top" className="nav__logo"><Flame size={20} aria-hidden={true} /> FRANCHISE<span>CITY</span></a>
+        <a href="#top" className="nav__logo">
+          <img src="/brands/franchise-city.png" alt="Franchise City" />
+        </a>
         <nav className="nav__links">
           <a href="#brands">Brands</a>
           <a href="#why">Why Us</a>

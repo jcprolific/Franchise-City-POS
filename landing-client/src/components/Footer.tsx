@@ -1,4 +1,4 @@
-import { Flame, Globe, Camera, AtSign } from 'lucide-react'
+import { Globe, Camera, AtSign } from 'lucide-react'
 import './Footer.css'
 
 export default function Footer({ onApply }: { onApply: () => void }) {
@@ -6,7 +6,9 @@ export default function Footer({ onApply }: { onApply: () => void }) {
     <footer className="footer">
       <div className="fc-container footer__inner">
         <div className="footer__brand">
-          <a href="#top" className="footer__logo"><Flame size={18} aria-hidden={true} /> FRANCHISE<span>CITY</span></a>
+          <a href="#top" className="footer__logo">
+            <img src="/brands/franchise-city.png" alt="Franchise City" />
+          </a>
           <p>A Filipino franchising platform helping entrepreneurs launch proven brands across the Philippines.</p>
         </div>
         <div className="footer__col">
