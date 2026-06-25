@@ -7,7 +7,7 @@ export default function Footer({ onApply }: { onApply: () => void }) {
       <div className="fc-container footer__inner">
         <div className="footer__brand">
           <a href="#top" className="footer__logo">
-            <img src="/brands/franchise-city.png" alt="Franchise City" />
+            <img src="/brands/franchise-city-light.png" alt="Franchise City" />
           </a>
           <p>A Filipino franchising platform helping entrepreneurs launch proven brands across the Philippines.</p>
         </div>

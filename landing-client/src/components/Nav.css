@@ -1,7 +1,7 @@
 .nav { position: sticky; top: 0; z-index: 50; background: rgba(26,20,16,.92); backdrop-filter: blur(8px); }
-.nav__inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.nav__inner { display: flex; align-items: center; justify-content: space-between; height: 92px; }
 .nav__logo { display: flex; align-items: center; }
-.nav__logo img { height: 38px; width: auto; background: #fff; border-radius: 6px; padding: 4px 10px; object-fit: contain; }
+.nav__logo img { height: 60px; width: auto; object-fit: contain; }
 .nav__links { display: flex; gap: 28px; }
 .nav__links a { color: var(--fc-on-dark-muted); font-size: 14px; font-weight: 500; }
 .nav__links a:hover { color: var(--fc-on-dark); }
