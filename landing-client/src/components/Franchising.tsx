@@ -8,7 +8,7 @@ const steps = [
   'Sign the Franchise Agreement and complete your Franchisee Onboarding.',
 ]
 
-export default function Franchising({ onApply }: { onApply: () => void }) {
+export default function Franchising() {
   return (
     <section className="franchising fc-section" id="franchising">
       <div className="fc-container franchising__inner">
@@ -48,9 +48,9 @@ export default function Franchising({ onApply }: { onApply: () => void }) {
             ))}
           </ol>
 
-          <button className="fc-btn fc-btn-primary franchising__cta" onClick={onApply}>
+          <a className="fc-btn fc-btn-primary franchising__cta" href="/#inquiry">
             Franchise Now <ArrowRight size={16} aria-hidden={true} />
-          </button>
+          </a>
         </div>
 
         <div className="franchising__media">

@@ -6,19 +6,19 @@ export default function Footer() {
     <footer className="footer">
       <div className="fc-container footer__inner">
         <div className="footer__brand">
-          <a href="#top" className="footer__logo">
+          <a href="/" className="footer__logo">
             <img src="/brands/franchise-city-light.png" alt="Franchise City" />
           </a>
           <p>A Filipino franchising platform helping entrepreneurs launch proven brands across the Philippines.</p>
         </div>
         <div className="footer__col">
           <h4>Navigate</h4>
-          <a href="#top">Home</a>
-          <a href="#brands">Brands</a>
-          <a href="#franchising">Franchising</a>
-          <a href="#locations">Store Locations</a>
-          <a href="#about">About Us</a>
-          <a href="#contact">Contact Us</a>
+          <a href="/">Home</a>
+          <a href="/#brands">Brands</a>
+          <a href="/franchising">Franchising</a>
+          <a href="/#locations">Store Locations</a>
+          <a href="/#about">About Us</a>
+          <a href="/#contact">Contact Us</a>
         </div>
         <div className="footer__col">
           <h4>Follow</h4>
