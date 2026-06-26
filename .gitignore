@@ -5,3 +5,12 @@
 node_modules/
 dist/
 .vercel/
+
+# Editor / AI tool config (machine-local, may contain secrets)
+.cursor/
+.codex/
+.gemini/
+.zed/
+.mcp.json
+opencode.json
+config/mcporter.json

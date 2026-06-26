@@ -9,8 +9,8 @@ export const BRANDS: Record<BrandSlug, BrandConfig> = {
 
 export const BRAND_LIST: BrandConfig[] = [potatoCornerBrand, cofteaBrand];
 
-/** Brands shown on the login screen (Potato Corner hidden for now). */
-export const LOGIN_BRAND_LIST: BrandConfig[] = [cofteaBrand];
+/** Brands shown on the login screen. */
+export const LOGIN_BRAND_LIST: BrandConfig[] = [potatoCornerBrand, cofteaBrand];
 
 export function getBrandBySlug(slug: BrandSlug): BrandConfig {
   return BRANDS[slug];
@@ -20,7 +20,7 @@ export function isBrandSlug(value: string): value is BrandSlug {
   return value === 'potato-corner' || value === 'coftea';
 }
 
-export const DEFAULT_BRAND_SLUG: BrandSlug = 'coftea';
+export const DEFAULT_BRAND_SLUG: BrandSlug = 'potato-corner';
 export const BRAND_STORAGE_KEY = 'coftea.pos.selectedBrand';
 
 export * from './types';

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { LOGIN_BRAND_LIST } from '../brands';
 import { useBrand } from '../context/BrandContext';
@@ -13,12 +13,6 @@ type LoginTab = 'email' | 'pin';
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const { brand, brandSlug, setBrandSlug } = useBrand();
   const showBrandSwitcher = LOGIN_BRAND_LIST.length > 1;
-
-  useEffect(() => {
-    if (brandSlug !== 'coftea') {
-      setBrandSlug('coftea');
-    }
-  }, [brandSlug, setBrandSlug]);
 
   const [activeTab, setActiveTab] = useState<LoginTab>('email');
   const [targetArea, setTargetArea] = useState<'pos' | 'hq'>('pos');
