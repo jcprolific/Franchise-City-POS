@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { LOGIN_BRAND_LIST } from '../brands';
 import { useBrand } from '../context/BrandContext';
@@ -25,6 +25,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
+
+  // Deep link from the Franchise City landing "HQ Login" button: ?area=hq
+  // pre-selects the HQ path, mirroring handleHqAccessClick().
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('area') === 'hq') {
+      setTargetArea('hq');
+      setActiveTab('email');
+      setHqHint('Sign in with your Coftea HQ account, or use staff PIN 1234 for Coftea HQ Demo.');
+    }
+  }, []);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
