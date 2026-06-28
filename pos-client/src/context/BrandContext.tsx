@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import {
   BRAND_STORAGE_KEY,
   DEFAULT_BRAND_SLUG,
+  LOGIN_BRAND_LIST,
   getBrandBySlug,
   isBrandSlug,
   type BrandConfig,
@@ -22,7 +23,12 @@ const BrandContext = createContext<BrandContextValue | null>(null);
 
 function readStoredBrand(): BrandSlug {
   const stored = localStorage.getItem(BRAND_STORAGE_KEY);
-  return stored && isBrandSlug(stored) ? stored : DEFAULT_BRAND_SLUG;
+  // Only honor a stored brand if it's still selectable on the login screen, so a
+  // previously-chosen hidden brand (e.g. Potato Corner) can't resurface there.
+  if (stored && isBrandSlug(stored) && LOGIN_BRAND_LIST.some((b) => b.slug === stored)) {
+    return stored;
+  }
+  return DEFAULT_BRAND_SLUG;
 }
 
 export function BrandProvider({ children }: { children: ReactNode }) {
