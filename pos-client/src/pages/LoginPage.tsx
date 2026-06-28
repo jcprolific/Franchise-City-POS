@@ -21,18 +21,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
-  const [hqHint, setHqHint] = useState('');
 
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
 
   // Deep link from the Franchise City landing "HQ Login" button: ?area=hq
-  // pre-selects the HQ path, mirroring handleHqAccessClick().
+  // sends HQ users straight to the Staff PIN entry, mirroring handleHqAccessClick().
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('area') === 'hq') {
       setTargetArea('hq');
-      setActiveTab('email');
-      setHqHint('Sign in with your Coftea HQ account, or use staff PIN 1234 for Coftea HQ Demo.');
+      setActiveTab('pin');
     }
   }, []);
 
@@ -137,9 +135,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleHqAccessClick = () => {
     setTargetArea('hq');
-    setActiveTab('email');
+    setActiveTab('pin');
     setEmailError('');
-    setHqHint('Sign in with your Coftea HQ account, or use staff PIN 1234 for Coftea HQ Demo.');
   };
 
   return (
@@ -217,9 +214,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
             {emailError && (
               <div className="login-error">{emailError}</div>
-            )}
-            {hqHint && (
-              <div className="login-hq-hint">{hqHint}</div>
             )}
 
             <button
