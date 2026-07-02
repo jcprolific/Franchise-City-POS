@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   BarChart3,
   BookOpen,
+  ClipboardList,
   Handshake,
   LayoutDashboard,
   LogOut,
@@ -25,6 +26,7 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
   const navItems = [
     { path: '/hq', label: 'Network Overview', icon: <LayoutDashboard size={18} /> },
     { path: '/hq/branches', label: 'Franchisees', icon: <Store size={18} /> },
+    { path: '/hq/supply-orders', label: 'Supply Orders', icon: <ClipboardList size={18} /> },
     { path: '/hq/warehouse', label: 'Warehouse', icon: <Warehouse size={18} /> },
     { path: '/hq/suppliers', label: 'Suppliers', icon: <Handshake size={18} /> },
     { path: '/hq/catalog', label: 'Menu Catalog', icon: <BookOpen size={18} /> },

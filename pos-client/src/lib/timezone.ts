@@ -41,3 +41,21 @@ export function toManilaTimeLabel(dateInput: string | Date) {
   }).format(d);
 }
 
+export function toRelativeTimeLabel(dateInput: string | Date) {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (Number.isNaN(d.getTime())) {
+    return '--';
+  }
+
+  const diffMs = Date.now() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+
+  return toManilaTimeLabel(d);
+}
+

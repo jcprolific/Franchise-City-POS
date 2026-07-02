@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { Product, ProductVariant, Addon, SugarLevel, IceLevel, CartItemAddon } from '../types';
+import type { Product, ProductVariant, Addon, IceLevel, CartItemAddon } from '../types';
 import './CustomizationModal.css';
 
 interface CustomizationModalProps {
@@ -9,14 +9,12 @@ interface CustomizationModalProps {
   onAddToCart: (
     product: Product,
     variant: ProductVariant | null,
-    sugar: SugarLevel,
     ice: IceLevel,
     addons: CartItemAddon[]
   ) => void;
   onClose: () => void;
 }
 
-const sugarLevels: SugarLevel[] = ['0%', '25%', '50%', '75%', '100%'];
 const iceLevels: IceLevel[] = ['NONE', 'LESS', 'NORMAL', 'EXTRA'];
 
 export default function CustomizationModal({
@@ -29,7 +27,6 @@ export default function CustomizationModal({
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     variants.length > 0 ? variants[0] : null
   );
-  const [sugarLevel, setSugarLevel] = useState<SugarLevel>('100%');
   const [iceLevel, setIceLevel] = useState<IceLevel>('NORMAL');
   const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
 
@@ -63,7 +60,7 @@ export default function CustomizationModal({
       })
       .filter(Boolean) as CartItemAddon[];
 
-    onAddToCart(product, selectedVariant, sugarLevel, iceLevel, cartAddons);
+    onAddToCart(product, selectedVariant, iceLevel, cartAddons);
   };
 
   return (
@@ -101,22 +98,6 @@ export default function CustomizationModal({
               </div>
             </div>
           )}
-
-          {/* Sugar Level */}
-          <div className="option-group">
-            <span className="option-group-label">Sugar Level</span>
-            <div className="option-buttons">
-              {sugarLevels.map((s) => (
-                <button
-                  key={s}
-                  className={`option-btn ${sugarLevel === s ? 'selected' : ''}`}
-                  onClick={() => setSugarLevel(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Ice Level */}
           <div className="option-group">

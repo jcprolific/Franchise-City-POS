@@ -27,11 +27,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [pinError, setPinError] = useState('');
 
   // Deep link from the Franchise City landing "HQ Login" button: ?area=hq
-  // pre-selects the HQ path, mirroring handleHqAccessClick().
+  // sends HQ users straight to the Staff PIN entry — the real HQ access portal.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('area') === 'hq') {
       setTargetArea('hq');
-      setActiveTab('email');
+      setActiveTab('pin');
       setHqHint('Sign in with your Coftea HQ account, or use staff PIN 1234 for Coftea HQ Demo.');
     }
   }, []);
@@ -244,6 +244,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         {activeTab === 'pin' && (
           <div className="login-pin-section">
             <span className="login-label">Enter Staff PIN</span>
+            {hqHint && (
+              <div className="login-hq-hint">{hqHint}</div>
+            )}
             <div className="pin-dots">
               {[0, 1, 2, 3].map((i) => (
                 <div

@@ -69,6 +69,8 @@ export interface HqSupplierRow {
   category: string | null;
   is_active: boolean | null;
   created_at: string | null;
+  outstanding_balance?: number | null;
+  credit_terms?: string | null;
   _local?: boolean;
 }
 
@@ -167,7 +169,7 @@ export const cofteaSampleBranches: HqDisplayBranch[] = [
     franchisee_phone: '0936 361 1867',
     franchisee_email: 'jeremiah.codillero@coftea.ph',
     opening_date: '2026-08-01',
-    onboarding_status: 'onboarding',
+    onboarding_status: 'for_training_schedule',
   },
   {
     id: 'sample-ort',
@@ -191,7 +193,7 @@ export const cofteaSampleBranches: HqDisplayBranch[] = [
     franchisee_phone: '0928 441 7701',
     franchisee_email: 'marco.reyes@coftea.ph',
     opening_date: '2026-09-10',
-    onboarding_status: 'onboarding',
+    onboarding_status: 'under_construction',
   },
   {
     id: 'sample-qc',
@@ -215,7 +217,7 @@ export const cofteaSampleBranches: HqDisplayBranch[] = [
     franchisee_phone: '0917 884 5530',
     franchisee_email: 'paolo.mendoza@coftea.ph',
     opening_date: '2026-10-05',
-    onboarding_status: 'onboarding',
+    onboarding_status: 'signed_contract',
   },
 ];
 
@@ -230,6 +232,8 @@ export const cofteaSampleSuppliers: HqSupplierRow[] = [
     category: 'Tea Leaves & Base Ingredients',
     is_active: true,
     created_at: null,
+    outstanding_balance: 128500,
+    credit_terms: 'Net 30',
   },
   {
     id: 's-cf-002',
@@ -241,6 +245,8 @@ export const cofteaSampleSuppliers: HqSupplierRow[] = [
     category: 'Espresso Beans & Coffee',
     is_active: true,
     created_at: null,
+    outstanding_balance: 74200,
+    credit_terms: 'Net 15',
   },
   {
     id: 's-cf-003',
@@ -252,6 +258,8 @@ export const cofteaSampleSuppliers: HqSupplierRow[] = [
     category: 'Tapioca Pearls & Boba',
     is_active: true,
     created_at: null,
+    outstanding_balance: 0,
+    credit_terms: 'Net 30',
   },
   {
     id: 's-cf-004',
@@ -263,6 +271,8 @@ export const cofteaSampleSuppliers: HqSupplierRow[] = [
     category: 'Syrups & Flavorings',
     is_active: true,
     created_at: null,
+    outstanding_balance: 43800,
+    credit_terms: 'Net 30',
   },
   {
     id: 's-cf-005',
@@ -274,6 +284,8 @@ export const cofteaSampleSuppliers: HqSupplierRow[] = [
     category: 'Milk & Dairy',
     is_active: true,
     created_at: null,
+    outstanding_balance: 96750,
+    credit_terms: 'Net 15',
   },
   {
     id: 's-cf-006',
@@ -285,6 +297,8 @@ export const cofteaSampleSuppliers: HqSupplierRow[] = [
     category: 'Cups, Lids & Packaging',
     is_active: true,
     created_at: null,
+    outstanding_balance: 0,
+    credit_terms: 'COD',
   },
   {
     id: 's-cf-007',
@@ -296,6 +310,8 @@ export const cofteaSampleSuppliers: HqSupplierRow[] = [
     category: 'Cold Storage & Delivery',
     is_active: true,
     created_at: null,
+    outstanding_balance: 18300,
+    credit_terms: 'Net 7',
   },
   {
     id: 's-cf-008',
@@ -307,6 +323,8 @@ export const cofteaSampleSuppliers: HqSupplierRow[] = [
     category: 'Mall Operations',
     is_active: true,
     created_at: null,
+    outstanding_balance: 210000,
+    credit_terms: 'Net 30',
   },
 ];
 

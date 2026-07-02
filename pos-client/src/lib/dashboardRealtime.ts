@@ -46,6 +46,7 @@ interface ColumnMap {
   paymentStatus?: string;
   cashierId?: string;
   paymentReference?: string;
+  orderType?: string;
 }
 
 const DEFAULT_POS_ORDER_COLUMNS: ColumnMap = {
@@ -64,6 +65,7 @@ const DEFAULT_POS_ORDER_COLUMNS: ColumnMap = {
   paymentStatus: 'payment_status',
   cashierId: 'cashier_id',
   paymentReference: 'payment_reference',
+  orderType: 'order_type',
 };
 
 let cachedColumns: ColumnMap | null = null;
@@ -90,6 +92,7 @@ function buildColumnMapFromRow(row: RowRecord): ColumnMap {
     paymentStatus: pickColumn(keys, ['payment_status']),
     cashierId: pickColumn(keys, ['cashier_id']),
     paymentReference: pickColumn(keys, ['payment_reference', 'reference_no', 'gcash_reference_no', 'transaction_reference']),
+    orderType: pickColumn(keys, ['order_type', 'service_type']),
   };
 }
 
@@ -184,6 +187,14 @@ export function buildLiveDashboardData(
   };
 }
 
+function isCountableSale(row: RowRecord, columns: ColumnMap) {
+  const status = columns.status ? asString(row[columns.status], 'COMPLETED').toUpperCase() : 'COMPLETED';
+  const paymentStatus = columns.paymentStatus
+    ? asString(row[columns.paymentStatus], 'PAID').toUpperCase()
+    : 'PAID';
+  return status === 'COMPLETED' && paymentStatus === 'PAID';
+}
+
 export async function fetchLiveDashboardData(branchValue?: string) {
   const columns = await resolvePosOrderColumns();
   const manilaToday = getManilaIsoDateKey(new Date());
@@ -196,6 +207,7 @@ export async function fetchLiveDashboardData(branchValue?: string) {
     if (!dateValue) return false;
     const sameDay = isSameManilaDate(asString(dateValue), manilaToday);
     if (!sameDay) return false;
+    if (!isCountableSale(row, columns)) return false;
     if (columns.branch && branchValue) {
       return asString(row[columns.branch]) === branchValue;
     }
@@ -207,6 +219,7 @@ export async function fetchLiveDashboardData(branchValue?: string) {
     if (!dateValue) return false;
     const sameDay = isSameManilaDate(asString(dateValue), manilaToday);
     if (sameDay) return false;
+    if (!isCountableSale(row, columns)) return false;
     if (columns.branch && branchValue) {
       return asString(row[columns.branch]) === branchValue;
     }
@@ -233,6 +246,8 @@ export function getInsertPayloadForPosOrder(
     brandId?: string;
     brandName?: string;
     cashierId?: string;
+    status?: string;
+    orderType?: string;
   }
 ) {
   const data: Record<string, unknown> = {};
@@ -246,11 +261,14 @@ export function getInsertPayloadForPosOrder(
   if (columns.brandName && payload.brandName) data[columns.brandName] = payload.brandName;
   if (columns.subtotal) data[columns.subtotal] = payload.subtotal;
   if (columns.discountAmount) data[columns.discountAmount] = payload.discountAmount;
-  if (columns.status) data[columns.status] = 'COMPLETED';
+  if (columns.status) data[columns.status] = payload.status ?? 'NEW';
   if (columns.paymentStatus) data[columns.paymentStatus] = 'PAID';
   if (columns.cashierId && payload.cashierId) data[columns.cashierId] = payload.cashierId;
   if (columns.paymentReference && payload.paymentReference) {
     data[columns.paymentReference] = payload.paymentReference;
+  }
+  if (columns.orderType && payload.orderType) {
+    data[columns.orderType] = payload.orderType;
   }
 
   return data;

@@ -53,7 +53,6 @@ export interface RecipeLine {
   yield_notes?: string | null;
 }
 
-export type SugarLevel = '0%' | '25%' | '50%' | '75%' | '100%';
 export type IceLevel = 'NONE' | 'LESS' | 'NORMAL' | 'EXTRA';
 export type DiscountType = 'NONE' | 'PWD' | 'SENIOR' | 'PROMO';
 export type PaymentMethod = 'CASH' | 'GCASH' | 'CARD';
@@ -69,7 +68,6 @@ export interface CartItem {
   product: Product;
   variant: ProductVariant | null;
   quantity: number;
-  sugar_level: SugarLevel;
   ice_level: IceLevel;
   addons: CartItemAddon[];
   line_total: number;

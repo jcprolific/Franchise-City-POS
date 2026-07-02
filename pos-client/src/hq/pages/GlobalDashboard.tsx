@@ -1,11 +1,48 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, CreditCard, ShoppingBag, Wallet, Store, AlertTriangle } from 'lucide-react';
+import {
+  Search,
+  CreditCard,
+  ShoppingBag,
+  Wallet,
+  Store,
+  AlertTriangle,
+  Plus,
+  Trash2,
+  FileText,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useBrand } from '../../context/BrandContext';
 import type { HqKpiSnapshot, HqWeeklyRevenueItem } from '../lib/hqKpiService';
 import { fetchHqKpiData } from '../lib/hqKpiService';
-import { getHqDemoData } from '../data/getHqDemoData';
+import { getHqDemoData, type HqBranchAlert } from '../data/getHqDemoData';
+import ActionPlanModal from '../components/ActionPlanModal';
+import {
+  alertToWatchInput,
+  createWatchItem,
+  deleteWatchItem,
+  fetchWatchItems,
+  updateWatchItemStatus,
+  watchItemToAlert,
+  FLAG_LABELS,
+  WORKFLOW_LABELS,
+  type BranchWatchItem,
+  type WatchFlag,
+  type WorkflowStatus,
+} from '../lib/branchWatchService';
 import './GlobalDashboard.css';
+
+const WORKFLOW_ORDER: WorkflowStatus[] = ['open', 'in_progress', 'resolved'];
+
+function nextWorkflowStatus(status: WorkflowStatus): WorkflowStatus {
+  const idx = WORKFLOW_ORDER.indexOf(status);
+  return WORKFLOW_ORDER[(idx + 1) % WORKFLOW_ORDER.length];
+}
+
+const EMPTY_WATCH_FORM = {
+  branchName: '',
+  issue: '',
+  flag: 'needs_attention' as WatchFlag,
+};
 
 const EMPTY_SNAPSHOT: HqKpiSnapshot = {
   todayRevenue: 0,
@@ -36,6 +73,16 @@ export default function GlobalDashboard() {
   const [usingDemoData, setUsingDemoData] = useState(false);
   const [range, setRange] = useState<'daily' | 'weekly'>('weekly');
   const [search, setSearch] = useState('');
+  const [activeAlert, setActiveAlert] = useState<HqBranchAlert | null>(null);
+
+  const [watchItems, setWatchItems] = useState<BranchWatchItem[]>([]);
+  const [watchLoading, setWatchLoading] = useState(true);
+  const [watchError, setWatchError] = useState('');
+  const [statusFilter, setStatusFilter] = useState<WorkflowStatus | 'all'>('all');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [watchForm, setWatchForm] = useState(EMPTY_WATCH_FORM);
+  const [savingWatch, setSavingWatch] = useState(false);
+  const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -116,13 +163,97 @@ export default function GlobalDashboard() {
   const initials = brand.shortName.slice(0, 2).toUpperCase();
   const weeklyRevenueTotal = displayChartData.reduce((sum, item) => sum + item.revenue, 0);
 
-  const filteredBranchesToCheck = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return demo.branchesToCheck;
-    return demo.branchesToCheck.filter(
-      (b) => b.name.toLowerCase().includes(q) || b.meta.toLowerCase().includes(q)
+  const loadWatchItems = useCallback(async () => {
+    setWatchLoading(true);
+    setWatchError('');
+    try {
+      const seeds = demo.branchesToCheck.map((alert) => alertToWatchInput(alert, brand.dbBrandId));
+      const result = await fetchWatchItems(brand.dbBrandId, seeds);
+      setWatchItems(result.items);
+      if (result.error) setWatchError(result.error);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load watch list.';
+      setWatchError(message);
+    } finally {
+      setWatchLoading(false);
+    }
+  }, [brand.dbBrandId, demo.branchesToCheck]);
+
+  useEffect(() => {
+    void loadWatchItems();
+  }, [loadWatchItems]);
+
+  const openCounts = useMemo(() => {
+    return watchItems.reduce(
+      (acc, item) => {
+        acc[item.workflow_status] += 1;
+        return acc;
+      },
+      { open: 0, in_progress: 0, resolved: 0 } as Record<WorkflowStatus, number>
     );
-  }, [demo.branchesToCheck, search]);
+  }, [watchItems]);
+
+  const filteredWatchItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return watchItems.filter((item) => {
+      const matchesStatus = statusFilter === 'all' || item.workflow_status === statusFilter;
+      const matchesSearch =
+        !q ||
+        item.branch_name.toLowerCase().includes(q) ||
+        item.issue.toLowerCase().includes(q);
+      return matchesStatus && matchesSearch;
+    });
+  }, [watchItems, statusFilter, search]);
+
+  const handleAddWatchItem = useCallback(async () => {
+    if (!watchForm.branchName.trim() || !watchForm.issue.trim() || savingWatch) return;
+    setSavingWatch(true);
+    setWatchError('');
+    const result = await createWatchItem({
+      brandId: brand.dbBrandId,
+      branchName: watchForm.branchName,
+      issue: watchForm.issue,
+      flag: watchForm.flag,
+      createdBy: cashierName,
+    });
+    setSavingWatch(false);
+    if (!result.ok || !result.item) {
+      setWatchError(result.error || 'Failed to add entry.');
+      return;
+    }
+    setWatchItems((prev) => [result.item!, ...prev]);
+    setWatchForm(EMPTY_WATCH_FORM);
+    setShowAddForm(false);
+  }, [watchForm, savingWatch, brand.dbBrandId, cashierName]);
+
+  const handleAdvanceStatus = useCallback(
+    async (item: BranchWatchItem) => {
+      const next = nextWorkflowStatus(item.workflow_status);
+      setPendingStatusId(item.id);
+      const result = await updateWatchItemStatus(brand.dbBrandId, item.id, next);
+      setPendingStatusId(null);
+      if (!result.ok || !result.item) {
+        setWatchError(result.error || 'Failed to update status.');
+        return;
+      }
+      setWatchItems((prev) => prev.map((row) => (row.id === item.id ? result.item! : row)));
+    },
+    [brand.dbBrandId]
+  );
+
+  const handleDeleteWatchItem = useCallback(
+    async (item: BranchWatchItem) => {
+      const confirmed = window.confirm(`Remove "${item.branch_name}" from the watch list?`);
+      if (!confirmed) return;
+      const result = await deleteWatchItem(brand.dbBrandId, item.id);
+      if (!result.ok) {
+        setWatchError(result.error || 'Failed to remove entry.');
+        return;
+      }
+      setWatchItems((prev) => prev.filter((row) => row.id !== item.id));
+    },
+    [brand.dbBrandId]
+  );
 
   const filteredLiveOrders = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -265,33 +396,177 @@ export default function GlobalDashboard() {
       </section>
 
       <section className="hq-split-row">
-        <section className="hq-panel">
+        <section className="hq-panel hq-watch-panel">
           <div className="hq-panel-head">
             <div>
               <span className="hq-eyebrow">Needs Attention</span>
               <h2>Branches to Check</h2>
             </div>
+            <button
+              type="button"
+              className="hq-ghost-btn hq-watch-add-btn"
+              onClick={() => setShowAddForm((prev) => !prev)}
+            >
+              <Plus size={14} />
+              {showAddForm ? 'Close' : 'Add Entry'}
+            </button>
           </div>
 
+          <div className="hq-watch-filters" role="tablist" aria-label="Filter by status">
+            {(['all', 'open', 'in_progress', 'resolved'] as const).map((key) => {
+              const count =
+                key === 'all' ? watchItems.length : openCounts[key as WorkflowStatus];
+              const label = key === 'all' ? 'All' : WORKFLOW_LABELS[key as WorkflowStatus];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={statusFilter === key}
+                  className={`hq-watch-filter ${statusFilter === key ? 'is-active' : ''}`}
+                  onClick={() => setStatusFilter(key)}
+                >
+                  {label}
+                  <span className="hq-watch-filter-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {showAddForm && (
+            <div className="hq-watch-form">
+              <div className="hq-watch-form-row">
+                <label className="hq-watch-field">
+                  <span>Branch</span>
+                  <input
+                    type="text"
+                    list="hq-watch-branch-options"
+                    value={watchForm.branchName}
+                    onChange={(e) => setWatchForm((f) => ({ ...f, branchName: e.target.value }))}
+                    placeholder="e.g. Coftea Makati"
+                  />
+                  <datalist id="hq-watch-branch-options">
+                    {demo.sampleBranches.map((b) => (
+                      <option key={b.id} value={b.name} />
+                    ))}
+                  </datalist>
+                </label>
+                <label className="hq-watch-field hq-watch-field--flag">
+                  <span>Flag</span>
+                  <select
+                    value={watchForm.flag}
+                    onChange={(e) =>
+                      setWatchForm((f) => ({ ...f, flag: e.target.value as WatchFlag }))
+                    }
+                  >
+                    <option value="needs_attention">{FLAG_LABELS.needs_attention}</option>
+                    <option value="offline">{FLAG_LABELS.offline}</option>
+                  </select>
+                </label>
+              </div>
+              <label className="hq-watch-field">
+                <span>Issue</span>
+                <input
+                  type="text"
+                  value={watchForm.issue}
+                  onChange={(e) => setWatchForm((f) => ({ ...f, issue: e.target.value }))}
+                  placeholder="e.g. Below target · 78% of daily goal"
+                />
+              </label>
+              <div className="hq-watch-form-actions">
+                <button
+                  type="button"
+                  className="hq-ghost-btn"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setWatchForm(EMPTY_WATCH_FORM);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="hq-watch-save-btn"
+                  disabled={!watchForm.branchName.trim() || !watchForm.issue.trim() || savingWatch}
+                  onClick={() => void handleAddWatchItem()}
+                >
+                  {savingWatch ? 'Adding...' : 'Add to Watch List'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {watchError && <div className="hq-watch-error">{watchError}</div>}
+
           <ul className="hq-alert-list hq-alert-list--branches">
-            {filteredBranchesToCheck.map((branch) => (
-              <li key={branch.id} className="hq-alert hq-alert--branch">
-                <span className="hq-alert-icon">
-                  <AlertTriangle size={14} />
-                </span>
-                <div className="hq-alert-body">
-                  <div className="hq-alert-title">{branch.name}</div>
-                  <div className="hq-alert-sub">{branch.meta}</div>
-                </div>
-                <span className={`hq-branch-status ${branch.status === 'Offline' ? 'is-offline' : 'is-warning'}`}>
-                  {branch.status}
-                </span>
-              </li>
-            ))}
-            {filteredBranchesToCheck.length === 0 && (
+            {watchLoading && (
               <li className="hq-alert hq-alert--branch">
                 <div className="hq-alert-body">
-                  <div className="hq-alert-sub">No branches match your search.</div>
+                  <div className="hq-alert-sub">Loading watch list...</div>
+                </div>
+              </li>
+            )}
+
+            {!watchLoading &&
+              filteredWatchItems.map((item) => (
+                <li
+                  key={item.id}
+                  className={`hq-alert hq-alert--branch hq-watch-row is-${item.workflow_status}`}
+                >
+                  <span className="hq-alert-icon">
+                    <AlertTriangle size={14} />
+                  </span>
+                  <div className="hq-alert-body">
+                    <div className="hq-alert-title">{item.branch_name}</div>
+                    <div className="hq-alert-sub">{item.issue}</div>
+                    <div className="hq-watch-tags">
+                      <span
+                        className={`hq-branch-status ${item.flag === 'offline' ? 'is-offline' : 'is-warning'}`}
+                      >
+                        {FLAG_LABELS[item.flag]}
+                      </span>
+                      <button
+                        type="button"
+                        className={`hq-watch-status hq-watch-status--${item.workflow_status}`}
+                        onClick={() => void handleAdvanceStatus(item)}
+                        disabled={pendingStatusId === item.id}
+                        title="Click to advance status"
+                      >
+                        {pendingStatusId === item.id
+                          ? '...'
+                          : WORKFLOW_LABELS[item.workflow_status]}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="hq-watch-actions">
+                    <button
+                      type="button"
+                      className="hq-ghost-btn hq-branch-action-btn"
+                      onClick={() => setActiveAlert(watchItemToAlert(item))}
+                    >
+                      <FileText size={13} />
+                      Action Plan
+                    </button>
+                    <button
+                      type="button"
+                      className="hq-watch-delete"
+                      onClick={() => void handleDeleteWatchItem(item)}
+                      aria-label={`Remove ${item.branch_name}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+
+            {!watchLoading && filteredWatchItems.length === 0 && (
+              <li className="hq-alert hq-alert--branch">
+                <div className="hq-alert-body">
+                  <div className="hq-alert-sub">
+                    {watchItems.length === 0
+                      ? 'No branches flagged. Add an entry to start tracking.'
+                      : 'No entries match this filter.'}
+                  </div>
                 </div>
               </li>
             )}
@@ -373,6 +648,15 @@ export default function GlobalDashboard() {
           </table>
         </div>
       </section>
+
+      {activeAlert && (
+        <ActionPlanModal
+          alert={activeAlert}
+          brandId={brand.dbBrandId}
+          issuedBy={cashierName}
+          onClose={() => setActiveAlert(null)}
+        />
+      )}
     </div>
   );
 }
