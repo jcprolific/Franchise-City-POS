@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Search, Building2, CheckCircle2, Hammer, Ban, ArrowUpDown } from 'lucide-react';
 import { useBrand } from '../../context/BrandContext';
 import { getHqDemoData, type HqDisplayBranch } from '../data/getHqDemoData';
 import {
   deleteFranchisee,
   ensureSampleFranchisees,
   fetchFranchisees,
+  getOnboardingLabel,
+  isOnboardingPipelineStatus,
+  ONBOARDING_LABELS,
+  ONBOARDING_OPERATIONAL_STATUSES,
+  ONBOARDING_PIPELINE_STAGES,
   registerFranchisee,
   updateFranchisee,
   type FranchiseeRow,
@@ -13,11 +19,15 @@ import {
 } from '../lib/franchiseeService';
 import './BranchManagement.css';
 
-const ONBOARDING_LABELS: Record<OnboardingStatus, string> = {
-  onboarding: 'Onboarding',
-  active: 'Operating',
-  suspended: 'Suspended',
-};
+type SortKey = 'code' | 'name' | 'franchisee' | 'opening' | 'status';
+type SortDir = 'asc' | 'desc';
+type StatusFilter = 'all' | 'active' | 'inactive';
+type StageFilter = 'all' | OnboardingStatus;
+
+const ALL_STAGES: OnboardingStatus[] = [
+  ...ONBOARDING_PIPELINE_STAGES,
+  ...ONBOARDING_OPERATIONAL_STATUSES,
+];
 
 const FRANCHISE_PACKAGES = [
   'Kiosk',
@@ -41,6 +51,13 @@ const emptyForm = {
   onboardingStatus: 'onboarding' as OnboardingStatus,
   isActive: true,
 };
+
+function parseOnboardingStatus(value: string | null | undefined): OnboardingStatus {
+  if (value && value in ONBOARDING_LABELS) {
+    return value as OnboardingStatus;
+  }
+  return 'onboarding';
+}
 
 function branchCodeFromId(id: string) {
   return `BR-${id.slice(0, 4).toUpperCase()}`;
@@ -70,7 +87,7 @@ function rowToForm(row: FranchiseeRow) {
     businessName: row.business_name ?? '',
     franchisePackage: row.franchise_package ?? '',
     contractStartDate: row.contract_start_date ?? '',
-    onboardingStatus: (row.onboarding_status as OnboardingStatus) ?? 'onboarding',
+    onboardingStatus: parseOnboardingStatus(row.onboarding_status),
     isActive: row.is_active,
   };
 }
@@ -103,6 +120,12 @@ export default function BranchManagement() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [stageFilter, setStageFilter] = useState<StageFilter>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const updateField = <K extends keyof typeof emptyForm>(
     key: K,
@@ -306,7 +329,91 @@ export default function BranchManagement() {
     );
   };
 
-  const tableRows = branches;
+  const stats = useMemo(() => {
+    let active = 0;
+    let pipeline = 0;
+    let suspended = 0;
+    for (const branch of branches) {
+      if (branch.is_active) active += 1;
+      if (isOnboardingPipelineStatus(branch.onboarding_status)) pipeline += 1;
+      if (branch.onboarding_status === 'suspended') suspended += 1;
+    }
+    return { total: branches.length, active, pipeline, suspended };
+  }, [branches]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const tableRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    const filtered = branches.filter((branch) => {
+      const matchesSearch =
+        !q ||
+        branch.name.toLowerCase().includes(q) ||
+        (branch.branch_code ?? '').toLowerCase().includes(q) ||
+        (branch.franchisee_name ?? '').toLowerCase().includes(q) ||
+        (branch.city ?? '').toLowerCase().includes(q) ||
+        (branch.address ?? '').toLowerCase().includes(q);
+
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && branch.is_active) ||
+        (statusFilter === 'inactive' && !branch.is_active);
+
+      const matchesStage =
+        stageFilter === 'all' || branch.onboarding_status === stageFilter;
+
+      return matchesSearch && matchesStatus && matchesStage;
+    });
+
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const sorted = [...filtered].sort((a, b) => {
+      let av = '';
+      let bv = '';
+      switch (sortKey) {
+        case 'code':
+          av = a.branch_code ?? '';
+          bv = b.branch_code ?? '';
+          break;
+        case 'franchisee':
+          av = a.franchisee_name ?? '';
+          bv = b.franchisee_name ?? '';
+          break;
+        case 'opening':
+          av = a.opening_date ?? '';
+          bv = b.opening_date ?? '';
+          break;
+        case 'status':
+          av = a.is_active ? '1' : '0';
+          bv = b.is_active ? '1' : '0';
+          break;
+        case 'name':
+        default:
+          av = a.name ?? '';
+          bv = b.name ?? '';
+          break;
+      }
+      return av.localeCompare(bv, undefined, { numeric: true }) * dir;
+    });
+
+    return sorted;
+  }, [branches, search, statusFilter, stageFilter, sortKey, sortDir]);
+
+  const hasActiveFilters =
+    search.trim() !== '' || statusFilter !== 'all' || stageFilter !== 'all';
+
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setStageFilter('all');
+  };
 
   return (
     <div className="page-container">
@@ -321,6 +428,37 @@ export default function BranchManagement() {
         <button className="btn-primary" type="button" onClick={openCreateForm}>
           <span>{showForm && !editingId ? 'Close' : '+ Register Franchisee'}</span>
         </button>
+      </div>
+
+      <div className="branch-kpi-row">
+        <article className="branch-kpi-card">
+          <span className="branch-kpi-icon"><Building2 size={18} /></span>
+          <div className="branch-kpi-body">
+            <span className="branch-kpi-label">Total Branches</span>
+            <span className="branch-kpi-value">{stats.total}</span>
+          </div>
+        </article>
+        <article className="branch-kpi-card">
+          <span className="branch-kpi-icon branch-kpi-icon--green"><CheckCircle2 size={18} /></span>
+          <div className="branch-kpi-body">
+            <span className="branch-kpi-label">Active</span>
+            <span className="branch-kpi-value">{stats.active}</span>
+          </div>
+        </article>
+        <article className="branch-kpi-card">
+          <span className="branch-kpi-icon branch-kpi-icon--amber"><Hammer size={18} /></span>
+          <div className="branch-kpi-body">
+            <span className="branch-kpi-label">In Pipeline</span>
+            <span className="branch-kpi-value">{stats.pipeline}</span>
+          </div>
+        </article>
+        <article className="branch-kpi-card">
+          <span className="branch-kpi-icon branch-kpi-icon--red"><Ban size={18} /></span>
+          <div className="branch-kpi-body">
+            <span className="branch-kpi-label">Suspended</span>
+            <span className="branch-kpi-value">{stats.suspended}</span>
+          </div>
+        </article>
       </div>
 
       {showForm && (
@@ -374,7 +512,7 @@ export default function BranchManagement() {
                 />
               </label>
               <label className="franchisee-field">
-                <span>Target opening date</span>
+                <span>Opening date</span>
                 <input
                   className="branch-input"
                   type="date"
@@ -464,11 +602,20 @@ export default function BranchManagement() {
                     updateField('onboardingStatus', e.target.value as OnboardingStatus)
                   }
                 >
-                  {(Object.keys(ONBOARDING_LABELS) as OnboardingStatus[]).map((key) => (
-                    <option key={key} value={key}>
-                      {ONBOARDING_LABELS[key]}
-                    </option>
-                  ))}
+                  <optgroup label="Pre-opening pipeline">
+                    {ONBOARDING_PIPELINE_STAGES.map((key) => (
+                      <option key={key} value={key}>
+                        {ONBOARDING_LABELS[key]}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Operations">
+                    {ONBOARDING_OPERATIONAL_STATUSES.map((key) => (
+                      <option key={key} value={key}>
+                        {ONBOARDING_LABELS[key]}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </label>
             </div>
@@ -502,16 +649,98 @@ export default function BranchManagement() {
       {noticeText && <div className="branch-notice">{noticeText}</div>}
       {errorText && <div className="branch-error">{errorText}</div>}
 
+      <div className="branch-toolbar">
+        <div className="branch-search">
+          <Search size={16} className="branch-search-icon" />
+          <input
+            className="branch-search-input"
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search branch, code, franchisee, or city..."
+          />
+        </div>
+
+        <div className="branch-filter-group">
+          <select
+            className="branch-filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            aria-label="Filter by status"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
+          <select
+            className="branch-filter-select"
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value as StageFilter)}
+            aria-label="Filter by stage"
+          >
+            <option value="all">All Stages</option>
+            {ALL_STAGES.map((stage) => (
+              <option key={stage} value={stage}>
+                {ONBOARDING_LABELS[stage]}
+              </option>
+            ))}
+          </select>
+
+          {hasActiveFilters && (
+            <button type="button" className="branch-clear-filters" onClick={clearFilters}>
+              Clear
+            </button>
+          )}
+        </div>
+
+        <span className="branch-result-count">
+          {tableRows.length} {tableRows.length === 1 ? 'branch' : 'branches'}
+        </span>
+      </div>
+
       <div className="admin-table-container">
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Branch Code</th>
-              <th>Branch</th>
-              <th>Franchisee</th>
+              <th>
+                <button type="button" className="branch-sort-th" onClick={() => handleSort('code')}>
+                  Branch Code <ArrowUpDown size={12} />
+                </button>
+              </th>
+              <th>
+                <button type="button" className="branch-sort-th" onClick={() => handleSort('name')}>
+                  Branch <ArrowUpDown size={12} />
+                </button>
+              </th>
+              <th>
+                <button
+                  type="button"
+                  className="branch-sort-th"
+                  onClick={() => handleSort('franchisee')}
+                >
+                  Franchisee <ArrowUpDown size={12} />
+                </button>
+              </th>
               <th>Location</th>
-              <th>Opening</th>
-              <th>Status</th>
+              <th>
+                <button
+                  type="button"
+                  className="branch-sort-th"
+                  onClick={() => handleSort('opening')}
+                >
+                  Opening Date <ArrowUpDown size={12} />
+                </button>
+              </th>
+              <th>
+                <button
+                  type="button"
+                  className="branch-sort-th"
+                  onClick={() => handleSort('status')}
+                >
+                  Status <ArrowUpDown size={12} />
+                </button>
+              </th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -519,7 +748,18 @@ export default function BranchManagement() {
             {tableRows.length === 0 && (
               <tr>
                 <td colSpan={7} className="branch-empty-cell">
-                  No franchisees yet. Click <strong>+ Register Franchisee</strong> to add one.
+                  {hasActiveFilters ? (
+                    <>
+                      No branches match your filters.{' '}
+                      <button type="button" className="branch-inline-link" onClick={clearFilters}>
+                        Clear filters
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      No franchisees yet. Click <strong>+ Register Franchisee</strong> to add one.
+                    </>
+                  )}
                 </td>
               </tr>
             )}
@@ -556,8 +796,7 @@ export default function BranchManagement() {
                     {display.onboarding_status &&
                       display.onboarding_status !== 'active' && (
                         <span className="branch-stage-badge">
-                          {ONBOARDING_LABELS[display.onboarding_status as OnboardingStatus] ??
-                            display.onboarding_status}
+                          {getOnboardingLabel(display.onboarding_status)}
                         </span>
                       )}
                   </td>

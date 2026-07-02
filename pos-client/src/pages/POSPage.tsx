@@ -6,7 +6,6 @@ import type {
   DiscountType,
   PaymentMethod,
   OrderType,
-  SugarLevel,
   IceLevel,
   CartItemAddon,
 } from '../types';
@@ -122,7 +121,6 @@ export default function POSPage() {
         (entry) =>
           entry.product.id === item.product.id &&
           entry.variant?.id === (item.variant?.id ?? null) &&
-          entry.sugar_level === item.sugar_level &&
           entry.ice_level === item.ice_level &&
           entry.addons.map((a) => a.addon.id).join(',') === item.addons.map((a) => a.addon.id).join(',')
       );
@@ -156,7 +154,6 @@ export default function POSPage() {
       product,
       variant,
       quantity: 1,
-      sugar_level: '0%',
       ice_level: 'NONE',
       addons: [],
       line_total: lineTotal,
@@ -166,7 +163,6 @@ export default function POSPage() {
   const handleAddCustomized = useCallback((
     product: Product,
     variant: ProductVariant | null,
-    sugar: SugarLevel,
     ice: IceLevel,
     selectedAddons: CartItemAddon[]
   ) => {
@@ -178,7 +174,6 @@ export default function POSPage() {
       product,
       variant,
       quantity: 1,
-      sugar_level: sugar,
       ice_level: ice,
       addons: selectedAddons,
       line_total: lineTotal,
@@ -234,13 +229,15 @@ export default function POSPage() {
       cashierId: userResult.data.user?.id,
       brandId: brand.dbBrandId,
       brandName: brand.name,
+      status: 'NEW',
+      orderType,
     });
 
     const { error } = await supabase.from('pos_order').insert(payload);
     if (error) {
       throw error;
     }
-  }, [brand.dbBrandId, brand.name]);
+  }, [brand.dbBrandId, brand.name, orderType]);
 
   const handleConfirmCheckout = async ({ paymentReference }: { paymentReference?: string }): Promise<boolean> => {
     if (cartItems.length === 0 || isSavingOrder) {

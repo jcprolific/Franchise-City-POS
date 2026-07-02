@@ -1,10 +1,180 @@
+/* ---------- KPI summary cards ---------- */
+.supplier-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.supplier-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.supplier-kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.supplier-kpi-icon--green {
+  background: #e5f6ec;
+  color: #0b8a3a;
+}
+
+.supplier-kpi-icon--amber {
+  background: #fdf0dd;
+  color: #b5730a;
+}
+
+.supplier-kpi-icon--red {
+  background: #fdecea;
+  color: #c0392b;
+}
+
+.supplier-kpi-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.supplier-kpi-label {
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.supplier-kpi-value {
+  font-size: var(--font-xl);
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+/* ---------- Toolbar ---------- */
 .supplier-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 
 .supplier-search {
   position: relative;
-  max-width: 480px;
+  flex: 1;
+  min-width: 240px;
+  max-width: 420px;
+}
+
+.supplier-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.supplier-filter-select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.supplier-filter-select:focus {
+  outline: 2px solid var(--accent-glow);
+  border-color: var(--accent);
+}
+
+.supplier-balance-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.supplier-clear-filters {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--font-sm);
+  cursor: pointer;
+}
+
+.supplier-clear-filters:hover {
+  background: var(--bg-surface-alt);
+}
+
+.supplier-result-count {
+  margin-left: auto;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.supplier-inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ---------- Payables column ---------- */
+.supplier-payable-th {
+  text-align: right;
+}
+
+.supplier-payable-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.supplier-payable-amount {
+  display: block;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.supplier-payable-due {
+  color: #b5730a;
+}
+
+.supplier-payable-terms {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
 }
 
 .supplier-search input {
@@ -173,6 +343,48 @@
   font-weight: 600;
 }
 
+.supplier-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.supplier-edit-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.supplier-edit-btn:hover {
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+}
+
+.supplier-delete-btn {
+  padding: 6px 12px;
+  border: 1px solid #e8b4b0;
+  border-radius: var(--radius-sm);
+  background: #fff5f4;
+  color: #b4372f;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.supplier-delete-btn:hover:not(:disabled) {
+  background: #fdecea;
+}
+
+.supplier-delete-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .supplier-search {
     max-width: none;
@@ -184,5 +396,19 @@
 
   .supplier-field-wide {
     grid-column: span 1;
+  }
+
+  .supplier-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .supplier-result-count {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .supplier-kpi-row {
+    grid-template-columns: 1fr;
   }
 }

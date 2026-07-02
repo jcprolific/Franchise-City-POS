@@ -1,6 +1,45 @@
 import { supabase } from '../../lib/supabase';
 
-export type OnboardingStatus = 'onboarding' | 'active' | 'suspended';
+export type OnboardingStatus =
+  | 'signed_contract'
+  | 'under_construction'
+  | 'for_training_schedule'
+  | 'onboarding'
+  | 'active'
+  | 'suspended';
+
+/** Human-readable labels for every onboarding / operational status. */
+export const ONBOARDING_LABELS: Record<OnboardingStatus, string> = {
+  signed_contract: 'Signed Contract',
+  under_construction: 'Under Construction',
+  for_training_schedule: 'For Training Schedule',
+  onboarding: 'Onboarding',
+  active: 'Operating',
+  suspended: 'Suspended',
+};
+
+/** Pre-opening pipeline stages shown first in the dropdown. */
+export const ONBOARDING_PIPELINE_STAGES: OnboardingStatus[] = [
+  'signed_contract',
+  'under_construction',
+  'for_training_schedule',
+  'onboarding',
+];
+
+/** Post-launch operational statuses. */
+export const ONBOARDING_OPERATIONAL_STATUSES: OnboardingStatus[] = ['active', 'suspended'];
+
+export function getOnboardingLabel(status: string | null | undefined): string {
+  if (!status) return '—';
+  if (status in ONBOARDING_LABELS) {
+    return ONBOARDING_LABELS[status as OnboardingStatus];
+  }
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function isOnboardingPipelineStatus(status: string | null | undefined): boolean {
+  return ONBOARDING_PIPELINE_STAGES.includes(status as OnboardingStatus);
+}
 
 export interface FranchiseeRow {
   id: string;
@@ -52,7 +91,7 @@ const EXTENDED_SELECT =
   `${BASE_SELECT},branch_code,franchisee_name,franchisee_phone,franchisee_email,business_name,city,opening_date,contract_start_date,franchise_package,onboarding_status`;
 
 function localStorageKey(brandId: string) {
-  return `coftea-franchisees:${brandId}`;
+  return `coftea-franchisees:v2:${brandId}`;
 }
 
 function readLocalFranchisees(brandId: string): FranchiseeRow[] {

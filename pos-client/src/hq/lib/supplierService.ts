@@ -10,9 +10,18 @@ export interface CreateSupplierInput {
   email: string;
   address: string;
   isActive: boolean;
+  outstandingBalance: number;
+  creditTerms: string;
 }
 
 export interface CreateSupplierResult {
+  ok: boolean;
+  error?: string;
+  savedLocally?: boolean;
+  supplier?: HqSupplierRow;
+}
+
+export interface MutateSupplierResult {
   ok: boolean;
   error?: string;
   savedLocally?: boolean;
@@ -27,13 +36,15 @@ export interface DemoSupplierSeed {
   address?: string | null;
   category?: string | null;
   is_active?: boolean | null;
+  outstanding_balance?: number | null;
+  credit_terms?: string | null;
 }
 
 const SELECT =
-  'id,name,contact_person,phone,email,address,category,is_active,created_at';
+  'id,name,contact_person,phone,email,address,category,is_active,created_at,outstanding_balance,credit_terms';
 
 function localStorageKey(brandId: string) {
-  return `coftea-suppliers:${brandId}`;
+  return `coftea-suppliers:v2:${brandId}`;
 }
 
 function readLocalSuppliers(brandId: string): HqSupplierRow[] {
@@ -80,10 +91,16 @@ function isNetworkError(message: string) {
   );
 }
 
+function isMissingColumnError(message: string) {
+  const lower = message.toLowerCase();
+  return lower.includes('column') && lower.includes('does not exist');
+}
+
 function shouldSaveLocally(message: string) {
   const lower = message.toLowerCase();
   return (
     isNetworkError(message) ||
+    isMissingColumnError(message) ||
     (lower.includes('relation') && lower.includes('does not exist'))
   );
 }
@@ -111,6 +128,8 @@ function buildInsert(input: CreateSupplierInput) {
     email: input.email.trim() || null,
     address: input.address.trim() || null,
     is_active: input.isActive,
+    outstanding_balance: input.outstandingBalance || 0,
+    credit_terms: input.creditTerms.trim() || null,
   };
 }
 
@@ -125,6 +144,8 @@ function buildLocalRow(input: CreateSupplierInput): HqSupplierRow {
     address: input.address.trim() || null,
     is_active: input.isActive,
     created_at: new Date().toISOString(),
+    outstanding_balance: input.outstandingBalance || 0,
+    credit_terms: input.creditTerms.trim() || null,
     _local: true,
   };
 }
@@ -147,6 +168,8 @@ function samplesToRows(samples: DemoSupplierSeed[]): HqSupplierRow[] {
     category: sample.category ?? null,
     is_active: sample.is_active ?? true,
     created_at: new Date().toISOString(),
+    outstanding_balance: sample.outstanding_balance ?? 0,
+    credit_terms: sample.credit_terms ?? null,
     _local: true,
   }));
 }
@@ -202,6 +225,111 @@ export async function fetchSuppliers(
       return { rows: localRows, fromLocal: true };
     }
     return { rows: null, error: mapSupabaseError(message) };
+  }
+}
+
+function updateLocalSupplier(
+  id: string,
+  input: CreateSupplierInput
+): HqSupplierRow | null {
+  const existing = readLocalSuppliers(input.brandId);
+  const index = existing.findIndex((row) => row.id === id);
+  if (index === -1) return null;
+
+  const updated: HqSupplierRow = {
+    ...existing[index],
+    name: input.name.trim(),
+    category: input.category.trim() || null,
+    contact_person: input.contactPerson.trim() || null,
+    phone: input.phone.trim() || null,
+    email: input.email.trim() || null,
+    address: input.address.trim() || null,
+    is_active: input.isActive,
+    outstanding_balance: input.outstandingBalance || 0,
+    credit_terms: input.creditTerms.trim() || null,
+    _local: true,
+  };
+
+  const next = [...existing];
+  next[index] = updated;
+  writeLocalSuppliers(input.brandId, next);
+  return updated;
+}
+
+function removeLocalSupplier(brandId: string, id: string) {
+  const existing = readLocalSuppliers(brandId);
+  writeLocalSuppliers(
+    brandId,
+    existing.filter((row) => row.id !== id)
+  );
+}
+
+export async function updateSupplier(
+  id: string,
+  input: CreateSupplierInput
+): Promise<MutateSupplierResult> {
+  if (isLocalSupplierId(id)) {
+    const supplier = updateLocalSupplier(id, input);
+    if (!supplier) return { ok: false, error: 'Supplier not found.' };
+    return { ok: true, savedLocally: true, supplier };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('supplier')
+      .update(buildInsert(input))
+      .eq('id', id)
+      .select(SELECT)
+      .single();
+
+    if (error) {
+      if (shouldSaveLocally(error.message)) {
+        const supplier = updateLocalSupplier(id, input);
+        if (supplier) return { ok: true, savedLocally: true, supplier };
+      }
+      return { ok: false, error: mapSupabaseError(error.message) };
+    }
+
+    return { ok: true, supplier: data as HqSupplierRow };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update supplier.';
+    if (shouldSaveLocally(message)) {
+      const supplier = updateLocalSupplier(id, input);
+      if (supplier) return { ok: true, savedLocally: true, supplier };
+    }
+    return { ok: false, error: mapSupabaseError(message) };
+  }
+}
+
+export async function deleteSupplier(
+  id: string,
+  brandId: string
+): Promise<MutateSupplierResult> {
+  if (isLocalSupplierId(id)) {
+    removeLocalSupplier(brandId, id);
+    return { ok: true, savedLocally: true };
+  }
+
+  try {
+    const { error } = await supabase.from('supplier').delete().eq('id', id);
+
+    if (error) {
+      if (shouldSaveLocally(error.message)) {
+        removeLocalSupplier(brandId, id);
+        return { ok: true, savedLocally: true };
+      }
+      return { ok: false, error: mapSupabaseError(error.message) };
+    }
+
+    removeLocalSupplier(brandId, id);
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete supplier.';
+    if (shouldSaveLocally(message)) {
+      removeLocalSupplier(brandId, id);
+      return { ok: true, savedLocally: true };
+    }
+    return { ok: false, error: mapSupabaseError(message) };
   }
 }
 

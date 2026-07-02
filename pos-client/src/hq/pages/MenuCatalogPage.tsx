@@ -325,7 +325,7 @@ export default function MenuCatalogPage() {
                 checked={productForm.customizable}
                 onChange={(e) => setProductForm({ ...productForm, customizable: e.target.checked })}
               />
-              Customizable (sugar, ice, add-ons)
+              Customizable (ice, add-ons)
             </label>
           </div>
           <div className="catalog-form-actions">

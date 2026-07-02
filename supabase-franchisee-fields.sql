@@ -14,7 +14,14 @@ alter table if exists public.branch
   add column if not exists franchise_package text,
   add column if not exists onboarding_status text
     default 'onboarding'
-    check (onboarding_status in ('onboarding', 'active', 'suspended'));
+    check (onboarding_status in (
+      'signed_contract',
+      'under_construction',
+      'for_training_schedule',
+      'onboarding',
+      'active',
+      'suspended'
+    ));
 
 -- Optional: unique branch code per brand when a code is provided.
 create unique index if not exists branch_brand_code_unique

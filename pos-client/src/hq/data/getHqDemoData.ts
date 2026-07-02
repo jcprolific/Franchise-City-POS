@@ -87,4 +87,4 @@ export function getHqDemoData(slug: BrandSlug): HqDemoDataBundle {
   };
 }
 
-export type { HqDisplayBranch, HqSupplierRow } from './cofteaHqDemoData';
+export type { HqBranchAlert, HqDisplayBranch, HqSupplierRow } from './cofteaHqDemoData';

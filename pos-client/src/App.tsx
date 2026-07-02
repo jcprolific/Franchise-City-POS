@@ -29,6 +29,7 @@ import SupplierManagement from './hq/pages/SupplierManagement';
 import MenuCatalogPage from './hq/pages/MenuCatalogPage';
 import StaffDirectoryPage from './hq/pages/StaffDirectoryPage';
 import ReportsAnalyticsPage from './hq/pages/ReportsAnalyticsPage';
+import SupplyOrdersPage from './hq/pages/SupplyOrdersPage';
 import {
   clearStoredAuthSession,
   readStoredAuthSession,
@@ -421,6 +422,7 @@ export default function App() {
             <Route path="/hq" element={<GlobalDashboard />} />
             <Route path="/hq/branches" element={<BranchManagement />} />
             <Route path="/hq/warehouse" element={<WarehouseManagement />} />
+            <Route path="/hq/supply-orders" element={<SupplyOrdersPage />} />
             <Route path="/hq/suppliers" element={<SupplierManagement />} />
             <Route path="/hq/catalog" element={<MenuCatalogPage />} />
             <Route path="/hq/staff" element={<StaffDirectoryPage />} />

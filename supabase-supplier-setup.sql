@@ -11,9 +11,17 @@ create table if not exists public.supplier (
   address text,
   category text,
   is_active boolean not null default true,
+  outstanding_balance numeric(12,2) not null default 0,
+  credit_terms text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Add payables columns for existing installs
+alter table public.supplier
+  add column if not exists outstanding_balance numeric(12,2) not null default 0;
+alter table public.supplier
+  add column if not exists credit_terms text;
 
 create index if not exists supplier_brand_idx on public.supplier(brand_id);
 create index if not exists supplier_name_idx on public.supplier(name);
