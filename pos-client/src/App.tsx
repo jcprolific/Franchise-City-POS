@@ -30,6 +30,7 @@ import MenuCatalogPage from './hq/pages/MenuCatalogPage';
 import StaffDirectoryPage from './hq/pages/StaffDirectoryPage';
 import ReportsAnalyticsPage from './hq/pages/ReportsAnalyticsPage';
 import PortalHubPage from './portal/PortalHubPage';
+import ComingSoonPage from './portal/ComingSoonPage';
 import SupplyOrdersPage from './hq/pages/SupplyOrdersPage';
 import {
   clearStoredAuthSession,
@@ -444,6 +445,7 @@ export default function App() {
           />
           <Route element={<RequireFranchisee isFranchisee={auth.role === 'franchisee'} />}>
             <Route path="/portal" element={<PortalHubPage />} />
+            <Route path="/portal/:module" element={<ComingSoonPage />} />
           </Route>
         </Route>
         <Route element={<RequireHq isHq={auth.role === 'hq_admin'} />}>
