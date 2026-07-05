@@ -29,6 +29,7 @@ import SupplierManagement from './hq/pages/SupplierManagement';
 import MenuCatalogPage from './hq/pages/MenuCatalogPage';
 import StaffDirectoryPage from './hq/pages/StaffDirectoryPage';
 import ReportsAnalyticsPage from './hq/pages/ReportsAnalyticsPage';
+import PortalHubPage from './portal/PortalHubPage';
 import SupplyOrdersPage from './hq/pages/SupplyOrdersPage';
 import {
   clearStoredAuthSession,
@@ -441,6 +442,9 @@ export default function App() {
             path="/promotions"
             element={<HqPlaceholder title="Promotions" subtitle="Discounts & combo deals coming soon." />}
           />
+          <Route element={<RequireFranchisee isFranchisee={auth.role === 'franchisee'} />}>
+            <Route path="/portal" element={<PortalHubPage />} />
+          </Route>
         </Route>
         <Route element={<RequireHq isHq={auth.role === 'hq_admin'} />}>
           <Route element={<HqShell userName={auth.userName} onLogout={handleLogout} />}>
