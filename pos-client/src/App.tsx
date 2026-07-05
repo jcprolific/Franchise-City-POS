@@ -35,10 +35,11 @@ import {
   readStoredAuthSession,
   writeStoredAuthSession,
 } from './lib/authSessionStore';
+import { preloadPosOrderColumns } from './lib/dashboardRealtime';
 import './App.css';
 
 type LoginMode = 'guest' | 'pin' | 'email' | null;
-type UserRole = 'cashier' | 'hq_admin';
+type UserRole = 'cashier' | 'hq_admin' | 'franchisee';
 
 interface AuthState {
   isLoggedIn: boolean;
@@ -84,6 +85,19 @@ function RequireHq({ isHq }: HqGuardProps) {
   return <Outlet />;
 }
 
+function RequireFranchisee({ isFranchisee }: { isFranchisee: boolean }) {
+  if (!isFranchisee) {
+    return <Navigate to="/pos" replace />;
+  }
+  return <Outlet />;
+}
+
+function homePathForRole(role: UserRole): string {
+  if (role === 'hq_admin') return '/hq';
+  if (role === 'franchisee') return '/portal';
+  return '/pos';
+}
+
 function formatToday(d: Date) {
   return d.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -93,6 +107,7 @@ function formatToday(d: Date) {
 }
 
 function getHeaderTitle(pathname: string, terminalLabel: string): { title: string; subtitle: string } {
+  if (pathname.startsWith('/portal')) return { title: 'Franchisee Portal', subtitle: terminalLabel };
   if (pathname.startsWith('/orders')) return { title: 'Orders', subtitle: terminalLabel };
   if (pathname.startsWith('/inventory')) return { title: 'Inventory', subtitle: terminalLabel };
   if (pathname.startsWith('/dashboard')) return { title: 'Dashboard', subtitle: terminalLabel };
@@ -110,7 +125,10 @@ function PosShell({ auth, onLogout }: PosShellProps) {
   const displayName = auth.userName
     ? auth.userName.charAt(0).toUpperCase() + auth.userName.slice(1)
     : 'Cashier';
-  const roleLabel = auth.role === 'hq_admin' ? 'HQ Admin' : 'Cashier';
+  const roleLabel =
+    auth.role === 'hq_admin' ? 'HQ Admin'
+    : auth.role === 'franchisee' ? 'Franchisee'
+    : 'Cashier';
 
   const [attendanceStatus, setAttendanceStatus] = useState<'IN' | 'OUT'>(
     () => getLatestAttendanceStatus(displayName) ?? 'OUT'
@@ -223,6 +241,10 @@ export default function App() {
     isLoading: true,
   });
 
+  useEffect(() => {
+    preloadPosOrderColumns();
+  }, []);
+
   const resolveUserRole = useCallback(async (userId: string): Promise<UserRole> => {
     const { data, error } = await supabase
       .from('profiles')
@@ -232,7 +254,10 @@ export default function App() {
     if (error || !data?.role) {
       return 'cashier';
     }
-    return data.role === 'hq_admin' ? 'hq_admin' : 'cashier';
+    if (data.role === 'hq_admin' || data.role === 'franchisee') {
+      return data.role;
+    }
+    return 'cashier';
   }, []);
 
   const syncSessionUser = useCallback(
@@ -356,7 +381,7 @@ export default function App() {
       return;
     }
     if (location.pathname === '/login' || location.pathname === '/') {
-      navigate(auth.role === 'hq_admin' ? '/hq' : '/pos', { replace: true });
+      navigate(homePathForRole(auth.role), { replace: true });
     }
   }, [auth.isLoading, auth.isLoggedIn, auth.role, location.pathname, navigate, preferredArea]);
 
@@ -401,7 +426,7 @@ export default function App() {
         path="/login"
         element={
           auth.isLoggedIn
-            ? <Navigate to={auth.role === 'hq_admin' ? '/hq' : '/pos'} replace />
+            ? <Navigate to={homePathForRole(auth.role)} replace />
             : <LoginPage onLogin={handleLogin} />
         }
       />
@@ -436,7 +461,7 @@ export default function App() {
       </Route>
       <Route
         path="*"
-        element={<Navigate to={auth.isLoggedIn ? (auth.role === 'hq_admin' ? '/hq' : '/pos') : '/login'} replace />}
+        element={<Navigate to={auth.isLoggedIn ? homePathForRole(auth.role) : '/login'} replace />}
       />
     </Routes>
   );
