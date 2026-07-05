@@ -185,6 +185,7 @@ function PosShell({ auth, onLogout }: PosShellProps) {
           userName={auth.userName}
           userRole={roleLabel}
           canAccessHq={auth.role === 'hq_admin'}
+          isFranchisee={auth.role === 'franchisee'}
           onLogout={onLogout}
         />
         <main className="app-main">

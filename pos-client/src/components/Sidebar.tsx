@@ -5,6 +5,7 @@ interface SidebarProps {
   userName: string;
   userRole: string;
   canAccessHq: boolean;
+  isFranchisee: boolean;
   onLogout: () => void;
 }
 
@@ -80,6 +81,16 @@ function HqIcon() {
   );
 }
 
+function HomeIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+      <path d="M10 21v-6h4v6" />
+    </svg>
+  );
+}
+
 function LogoutIcon() {
   return (
     <svg {...iconProps}>
@@ -90,53 +101,38 @@ function LogoutIcon() {
   );
 }
 
-export default function Sidebar({ userName, userRole, canAccessHq, onLogout }: SidebarProps) {
+export default function Sidebar({ userName, userRole, canAccessHq, isFranchisee, onLogout }: SidebarProps) {
   const navClassName = ({ isActive }: { isActive: boolean }) =>
     `sidebar-nav-item ${isActive ? 'active' : ''}`;
+
+  const baseItems = [
+    { id: 'nav-pos', to: '/pos', label: 'POS', icon: <PosIcon /> },
+    { id: 'nav-orders', to: '/orders', label: 'Orders', icon: <OrdersIcon /> },
+    { id: 'nav-inventory', to: '/inventory', label: 'Inventory', icon: <InventoryIcon /> },
+    { id: 'nav-dashboard', to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+    { id: 'nav-promotions', to: '/promotions', label: 'Promotions', icon: <PromotionsIcon /> },
+  ];
+
+  const franchiseeItems = [
+    { id: 'nav-portal', to: '/portal', label: 'Portal Home', icon: <HomeIcon /> },
+    { id: 'nav-dashboard', to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+    { id: 'nav-pos', to: '/pos', label: 'POS', icon: <PosIcon /> },
+    { id: 'nav-orders', to: '/orders', label: 'Orders', icon: <OrdersIcon /> },
+    { id: 'nav-inventory', to: '/inventory', label: 'Inventory', icon: <InventoryIcon /> },
+    { id: 'nav-promotions', to: '/promotions', label: 'Promotions', icon: <PromotionsIcon /> },
+  ];
+
+  const items = isFranchisee ? franchiseeItems : baseItems;
 
   return (
     <aside className="sidebar" id="sidebar-nav">
       <nav className="sidebar-nav">
-        <NavLink
-          id="nav-pos"
-          className={navClassName}
-          to="/pos"
-        >
-          <span className="nav-icon"><PosIcon /></span>
-          POS
-        </NavLink>
-        <NavLink
-          id="nav-orders"
-          className={navClassName}
-          to="/orders"
-        >
-          <span className="nav-icon"><OrdersIcon /></span>
-          Orders
-        </NavLink>
-        <NavLink
-          id="nav-inventory"
-          className={navClassName}
-          to="/inventory"
-        >
-          <span className="nav-icon"><InventoryIcon /></span>
-          Inventory
-        </NavLink>
-        <NavLink
-          id="nav-dashboard"
-          className={navClassName}
-          to="/dashboard"
-        >
-          <span className="nav-icon"><DashboardIcon /></span>
-          Dashboard
-        </NavLink>
-        <NavLink
-          id="nav-promotions"
-          className={navClassName}
-          to="/promotions"
-        >
-          <span className="nav-icon"><PromotionsIcon /></span>
-          Promotions
-        </NavLink>
+        {items.map((item) => (
+          <NavLink key={item.id} id={item.id} className={navClassName} to={item.to}>
+            <span className="nav-icon">{item.icon}</span>
+            {item.label}
+          </NavLink>
+        ))}
         {canAccessHq && (
           <NavLink
             className={navClassName}
