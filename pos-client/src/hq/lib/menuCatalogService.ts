@@ -177,6 +177,17 @@ export async function fetchMenuCatalog(brandDbId: string): Promise<CatalogBundle
   return { categories, products, variants, addons, productAddons: productAddonRows };
 }
 
+/** Use HQ catalog only when it is at least as complete as the bundled static menu. */
+export function shouldPreferRemoteCatalog(
+  staticProducts: Product[],
+  remote: CatalogBundle | null
+): boolean {
+  if (!remote || remote.products.length === 0) return false;
+  const staticActive = staticProducts.filter((p) => p.is_active).length;
+  const remoteActive = remote.products.filter((p) => p.is_active).length;
+  return remoteActive >= staticActive;
+}
+
 export async function fetchRawMaterials(brandDbId: string): Promise<RawMaterial[]> {
   const { data, error } = await supabase
     .from('raw_material')

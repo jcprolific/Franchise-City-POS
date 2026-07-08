@@ -1,6 +1,11 @@
 import { supabase } from '../../lib/supabase';
 
-export type StaffRole = 'cashier' | 'branch_manager' | 'hq_admin';
+export type StaffRole =
+  | 'cashier'
+  | 'manager'
+  | 'supervisor'
+  | 'inventory_staff'
+  | 'hq_admin';
 export type StaffStatus = 'active' | 'inactive';
 
 export interface StaffMember {
@@ -14,6 +19,8 @@ export interface StaffMember {
   phone: string | null;
   role: StaffRole;
   status: StaffStatus;
+  created_by: string | null;
+  account_level: string;
   last_login_at: string | null;
   created_at: string;
 }
@@ -33,6 +40,8 @@ interface StaffRow {
   phone: string | null;
   role: StaffRole;
   status: StaffStatus;
+  created_by: string | null;
+  account_level: string;
   last_login_at: string | null;
   created_at: string;
   branch?: { name?: string | null } | { name?: string | null }[] | null;
@@ -68,7 +77,7 @@ export async function fetchStaff(brandDbId: string): Promise<StaffMember[] | nul
   const { data, error } = await supabase
     .from('staff_access')
     .select(
-      'id,auth_user_id,brand_id,branch_id,full_name,email,phone,role,status,last_login_at,created_at,branch:branch_id(name)'
+      'id,auth_user_id,brand_id,branch_id,full_name,email,phone,role,status,created_by,account_level,last_login_at,created_at,branch:branch_id(name)'
     )
     .eq('brand_id', brandDbId)
     .order('created_at', { ascending: false });
@@ -86,6 +95,8 @@ export async function fetchStaff(brandDbId: string): Promise<StaffMember[] | nul
     phone: row.phone,
     role: row.role,
     status: row.status,
+    created_by: row.created_by ?? null,
+    account_level: row.account_level ?? 'staff',
     last_login_at: row.last_login_at,
     created_at: row.created_at,
   }));
@@ -158,6 +169,8 @@ export async function setStaffStatus(staffId: string, status: StaffStatus) {
 
 export const ROLE_LABELS: Record<StaffRole, string> = {
   cashier: 'Cashier',
-  branch_manager: 'Branch Manager',
+  manager: 'Manager',
+  supervisor: 'Supervisor',
+  inventory_staff: 'Inventory Staff',
   hq_admin: 'HQ Admin',
 };

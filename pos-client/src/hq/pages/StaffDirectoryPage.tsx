@@ -13,7 +13,7 @@ import {
 } from '../lib/staffAccessService';
 import './StaffDirectoryPage.css';
 
-const ROLE_OPTIONS: StaffRole[] = ['cashier', 'branch_manager'];
+const ROLE_OPTIONS: StaffRole[] = ['cashier', 'manager', 'supervisor', 'inventory_staff'];
 
 const emptyForm = {
   fullName: '',
@@ -35,8 +35,10 @@ function buildSampleStaff(): StaffMember[] {
       full_name: 'Maria Santos',
       email: 'maria.bgc@coftea.com',
       phone: '0917 555 0101',
-      role: 'branch_manager',
+      role: 'manager',
       status: 'active',
+      created_by: null,
+      account_level: 'staff',
       last_login_at: null,
       created_at: new Date().toISOString(),
     },
@@ -51,6 +53,8 @@ function buildSampleStaff(): StaffMember[] {
       phone: '0917 555 0102',
       role: 'cashier',
       status: 'active',
+      created_by: null,
+      account_level: 'staff',
       last_login_at: null,
       created_at: new Date().toISOString(),
     },
@@ -65,6 +69,8 @@ function buildSampleStaff(): StaffMember[] {
       phone: '0917 555 0103',
       role: 'cashier',
       status: 'inactive',
+      created_by: null,
+      account_level: 'staff',
       last_login_at: null,
       created_at: new Date().toISOString(),
     },
@@ -302,6 +308,7 @@ export default function StaffDirectoryPage() {
               <th>Email</th>
               <th>Branch</th>
               <th>Role</th>
+              <th>Created By</th>
               <th>Status</th>
               <th>Last Login</th>
               <th></th>
@@ -314,6 +321,9 @@ export default function StaffDirectoryPage() {
                 <td>{member.email}</td>
                 <td>{member.branch_name || 'Unassigned'}</td>
                 <td>{ROLE_LABELS[member.role]}</td>
+                <td className="staff-muted">
+                  {member.created_by ? 'Owner' : 'HQ'}
+                </td>
                 <td>
                   <button
                     type="button"
@@ -335,7 +345,7 @@ export default function StaffDirectoryPage() {
 
             {displayStaff.length === 0 && (
               <tr>
-                <td colSpan={7} className="staff-muted">
+                <td colSpan={8} className="staff-muted">
                   {tableReady
                     ? 'No staff yet. Use "Add Staff" to create POS access.'
                     : 'Staff table not detected. Run the setup SQL to start managing access.'}

@@ -20,6 +20,7 @@ import {
   alertToWatchInput,
   createWatchItem,
   deleteWatchItem,
+  ensureLocalWatchItems,
   fetchWatchItems,
   updateWatchItemStatus,
   watchItemToAlert,
@@ -44,15 +45,6 @@ const EMPTY_WATCH_FORM = {
   flag: 'needs_attention' as WatchFlag,
 };
 
-const EMPTY_SNAPSHOT: HqKpiSnapshot = {
-  todayRevenue: 0,
-  yesterdayRevenue: 0,
-  todayOrders: 0,
-  yesterdayOrders: 0,
-  avgOrderValue: 0,
-  activeBranches: 0,
-};
-
 function computePercentChange(current: number, previous: number) {
   if (previous === 0) return current > 0 ? 100 : 0;
   return ((current - previous) / previous) * 100;
@@ -66,17 +58,24 @@ export default function GlobalDashboard() {
   const { brand } = useBrand();
   const demo = useMemo(() => getHqDemoData(brand.slug), [brand.slug]);
 
-  const [snapshot, setSnapshot] = useState<HqKpiSnapshot>(EMPTY_SNAPSHOT);
-  const [chartData, setChartData] = useState<HqWeeklyRevenueItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [snapshot, setSnapshot] = useState<HqKpiSnapshot>(() => demo.sampleSnapshot);
+  const [chartData, setChartData] = useState<HqWeeklyRevenueItem[]>(() => demo.sampleRevenue);
+  const [syncing, setSyncing] = useState(false);
   const [errorText, setErrorText] = useState('');
-  const [usingDemoData, setUsingDemoData] = useState(false);
+  const [usingDemoData, setUsingDemoData] = useState(true);
   const [range, setRange] = useState<'daily' | 'weekly'>('weekly');
   const [search, setSearch] = useState('');
   const [activeAlert, setActiveAlert] = useState<HqBranchAlert | null>(null);
 
-  const [watchItems, setWatchItems] = useState<BranchWatchItem[]>([]);
-  const [watchLoading, setWatchLoading] = useState(true);
+  const watchSeeds = useMemo(
+    () => demo.branchesToCheck.map((alert) => alertToWatchInput(alert, brand.dbBrandId)),
+    [demo.branchesToCheck, brand.dbBrandId]
+  );
+
+  const [watchItems, setWatchItems] = useState<BranchWatchItem[]>(() =>
+    ensureLocalWatchItems(brand.dbBrandId, watchSeeds)
+  );
+  const [watchSyncing, setWatchSyncing] = useState(false);
   const [watchError, setWatchError] = useState('');
   const [statusFilter, setStatusFilter] = useState<WorkflowStatus | 'all'>('all');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -85,16 +84,20 @@ export default function GlobalDashboard() {
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    setSyncing(true);
     try {
       setErrorText('');
       const result = await fetchHqKpiData(brand.dbBrandId);
-      setSnapshot(result.snapshot);
-      setChartData(result.weeklyRevenue);
       const hasLiveData = result.snapshot.todayOrders > 0;
-      setUsingDemoData(!hasLiveData);
-      if (result.source === 'fallback' && hasLiveData) {
-        setErrorText('Using direct order aggregation. Run HQ KPI SQL functions for optimized metrics.');
-      } else if (!hasLiveData) {
+      if (hasLiveData) {
+        setSnapshot(result.snapshot);
+        setChartData(result.weeklyRevenue);
+        setUsingDemoData(false);
+        if (result.source === 'fallback') {
+          setErrorText('Using direct order aggregation. Run HQ KPI SQL functions for optimized metrics.');
+        }
+      } else {
+        setUsingDemoData(true);
         setErrorText(demo.demoDataMessage);
       }
     } catch (error) {
@@ -102,7 +105,7 @@ export default function GlobalDashboard() {
       setUsingDemoData(true);
       setErrorText(demo.demoDataMessage);
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   }, [brand.dbBrandId, demo.demoDataMessage]);
 
@@ -164,20 +167,20 @@ export default function GlobalDashboard() {
   const weeklyRevenueTotal = displayChartData.reduce((sum, item) => sum + item.revenue, 0);
 
   const loadWatchItems = useCallback(async () => {
-    setWatchLoading(true);
     setWatchError('');
+    setWatchItems(ensureLocalWatchItems(brand.dbBrandId, watchSeeds));
+    setWatchSyncing(true);
     try {
-      const seeds = demo.branchesToCheck.map((alert) => alertToWatchInput(alert, brand.dbBrandId));
-      const result = await fetchWatchItems(brand.dbBrandId, seeds);
+      const result = await fetchWatchItems(brand.dbBrandId, watchSeeds);
       setWatchItems(result.items);
       if (result.error) setWatchError(result.error);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load watch list.';
       setWatchError(message);
     } finally {
-      setWatchLoading(false);
+      setWatchSyncing(false);
     }
-  }, [brand.dbBrandId, demo.branchesToCheck]);
+  }, [brand.dbBrandId, watchSeeds]);
 
   useEffect(() => {
     void loadWatchItems();
@@ -292,8 +295,8 @@ export default function GlobalDashboard() {
         </div>
       </header>
 
-      {loading && <div className="hq-status-note">Loading {brand.name} HQ data...</div>}
-      {errorText && <div className="hq-status-note">{errorText}</div>}
+      {syncing && <div className="hq-status-note hq-status-note--sync">Syncing live data…</div>}
+      {!syncing && errorText && <div className="hq-status-note">{errorText}</div>}
 
       <section className="hq-kpi-row">
         <article className="hq-stat-card hq-stat-card--dark">
@@ -499,16 +502,15 @@ export default function GlobalDashboard() {
           {watchError && <div className="hq-watch-error">{watchError}</div>}
 
           <ul className="hq-alert-list hq-alert-list--branches">
-            {watchLoading && (
+            {watchSyncing && filteredWatchItems.length === 0 && (
               <li className="hq-alert hq-alert--branch">
                 <div className="hq-alert-body">
-                  <div className="hq-alert-sub">Loading watch list...</div>
+                  <div className="hq-alert-sub">Syncing watch list…</div>
                 </div>
               </li>
             )}
 
-            {!watchLoading &&
-              filteredWatchItems.map((item) => (
+            {filteredWatchItems.map((item) => (
                 <li
                   key={item.id}
                   className={`hq-alert hq-alert--branch hq-watch-row is-${item.workflow_status}`}
@@ -559,7 +561,7 @@ export default function GlobalDashboard() {
                 </li>
               ))}
 
-            {!watchLoading && filteredWatchItems.length === 0 && (
+            {!watchSyncing && filteredWatchItems.length === 0 && (
               <li className="hq-alert hq-alert--branch">
                 <div className="hq-alert-body">
                   <div className="hq-alert-sub">

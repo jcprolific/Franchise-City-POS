@@ -144,6 +144,12 @@
   color: var(--hq-text-soft);
 }
 
+.hq-status-note--sync {
+  border-style: dashed;
+  color: var(--hq-text-muted);
+  font-style: italic;
+}
+
 /* ---------------- KPI row ---------------- */
 .hq-kpi-row {
   display: grid;

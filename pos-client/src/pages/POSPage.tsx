@@ -12,7 +12,13 @@ import type {
 import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
 import { getInsertPayloadForPosOrder, preloadPosOrderColumns, resolvePosOrderColumns } from '../lib/dashboardRealtime';
-import { fetchMenuCatalog, type CatalogBundle } from '../hq/lib/menuCatalogService';
+import { insertPosOrderWithItems } from '../lib/posOrderItemService';
+import { getCurrentBranch } from '../lib/branchContext';
+import {
+  fetchMenuCatalog,
+  shouldPreferRemoteCatalog,
+  type CatalogBundle,
+} from '../hq/lib/menuCatalogService';
 import CategoryBar from '../components/CategoryBar';
 import ProductGrid from '../components/ProductGrid';
 import Cart from '../components/Cart';
@@ -43,7 +49,7 @@ export default function POSPage() {
     setCatalog(null);
     fetchMenuCatalog(brand.dbBrandId)
       .then((bundle) => {
-        if (!cancelled && bundle && bundle.products.length > 0) {
+        if (!cancelled && shouldPreferRemoteCatalog(brand.menu.products, bundle)) {
           setCatalog(bundle);
         }
       })
@@ -217,6 +223,7 @@ export default function POSPage() {
       resolvePosOrderColumns(),
       supabase.auth.getUser(),
     ]);
+    const branch = getCurrentBranch();
 
     const payload = getInsertPayloadForPosOrder(columns, {
       orderNumber: snapshot.orderNumber,
@@ -224,8 +231,10 @@ export default function POSPage() {
       paymentReference: snapshot.paymentReference,
       subtotal: snapshot.subtotal,
       discountAmount: snapshot.discountAmount,
+      discountType,
       total: snapshot.total,
       itemCount: snapshot.itemCount,
+      branchValue: branch.id,
       cashierId: userResult.data.user?.id,
       brandId: brand.dbBrandId,
       brandName: brand.name,
@@ -233,11 +242,11 @@ export default function POSPage() {
       orderType,
     });
 
-    const { error } = await supabase.from('pos_order').insert(payload);
+    const { error } = await insertPosOrderWithItems(payload, cartItems);
     if (error) {
-      throw error;
+      throw new Error(error);
     }
-  }, [brand.dbBrandId, brand.name, orderType]);
+  }, [brand.dbBrandId, brand.name, cartItems, discountType, orderType]);
 
   const handleConfirmCheckout = async ({ paymentReference }: { paymentReference?: string }): Promise<boolean> => {
     if (cartItems.length === 0 || isSavingOrder) {

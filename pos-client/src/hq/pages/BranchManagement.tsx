@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Search, Building2, CheckCircle2, Hammer, Ban, ArrowUpDown } from 'lucide-react';
+import { Search, Building2, CheckCircle2, Hammer, Ban, ArrowUpDown, UserPlus, ArrowRightLeft } from 'lucide-react';
 import { useBrand } from '../../context/BrandContext';
 import { getHqDemoData, type HqDisplayBranch } from '../data/getHqDemoData';
 import {
@@ -17,6 +17,13 @@ import {
   type FranchiseeRow,
   type OnboardingStatus,
 } from '../lib/franchiseeService';
+import {
+  createOwnerTransferRequest,
+  fetchOwnerTransferRequests,
+  processOwnerTransfer,
+  provisionFranchiseOwner,
+  type OwnerTransferRequest,
+} from '../lib/franchiseOwnerService';
 import './BranchManagement.css';
 
 type SortKey = 'code' | 'name' | 'franchisee' | 'opening' | 'status';
@@ -127,6 +134,21 @@ export default function BranchManagement() {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [provisioningOwner, setProvisioningOwner] = useState(false);
+  const [showTransferPanel, setShowTransferPanel] = useState(false);
+  const [transferEmail, setTransferEmail] = useState('');
+  const [transferDocs, setTransferDocs] = useState('');
+  const [transferPassword, setTransferPassword] = useState('');
+  const [transferFullName, setTransferFullName] = useState('');
+  const [transferRequests, setTransferRequests] = useState<OwnerTransferRequest[]>([]);
+  const [processingTransferId, setProcessingTransferId] = useState<string | null>(null);
+
+  const editingBranch = useMemo(
+    () => (editingId ? branches.find((b) => b.id === editingId) ?? null : null),
+    [editingId, branches]
+  );
+
   const updateField = <K extends keyof typeof emptyForm>(
     key: K,
     value: (typeof emptyForm)[K]
@@ -206,6 +228,115 @@ export default function BranchManagement() {
   useEffect(() => {
     void loadBranches({ background: true });
   }, [loadBranches]);
+
+  const loadTransferRequests = useCallback(async (branchId?: string) => {
+    const rows = await fetchOwnerTransferRequests(branchId);
+    setTransferRequests(rows);
+  }, []);
+
+  useEffect(() => {
+    if (editingId) {
+      void loadTransferRequests(editingId);
+    }
+  }, [editingId, loadTransferRequests]);
+
+  const handleProvisionOwner = async () => {
+    if (!editingId || !editingBranch) return;
+    if (!form.franchiseeEmail.trim()) {
+      setErrorText('Owner email is required to create an account.');
+      return;
+    }
+    if (ownerPassword.length < 6) {
+      setErrorText('Temporary password must be at least 6 characters.');
+      return;
+    }
+    if (editingBranch.owner_user_id) {
+      setErrorText('This branch already has a registered owner. Use Transfer Ownership.');
+      return;
+    }
+
+    setProvisioningOwner(true);
+    setErrorText('');
+    setNoticeText('');
+
+    const result = await provisionFranchiseOwner({
+      branchId: editingId,
+      email: form.franchiseeEmail.trim(),
+      password: ownerPassword,
+      fullName: form.franchiseeName.trim(),
+      brandId: brand.dbBrandId,
+    });
+
+    setProvisioningOwner(false);
+
+    if (!result.ok) {
+      setErrorText(result.error ?? 'Failed to create owner account.');
+      return;
+    }
+
+    setNoticeText(`Owner account created for ${form.franchiseeEmail.trim()}. They can log in and change their password.`);
+    setOwnerPassword('');
+    await loadBranches({ background: true });
+  };
+
+  const handleSubmitTransferRequest = async () => {
+    if (!editingId || !editingBranch) return;
+    if (!transferEmail.trim()) {
+      setErrorText('New owner email is required.');
+      return;
+    }
+
+    const docRefs = transferDocs
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((name) => ({ name }));
+
+    const result = await createOwnerTransferRequest({
+      branchId: editingId,
+      previousOwnerId: editingBranch.owner_user_id ?? null,
+      newOwnerEmail: transferEmail.trim(),
+      documentRefs: docRefs,
+    });
+
+    if (!result.ok) {
+      setErrorText(result.error ?? 'Failed to submit transfer request.');
+      return;
+    }
+
+    setNoticeText('Ownership transfer request submitted. Review and approve below.');
+    setTransferEmail('');
+    setTransferDocs('');
+    await loadTransferRequests(editingId);
+  };
+
+  const handleProcessTransfer = async (
+    request: OwnerTransferRequest,
+    action: 'approve' | 'reject'
+  ) => {
+    setProcessingTransferId(request.id);
+    setErrorText('');
+
+    const result = await processOwnerTransfer({
+      requestId: request.id,
+      action,
+      newOwnerPassword: action === 'approve' ? transferPassword : undefined,
+      newOwnerFullName: action === 'approve' ? transferFullName || form.franchiseeName : undefined,
+    });
+
+    setProcessingTransferId(null);
+
+    if (!result.ok) {
+      setErrorText(result.error ?? 'Transfer action failed.');
+      return;
+    }
+
+    setNoticeText(action === 'approve' ? 'Ownership transferred successfully.' : 'Transfer request rejected.');
+    setTransferPassword('');
+    setTransferFullName('');
+    await loadBranches({ background: true });
+    if (editingId) await loadTransferRequests(editingId);
+  };
 
   const validateForm = () => {
     if (!form.branchName.trim() || !form.address.trim()) {
@@ -556,6 +687,151 @@ export default function BranchManagement() {
               </label>
             </div>
           </fieldset>
+
+          {editingId && editingBranch && (
+            <fieldset className="franchisee-fieldset">
+              <legend>
+                <UserPlus size={16} style={{ display: 'inline', marginRight: 6 }} />
+                Owner account (Level 1)
+              </legend>
+              {editingBranch.owner_user_id ? (
+                <p className="branch-owner-status">
+                  Registered owner account is active for this branch.
+                </p>
+              ) : (
+                <div className="franchisee-grid">
+                  <p className="franchisee-field-wide branch-owner-hint">
+                    Create the franchise owner login using the email and name above. HQ verifies
+                    identity before provisioning (OTP verification coming later).
+                  </p>
+                  <label className="franchisee-field">
+                    <span>Temporary password *</span>
+                    <input
+                      className="branch-input"
+                      type="text"
+                      value={ownerPassword}
+                      onChange={(e) => setOwnerPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      autoComplete="off"
+                    />
+                  </label>
+                  <div className="franchisee-field franchisee-form-actions">
+                    <button
+                      className="btn-primary"
+                      type="button"
+                      disabled={provisioningOwner}
+                      onClick={() => void handleProvisionOwner()}
+                    >
+                      {provisioningOwner ? 'Creating...' : 'Create Owner Account'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="branch-transfer-section">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowTransferPanel((v) => !v)}
+                >
+                  <ArrowRightLeft size={14} /> Transfer Ownership
+                </button>
+
+                {showTransferPanel && (
+                  <div className="branch-transfer-panel">
+                    <p className="branch-owner-hint">
+                      Only HQ can change the registered owner after verifying supporting documents
+                      per the Franchise Agreement.
+                    </p>
+                    <div className="franchisee-grid">
+                      <label className="franchisee-field">
+                        <span>New owner email *</span>
+                        <input
+                          className="branch-input"
+                          type="email"
+                          value={transferEmail}
+                          onChange={(e) => setTransferEmail(e.target.value)}
+                          placeholder="newowner@email.com"
+                        />
+                      </label>
+                      <label className="franchisee-field franchisee-field-wide">
+                        <span>Supporting documents (one per line)</span>
+                        <textarea
+                          className="branch-input"
+                          rows={3}
+                          value={transferDocs}
+                          onChange={(e) => setTransferDocs(e.target.value)}
+                          placeholder="Franchise Agreement addendum&#10;ID verification reference"
+                        />
+                      </label>
+                      <div className="franchisee-field franchisee-form-actions">
+                        <button
+                          className="btn-primary"
+                          type="button"
+                          onClick={() => void handleSubmitTransferRequest()}
+                        >
+                          Submit Transfer Request
+                        </button>
+                      </div>
+                    </div>
+
+                    {transferRequests.length > 0 && (
+                      <div className="branch-transfer-list">
+                        <h3>Transfer requests</h3>
+                        {transferRequests.map((req) => (
+                          <div key={req.id} className="branch-transfer-item">
+                            <div>
+                              <strong>{req.new_owner_email}</strong>
+                              <span className={`branch-transfer-status branch-transfer-status--${req.status}`}>
+                                {req.status}
+                              </span>
+                              <p className="branch-owner-hint">
+                                Docs: {(req.document_refs ?? []).map((d) => d.name).join(', ') || '—'}
+                              </p>
+                            </div>
+                            {req.status === 'pending' && (
+                              <div className="branch-transfer-actions">
+                                <input
+                                  className="branch-input"
+                                  type="text"
+                                  placeholder="New owner full name"
+                                  value={transferFullName}
+                                  onChange={(e) => setTransferFullName(e.target.value)}
+                                />
+                                <input
+                                  className="branch-input"
+                                  type="text"
+                                  placeholder="Temp password (6+ chars)"
+                                  value={transferPassword}
+                                  onChange={(e) => setTransferPassword(e.target.value)}
+                                />
+                                <button
+                                  className="btn-primary"
+                                  type="button"
+                                  disabled={processingTransferId === req.id}
+                                  onClick={() => void handleProcessTransfer(req, 'approve')}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  className="btn-secondary"
+                                  type="button"
+                                  disabled={processingTransferId === req.id}
+                                  onClick={() => void handleProcessTransfer(req, 'reject')}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </fieldset>
+          )}
 
           <fieldset className="franchisee-fieldset">
             <legend>Business & contract</legend>

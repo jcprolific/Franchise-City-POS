@@ -189,6 +189,7 @@
   height: auto;
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 /* Keep HQ area dark — nothing needed here since HqShell has no .pos-shell */

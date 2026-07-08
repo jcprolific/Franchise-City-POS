@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { sampleDashboard } from '../data/inventoryDashboardData';
-import { sampleInventory } from '../data/inventoryDashboardData';
 import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
 import { fetchLiveDashboardData } from '../lib/dashboardRealtime';
+import { getCurrentBranch } from '../lib/branchContext';
+import {
+  fetchDailySalesTrend,
+  fetchFranchiseSummary,
+  fetchLowStockItems,
+  fetchProductPerformance,
+} from '../lib/franchiseReportsService';
 import './DashboardPage.css';
 
 function formatYAxis(value: number) {
@@ -13,7 +18,8 @@ function formatYAxis(value: number) {
 
 export default function DashboardPage() {
   const { brand } = useBrand();
-  const staticDashboard = sampleDashboard;
+  const branch = useMemo(() => getCurrentBranch(), []);
+
   const [liveDashboard, setLiveDashboard] = useState({
     todaySales: 0,
     todaySalesChange: 0,
@@ -29,21 +35,60 @@ export default function DashboardPage() {
       payment: string;
     }[],
   });
+  const [weeklySales, setWeeklySales] = useState<{ day: string; amount: number }[]>([]);
+  const [topProducts, setTopProducts] = useState<
+    { name: string; count: number; color: string }[]
+  >([]);
+  const [topProductName, setTopProductName] = useState('—');
+  const [topProductSold, setTopProductSold] = useState(0);
+  const [lowStockItems, setLowStockItems] = useState<
+    { id: string; name: string; quantity: number; unit: string; icon: string }[]
+  >([]);
+  const [dataSource, setDataSource] = useState<'live' | 'fallback'>('fallback');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
   const refreshDashboard = useCallback(async () => {
     try {
       setLoadError('');
-      const { dashboard } = await fetchLiveDashboardData();
+      const [{ dashboard }, trend, products, lowStock] = await Promise.all([
+        fetchLiveDashboardData(branch.id),
+        fetchDailySalesTrend(brand.dbBrandId, 7, branch.id),
+        fetchProductPerformance(brand.dbBrandId, '7d', branch.id),
+        fetchLowStockItems(brand.dbBrandId, branch.id),
+      ]);
+
       setLiveDashboard(dashboard);
+      setWeeklySales(trend.map((t) => ({ day: t.label, amount: t.amount })));
+
+      const colors = ['#f37021', '#008d36', '#ffd200', '#007a33', '#d98724'];
+      const mapped = products.rows.slice(0, 5).map((p, i) => ({
+        name: p.productName,
+        count: p.quantity,
+        color: colors[i % colors.length],
+      }));
+      setTopProducts(mapped.length ? mapped : [{ name: 'No sales yet', count: 0, color: '#ccc' }]);
+      if (products.rows[0]) {
+        setTopProductName(products.rows[0].productName);
+        setTopProductSold(products.rows[0].quantity);
+      }
+      setLowStockItems(
+        lowStock.map((i) => ({
+          id: i.rawMaterialId,
+          name: i.name,
+          quantity: i.onHandQty,
+          unit: i.unit,
+          icon: i.icon || '📦',
+        }))
+      );
+      setDataSource(products.source === 'live' || dashboard.totalOrders > 0 ? 'live' : 'fallback');
     } catch (error) {
       console.error('Dashboard sync failed:', error);
       setLoadError('Realtime sync unavailable. Showing latest cached values.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [brand.dbBrandId, branch.id]);
 
   useEffect(() => {
     void refreshDashboard();
@@ -64,32 +109,44 @@ export default function DashboardPage() {
     };
   }, [refreshDashboard]);
 
-  const maxSales = Math.max(...staticDashboard.weeklySales.map((s) => s.amount));
+  const maxSales = Math.max(...weeklySales.map((s) => s.amount), 1);
   const yAxisMax = Math.ceil(maxSales / 5000) * 5000 || 5000;
   const yAxisTicks = useMemo(
     () => [yAxisMax, yAxisMax * 0.75, yAxisMax * 0.5, yAxisMax * 0.25, 0],
     [yAxisMax]
   );
 
-  const lowStockItems = useMemo(
-    () => sampleInventory.filter((i) => i.quantity <= i.lowStockThreshold),
-    []
-  );
-
-  const totalProducts = staticDashboard.topProducts.reduce((sum, p) => sum + p.count, 0);
+  const totalProducts = topProducts.reduce((sum, p) => sum + p.count, 0) || 1;
   const donutGradient = useMemo(() => {
     let accumulated = 0;
     const stops: string[] = [];
-    staticDashboard.topProducts.forEach((p) => {
+    topProducts.forEach((p) => {
       const start = (accumulated / totalProducts) * 360;
       accumulated += p.count;
       const end = (accumulated / totalProducts) * 360;
       stops.push(`${p.color} ${start}deg ${end}deg`);
     });
     return `conic-gradient(${stops.join(', ')})`;
-  }, [staticDashboard.topProducts, totalProducts]);
+  }, [topProducts, totalProducts]);
 
-  const hasLiveOrders = liveDashboard.totalOrders > 0;
+  const handlePrintEod = async () => {
+    const summary = await fetchFranchiseSummary(brand.dbBrandId, 'today', branch.id);
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`
+      <html><head><title>EOD Report</title></head><body style="font-family:sans-serif;padding:24px">
+      <h1>Daily Sales Report — ${branch.name}</h1>
+      <p>${new Date().toLocaleDateString('en-PH')}</p>
+      <ul>
+        <li>Revenue: ₱${summary.revenue.toLocaleString()}</li>
+        <li>Orders: ${summary.orders}</li>
+        <li>Avg Order: ₱${summary.avgOrderValue.toFixed(2)}</li>
+      </ul>
+      </body></html>
+    `);
+    w.document.close();
+    w.print();
+  };
 
   return (
     <div className="dashboard-page" id="dashboard-page">
@@ -102,9 +159,14 @@ export default function DashboardPage() {
           {!isLoading && loadError && (
             <span className="dashboard-status is-warning">{loadError}</span>
           )}
-          {!isLoading && !loadError && hasLiveOrders && (
-            <span className="dashboard-status is-live">Live · {liveDashboard.totalOrders} orders today</span>
+          {!isLoading && !loadError && (
+            <span className="dashboard-status is-live">
+              {dataSource === 'live' ? `Live · ${liveDashboard.totalOrders} orders today` : 'Sample / offline data'}
+            </span>
           )}
+          <button type="button" className="dashboard-eod-btn" onClick={() => void handlePrintEod()}>
+            Print EOD
+          </button>
         </div>
       </div>
 
@@ -113,12 +175,10 @@ export default function DashboardPage() {
           <div className="kpi-card-header">
             <span className="kpi-card-title">Today&apos;s Sales</span>
           </div>
-          <div className="kpi-card-value">
-            ₱{(hasLiveOrders ? liveDashboard.todaySales : staticDashboard.todaySales).toLocaleString()}
-          </div>
-          <div className={`kpi-card-change ${(hasLiveOrders ? liveDashboard.todaySalesChange : staticDashboard.todaySalesChange) >= 0 ? 'up' : 'down'}`}>
-            {(hasLiveOrders ? liveDashboard.todaySalesChange : staticDashboard.todaySalesChange) >= 0 ? '+' : ''}
-            {(hasLiveOrders ? liveDashboard.todaySalesChange : staticDashboard.todaySalesChange).toFixed(1)}%
+          <div className="kpi-card-value">₱{liveDashboard.todaySales.toLocaleString()}</div>
+          <div className={`kpi-card-change ${liveDashboard.todaySalesChange >= 0 ? 'up' : 'down'}`}>
+            {liveDashboard.todaySalesChange >= 0 ? '+' : ''}
+            {liveDashboard.todaySalesChange.toFixed(1)}%
           </div>
         </div>
 
@@ -126,12 +186,10 @@ export default function DashboardPage() {
           <div className="kpi-card-header">
             <span className="kpi-card-title">Orders</span>
           </div>
-          <div className="kpi-card-value">
-            {hasLiveOrders ? liveDashboard.totalOrders : staticDashboard.totalOrders}
-          </div>
-          <div className={`kpi-card-change ${(hasLiveOrders ? liveDashboard.ordersChange : staticDashboard.ordersChange) >= 0 ? 'up' : 'down'}`}>
-            {(hasLiveOrders ? liveDashboard.ordersChange : staticDashboard.ordersChange) >= 0 ? '+' : ''}
-            {(hasLiveOrders ? liveDashboard.ordersChange : staticDashboard.ordersChange).toFixed(1)}%
+          <div className="kpi-card-value">{liveDashboard.totalOrders}</div>
+          <div className={`kpi-card-change ${liveDashboard.ordersChange >= 0 ? 'up' : 'down'}`}>
+            {liveDashboard.ordersChange >= 0 ? '+' : ''}
+            {liveDashboard.ordersChange.toFixed(1)}%
           </div>
         </div>
 
@@ -139,21 +197,19 @@ export default function DashboardPage() {
           <div className="kpi-card-header">
             <span className="kpi-card-title">Avg Order Value</span>
           </div>
-          <div className="kpi-card-value">
-            ₱{(hasLiveOrders ? liveDashboard.avgOrderValue : staticDashboard.avgOrderValue).toFixed(2)}
-          </div>
-          <div className={`kpi-card-change ${(hasLiveOrders ? liveDashboard.avgOrderChange : staticDashboard.avgOrderChange) >= 0 ? 'up' : 'down'}`}>
-            {(hasLiveOrders ? liveDashboard.avgOrderChange : staticDashboard.avgOrderChange) >= 0 ? '+' : ''}
-            {(hasLiveOrders ? liveDashboard.avgOrderChange : staticDashboard.avgOrderChange).toFixed(1)}%
+          <div className="kpi-card-value">₱{liveDashboard.avgOrderValue.toFixed(2)}</div>
+          <div className={`kpi-card-change ${liveDashboard.avgOrderChange >= 0 ? 'up' : 'down'}`}>
+            {liveDashboard.avgOrderChange >= 0 ? '+' : ''}
+            {liveDashboard.avgOrderChange.toFixed(1)}%
           </div>
         </div>
 
         <div className="kpi-card kpi-card-highlight" style={{ animationDelay: '180ms' }}>
           <div className="kpi-card-header">
-            <span className="kpi-card-title">Top Flavor</span>
+            <span className="kpi-card-title">Top Seller</span>
           </div>
-          <div className="kpi-card-value">{staticDashboard.topProductName}</div>
-          <div className="kpi-card-change sold">{staticDashboard.topProductSold} sold</div>
+          <div className="kpi-card-value">{topProductName}</div>
+          <div className="kpi-card-change sold">{topProductSold} sold</div>
         </div>
       </div>
 
@@ -166,7 +222,7 @@ export default function DashboardPage() {
                 <span key={v} className="bar-y-label">{formatYAxis(v)}</span>
               ))}
             </div>
-            {staticDashboard.weeklySales.map((s) => (
+            {weeklySales.map((s) => (
               <div key={s.day} className="bar-chart-col">
                 <div
                   className="bar-chart-bar"
@@ -188,7 +244,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="donut-legend">
-              {staticDashboard.topProducts.map((p) => (
+              {topProducts.map((p) => (
                 <div key={p.name} className="donut-legend-item">
                   <div className="donut-legend-dot" style={{ background: p.color }} />
                   <span className="donut-legend-name">{p.name}</span>
@@ -214,7 +270,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {(hasLiveOrders ? liveDashboard.recentTransactions : staticDashboard.recentTransactions).map((tx) => (
+              {liveDashboard.recentTransactions.map((tx) => (
                 <tr key={tx.id}>
                   <td className="order-id">{tx.id}</td>
                   <td>{tx.time}</td>
@@ -223,10 +279,10 @@ export default function DashboardPage() {
                   <td><span className="payment-tag">{tx.payment}</span></td>
                 </tr>
               ))}
-              {(hasLiveOrders ? liveDashboard.recentTransactions : staticDashboard.recentTransactions).length === 0 && (
+              {liveDashboard.recentTransactions.length === 0 && (
                 <tr>
                   <td colSpan={5} className="transactions-empty">
-                    No orders yet — sample data will appear once synced.
+                    No orders yet — complete a sale on POS to see live data.
                   </td>
                 </tr>
               )}

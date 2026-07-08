@@ -33,6 +33,24 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+}
+
+.dashboard-eod-btn {
+  padding: 6px 14px;
+  border-radius: var(--pos-radius-pill, 999px);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--accent-dark, #b86f16);
+  font-family: inherit;
+  font-size: var(--font-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-eod-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
 }
 
 .dashboard-status {

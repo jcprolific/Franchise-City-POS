@@ -57,6 +57,7 @@ export interface FranchiseeRow {
   contract_start_date?: string | null;
   franchise_package?: string | null;
   onboarding_status?: string | null;
+  owner_user_id?: string | null;
   _local?: boolean;
 }
 
@@ -88,7 +89,7 @@ export interface RegisterFranchiseeResult {
 const BASE_SELECT = 'id,name,address,is_active,created_at';
 
 const EXTENDED_SELECT =
-  `${BASE_SELECT},branch_code,franchisee_name,franchisee_phone,franchisee_email,business_name,city,opening_date,contract_start_date,franchise_package,onboarding_status`;
+  `${BASE_SELECT},branch_code,franchisee_name,franchisee_phone,franchisee_email,business_name,city,opening_date,contract_start_date,franchise_package,onboarding_status,owner_user_id`;
 
 function localStorageKey(brandId: string) {
   return `coftea-franchisees:v2:${brandId}`;

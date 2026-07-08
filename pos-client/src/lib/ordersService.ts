@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from './supabase';
 import { resolvePosOrderColumns } from './dashboardRealtime';
 import { getManilaIsoDateKey, isSameManilaDate, toManilaTimeLabel, toRelativeTimeLabel } from './timezone';
 
-export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'COMPLETED' | 'VOIDED';
+export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'COMPLETED' | 'VOIDED' | 'REFUNDED';
 
 export interface PosOrderRecord {
   id: string;
@@ -11,7 +11,9 @@ export interface PosOrderRecord {
   itemCount: number;
   subtotal: number;
   discountAmount: number;
+  discountType: string;
   total: number;
+  refundAmount: number;
   payment: string;
   paymentStatus: string;
   orderType: string;
@@ -19,11 +21,12 @@ export interface PosOrderRecord {
   timeLabel: string;
   relativeTime: string;
   paymentReference: string;
+  voidReason: string;
 }
 
 type RowRecord = Record<string, unknown>;
 
-const STATUS_VALUES: OrderStatus[] = ['NEW', 'PREPARING', 'READY', 'COMPLETED', 'VOIDED'];
+const STATUS_VALUES: OrderStatus[] = ['NEW', 'PREPARING', 'READY', 'COMPLETED', 'VOIDED', 'REFUNDED'];
 
 function toNumber(value: unknown) {
   if (typeof value === 'number') return value;
@@ -41,6 +44,9 @@ function normalizeStatus(value: unknown): OrderStatus {
   const raw = asString(value, 'NEW').toUpperCase();
   if (raw === 'VOID' || raw === 'VOIDED' || raw === 'CANCELLED' || raw === 'CANCELED') {
     return 'VOIDED';
+  }
+  if (raw === 'REFUNDED' || raw === 'REFUND') {
+    return 'REFUNDED';
   }
   if (STATUS_VALUES.includes(raw as OrderStatus)) {
     return raw as OrderStatus;
@@ -77,7 +83,9 @@ function rowToOrder(row: RowRecord, columns: Awaited<ReturnType<typeof resolvePo
     itemCount: Math.max(1, Math.round(toNumber(columns.itemCount ? row[columns.itemCount] : 1))),
     subtotal: toNumber(columns.subtotal ? row[columns.subtotal] : 0),
     discountAmount: toNumber(columns.discountAmount ? row[columns.discountAmount] : 0),
+    discountType: asString(columns.discountType ? row[columns.discountType] : 'NONE', 'NONE'),
     total: toNumber(columns.total ? row[columns.total] : 0),
+    refundAmount: toNumber(columns.refundAmount ? row[columns.refundAmount] : 0),
     payment,
     paymentStatus: asString(columns.paymentStatus ? row[columns.paymentStatus] : 'PAID', 'PAID'),
     orderType: formatOrderType(orderTypeRaw),
@@ -85,6 +93,7 @@ function rowToOrder(row: RowRecord, columns: Awaited<ReturnType<typeof resolvePo
     timeLabel: dateValue ? toManilaTimeLabel(dateValue) : '--',
     relativeTime: dateValue ? toRelativeTimeLabel(dateValue) : '--',
     paymentReference: columns.paymentReference ? asString(row[columns.paymentReference]) : '',
+    voidReason: columns.voidReason ? asString(row[columns.voidReason]) : '',
   };
 }
 
@@ -94,6 +103,7 @@ export const orderStatusLabels: Record<OrderStatus, string> = {
   READY: 'Ready',
   COMPLETED: 'Completed',
   VOIDED: 'Voided',
+  REFUNDED: 'Refunded',
 };
 
 export const nextOrderStatus: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -182,8 +192,53 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
   if (error) throw error;
 }
 
-export async function voidOrder(orderId: string): Promise<void> {
-  return updateOrderStatus(orderId, 'VOIDED');
+export async function voidOrder(orderId: string, reason: string, voidedBy: string): Promise<void> {
+  const columns = await resolvePosOrderColumns();
+  if (!columns.primaryKey || !columns.status) {
+    throw new Error('Order void is not supported by the current database schema.');
+  }
+
+  const payload: Record<string, unknown> = {
+    [columns.status]: 'VOIDED',
+  };
+  if (columns.paymentStatus) payload[columns.paymentStatus] = 'VOIDED';
+  if (columns.voidReason) payload[columns.voidReason] = reason;
+  payload.voided_by = voidedBy;
+  payload.voided_at = new Date().toISOString();
+
+  const { error } = await supabase
+    .from('pos_order')
+    .update(payload)
+    .eq(columns.primaryKey, orderId);
+
+  if (error) throw error;
+}
+
+export async function refundOrder(
+  orderId: string,
+  amount: number,
+  reason: string
+): Promise<void> {
+  const columns = await resolvePosOrderColumns();
+  if (!columns.primaryKey) {
+    throw new Error('Order refund is not supported by the current database schema.');
+  }
+
+  const payload: Record<string, unknown> = {
+    refund_amount: amount,
+    refund_reason: reason,
+    refunded_at: new Date().toISOString(),
+  };
+  if (columns.status) payload[columns.status] = 'REFUNDED';
+  if (columns.paymentStatus) payload[columns.paymentStatus] = 'REFUNDED';
+  if (columns.refundAmount) payload[columns.refundAmount] = amount;
+
+  const { error } = await supabase
+    .from('pos_order')
+    .update(payload)
+    .eq(columns.primaryKey, orderId);
+
+  if (error) throw error;
 }
 
 export function countOrdersByStatus(orders: PosOrderRecord[], status: OrderStatus) {

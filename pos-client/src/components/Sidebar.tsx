@@ -1,11 +1,18 @@
+import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
+import {
+  hasPermission,
+  isPortalRole,
+  type Capability,
+  type UserRole,
+} from '../lib/permissions';
 import './Sidebar.css';
 
 interface SidebarProps {
   userName: string;
   userRole: string;
+  role: UserRole;
   canAccessHq: boolean;
-  isFranchisee: boolean;
   onLogout: () => void;
 }
 
@@ -91,6 +98,28 @@ function HomeIcon() {
   );
 }
 
+function StaffIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function BusinessIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3 21h18" />
+      <path d="M5 21V7l8-4v18" />
+      <path d="M19 21V11l-6-4" />
+      <path d="M9 9h.01M9 13h.01M9 17h.01" />
+    </svg>
+  );
+}
+
 function LogoutIcon() {
   return (
     <svg {...iconProps}>
@@ -101,43 +130,60 @@ function LogoutIcon() {
   );
 }
 
-export default function Sidebar({ userName, userRole, canAccessHq, isFranchisee, onLogout }: SidebarProps) {
+interface NavItem {
+  id: string;
+  to: string;
+  label: string;
+  icon: ReactNode;
+  capability: Capability;
+}
+
+const ALL_NAV_ITEMS: NavItem[] = [
+  { id: 'nav-portal', to: '/portal', label: 'Portal Home', icon: <HomeIcon />, capability: 'portal' },
+  { id: 'nav-staff', to: '/portal/staff', label: 'Manage Staff', icon: <StaffIcon />, capability: 'portal_staff' },
+  { id: 'nav-business', to: '/portal/business', label: 'Business Info', icon: <BusinessIcon />, capability: 'portal_business' },
+  { id: 'nav-dashboard', to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon />, capability: 'dashboard' },
+  { id: 'nav-pos', to: '/pos', label: 'POS', icon: <PosIcon />, capability: 'pos' },
+  { id: 'nav-orders', to: '/orders', label: 'Orders', icon: <OrdersIcon />, capability: 'orders' },
+  { id: 'nav-inventory', to: '/inventory', label: 'Inventory', icon: <InventoryIcon />, capability: 'inventory' },
+  { id: 'nav-promotions', to: '/promotions', label: 'Promotions', icon: <PromotionsIcon />, capability: 'promotions' },
+];
+
+function navItemsForRole(role: UserRole): NavItem[] {
+  return ALL_NAV_ITEMS.filter((item) => {
+    if (item.capability === 'inventory') {
+      return hasPermission(role, 'inventory') || hasPermission(role, 'inventory_view');
+    }
+    return hasPermission(role, item.capability);
+  });
+}
+
+export default function Sidebar({ userName, userRole, role, canAccessHq, onLogout }: SidebarProps) {
   const navClassName = ({ isActive }: { isActive: boolean }) =>
     `sidebar-nav-item ${isActive ? 'active' : ''}`;
 
-  const baseItems = [
-    { id: 'nav-pos', to: '/pos', label: 'POS', icon: <PosIcon /> },
-    { id: 'nav-orders', to: '/orders', label: 'Orders', icon: <OrdersIcon /> },
-    { id: 'nav-inventory', to: '/inventory', label: 'Inventory', icon: <InventoryIcon /> },
-    { id: 'nav-dashboard', to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-    { id: 'nav-promotions', to: '/promotions', label: 'Promotions', icon: <PromotionsIcon /> },
-  ];
+  const items = navItemsForRole(role);
+  const portalFirst = isPortalRole(role);
 
-  const franchiseeItems = [
-    { id: 'nav-portal', to: '/portal', label: 'Portal Home', icon: <HomeIcon /> },
-    { id: 'nav-dashboard', to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-    { id: 'nav-pos', to: '/pos', label: 'POS', icon: <PosIcon /> },
-    { id: 'nav-orders', to: '/orders', label: 'Orders', icon: <OrdersIcon /> },
-    { id: 'nav-inventory', to: '/inventory', label: 'Inventory', icon: <InventoryIcon /> },
-    { id: 'nav-promotions', to: '/promotions', label: 'Promotions', icon: <PromotionsIcon /> },
-  ];
-
-  const items = isFranchisee ? franchiseeItems : baseItems;
+  const sorted = portalFirst
+    ? [...items].sort((a, b) => {
+        const aPortal = a.to.startsWith('/portal') ? 0 : 1;
+        const bPortal = b.to.startsWith('/portal') ? 0 : 1;
+        return aPortal - bPortal;
+      })
+    : items;
 
   return (
     <aside className="sidebar" id="sidebar-nav">
       <nav className="sidebar-nav">
-        {items.map((item) => (
+        {sorted.map((item) => (
           <NavLink key={item.id} id={item.id} className={navClassName} to={item.to}>
             <span className="nav-icon">{item.icon}</span>
             {item.label}
           </NavLink>
         ))}
         {canAccessHq && (
-          <NavLink
-            className={navClassName}
-            to="/hq"
-          >
+          <NavLink className={navClassName} to="/hq">
             <span className="nav-icon"><HqIcon /></span>
             HQ Portal
           </NavLink>

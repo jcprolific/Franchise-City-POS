@@ -30,8 +30,21 @@ import MenuCatalogPage from './hq/pages/MenuCatalogPage';
 import StaffDirectoryPage from './hq/pages/StaffDirectoryPage';
 import ReportsAnalyticsPage from './hq/pages/ReportsAnalyticsPage';
 import PortalHubPage from './portal/PortalHubPage';
-import ComingSoonPage from './portal/ComingSoonPage';
+import PortalModulePage from './portal/PortalModulePage';
 import SupplyOrdersPage from './hq/pages/SupplyOrdersPage';
+import PortalContentPage from './hq/pages/PortalContentPage';
+import DocumentLibraryPage from './hq/pages/DocumentLibraryPage';
+import SupportInboxPage from './hq/pages/SupportInboxPage';
+import SystemNoticesPage from './hq/pages/SystemNoticesPage';
+import StaffManagementPage from './portal/StaffManagementPage';
+import BusinessInfoPage from './portal/BusinessInfoPage';
+import {
+  canAccessPath,
+  homePathForRole,
+  normalizeRole,
+  ROLE_LABELS,
+  type UserRole,
+} from './lib/permissions';
 import {
   clearStoredAuthSession,
   readStoredAuthSession,
@@ -41,7 +54,6 @@ import { preloadPosOrderColumns } from './lib/dashboardRealtime';
 import './App.css';
 
 type LoginMode = 'guest' | 'pin' | 'email' | null;
-type UserRole = 'cashier' | 'hq_admin' | 'franchisee';
 
 interface AuthState {
   isLoggedIn: boolean;
@@ -87,17 +99,22 @@ function RequireHq({ isHq }: HqGuardProps) {
   return <Outlet />;
 }
 
-function RequireFranchisee({ isFranchisee }: { isFranchisee: boolean }) {
-  if (!isFranchisee) {
-    return <Navigate to="/pos" replace />;
-  }
-  return <Outlet />;
+interface PermissionGuardProps {
+  role: UserRole;
 }
 
-function homePathForRole(role: UserRole): string {
-  if (role === 'hq_admin') return '/hq';
-  if (role === 'franchisee') return '/portal';
-  return '/pos';
+function RequirePermission({ role }: PermissionGuardProps) {
+  const location = useLocation();
+  if (!canAccessPath(role, location.pathname)) {
+    return (
+      <Navigate
+        to={homePathForRole(role)}
+        replace
+        state={{ accessDenied: 'You do not have permission to access this page.' }}
+      />
+    );
+  }
+  return <Outlet />;
 }
 
 function formatToday(d: Date) {
@@ -109,7 +126,7 @@ function formatToday(d: Date) {
 }
 
 function getHeaderTitle(pathname: string, terminalLabel: string): { title: string; subtitle: string } {
-  if (pathname.startsWith('/portal')) return { title: 'Franchisee Portal', subtitle: terminalLabel };
+  if (pathname.startsWith('/portal')) return { title: 'Franchise Owner Portal', subtitle: terminalLabel };
   if (pathname.startsWith('/orders')) return { title: 'Orders', subtitle: terminalLabel };
   if (pathname.startsWith('/inventory')) return { title: 'Inventory', subtitle: terminalLabel };
   if (pathname.startsWith('/dashboard')) return { title: 'Dashboard', subtitle: terminalLabel };
@@ -127,10 +144,7 @@ function PosShell({ auth, onLogout }: PosShellProps) {
   const displayName = auth.userName
     ? auth.userName.charAt(0).toUpperCase() + auth.userName.slice(1)
     : 'Cashier';
-  const roleLabel =
-    auth.role === 'hq_admin' ? 'HQ Admin'
-    : auth.role === 'franchisee' ? 'Franchisee'
-    : 'Cashier';
+  const roleLabel = ROLE_LABELS[auth.role] ?? 'Staff';
 
   const [attendanceStatus, setAttendanceStatus] = useState<'IN' | 'OUT'>(
     () => getLatestAttendanceStatus(displayName) ?? 'OUT'
@@ -184,8 +198,8 @@ function PosShell({ auth, onLogout }: PosShellProps) {
         <Sidebar
           userName={auth.userName}
           userRole={roleLabel}
+          role={auth.role}
           canAccessHq={auth.role === 'hq_admin'}
-          isFranchisee={auth.role === 'franchisee'}
           onLogout={onLogout}
         />
         <main className="app-main">
@@ -257,10 +271,7 @@ export default function App() {
     if (error || !data?.role) {
       return 'cashier';
     }
-    if (data.role === 'hq_admin' || data.role === 'franchisee') {
-      return data.role;
-    }
-    return 'cashier';
+    return normalizeRole(data.role);
   }, []);
 
   const syncSessionUser = useCallback(
@@ -297,7 +308,7 @@ export default function App() {
           isLoggedIn: true,
           userName: stored.userName,
           loginMode: stored.loginMode,
-          role: stored.role,
+          role: normalizeRole(stored.role),
           isLoading: false,
         });
         return;
@@ -434,19 +445,21 @@ export default function App() {
         }
       />
       <Route element={<RequireAuth isLoggedIn={auth.isLoggedIn} />}>
-        <Route element={<PosShell auth={auth} onLogout={handleLogout} />}>
-          <Route path="/" element={<Navigate to="/pos" replace />} />
-          <Route path="/pos" element={<POSPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route
-            path="/promotions"
-            element={<HqPlaceholder title="Promotions" subtitle="Discounts & combo deals coming soon." />}
-          />
-          <Route element={<RequireFranchisee isFranchisee={auth.role === 'franchisee'} />}>
-            <Route path="/portal" element={<PortalHubPage />} />
-            <Route path="/portal/:module" element={<ComingSoonPage />} />
+        <Route element={<RequirePermission role={auth.role} />}>
+          <Route element={<PosShell auth={auth} onLogout={handleLogout} />}>
+            <Route path="/" element={<Navigate to={homePathForRole(auth.role)} replace />} />
+            <Route path="/pos" element={<POSPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route
+              path="/promotions"
+              element={<HqPlaceholder title="Promotions" subtitle="Discounts & combo deals coming soon." />}
+            />
+            <Route path="/portal" element={<PortalHubPage userRole={auth.role} />} />
+            <Route path="/portal/staff" element={<StaffManagementPage />} />
+            <Route path="/portal/business" element={<BusinessInfoPage />} />
+            <Route path="/portal/:module" element={<PortalModulePage />} />
           </Route>
         </Route>
         <Route element={<RequireHq isHq={auth.role === 'hq_admin'} />}>
@@ -459,6 +472,10 @@ export default function App() {
             <Route path="/hq/catalog" element={<MenuCatalogPage />} />
             <Route path="/hq/staff" element={<StaffDirectoryPage />} />
             <Route path="/hq/reports" element={<ReportsAnalyticsPage />} />
+            <Route path="/hq/portal-content" element={<PortalContentPage />} />
+            <Route path="/hq/documents" element={<DocumentLibraryPage />} />
+            <Route path="/hq/support" element={<SupportInboxPage />} />
+            <Route path="/hq/notices" element={<SystemNoticesPage />} />
             <Route
               path="/hq/settings"
               element={<HqPlaceholder title="Settings" subtitle="HQ config coming soon." />}

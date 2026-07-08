@@ -32,8 +32,26 @@ export function buildWelcome(
 }
 
 export async function resolveFranchiseeBranch(
-  email: string
+  email: string,
+  userId?: string
 ): Promise<FranchiseeWelcome> {
+  if (userId) {
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('branch')
+          .select('id, name, business_name')
+          .eq('owner_user_id', userId)
+          .limit(1)
+          .maybeSingle(),
+        SUPABASE_TIMEOUT_MS
+      );
+      if (!error && data) return buildWelcome(data as FranchiseeBranchRow | null, email);
+    } catch {
+      /* fall through to email lookup */
+    }
+  }
+
   if (!email) return buildWelcome(null, email);
   try {
     const { data, error } = await withTimeout(

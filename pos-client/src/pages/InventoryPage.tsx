@@ -8,6 +8,7 @@ import {
   type BranchInventoryItem,
 } from '../lib/inventoryService';
 import { placeSupplyOrder } from '../lib/supplyOrderService';
+import { fetchStockMovements, logStockMovement, type StockMovement } from '../lib/stockMovementService';
 import {
   cofteaRawMaterials,
   RAW_MATERIAL_CATEGORY_ORDER,
@@ -66,9 +67,9 @@ export default function InventoryPage() {
   const { brand } = useBrand();
   const branch = useMemo(() => getCurrentBranch(), []);
 
-  const [items, setItems] = useState<BranchInventoryItem[]>([]);
+  const [items, setItems] = useState<BranchInventoryItem[]>(() => localFallbackItems());
   const [source, setSource] = useState<StockSource>('local');
-  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -81,35 +82,44 @@ export default function InventoryPage() {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
+  const [pageTab, setPageTab] = useState<'stock' | 'history'>('stock');
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [pendingAdjust, setPendingAdjust] = useState<{
+    item: BranchInventoryItem;
+    previous: number;
+    next: number;
+  } | null>(null);
+  const [adjustReason, setAdjustReason] = useState('Count correction');
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+
+    // Show the local catalog immediately so production never blocks on Supabase.
+    setItems(localFallbackItems());
+    setSource('local');
+    setSyncing(true);
 
     fetchBranchInventory(brand.dbBrandId, branch.id)
       .then((live) => {
-        if (cancelled) return;
-        if (live && live.length > 0) {
-          setItems(live);
-          setSource('live');
-        } else {
-          setItems(localFallbackItems());
-          setSource('local');
-        }
+        if (cancelled || !live?.length) return;
+        setItems(live);
+        setSource('live');
       })
       .catch(() => {
-        if (cancelled) return;
-        setItems(localFallbackItems());
-        setSource('local');
+        /* keep local catalog */
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setSyncing(false);
       });
 
     return () => {
       cancelled = true;
     };
   }, [brand.dbBrandId, branch.id]);
+
+  useEffect(() => {
+    void fetchStockMovements(branch.id).then(setMovements);
+  }, [branch.id, items]);
 
   const categories = useMemo(() => {
     const present = new Set(items.map((i) => i.category));
@@ -163,7 +173,11 @@ export default function InventoryPage() {
     [cartLines]
   );
 
-  const commitQty = async (item: BranchInventoryItem, nextQty: number) => {
+  const commitQty = async (
+    item: BranchInventoryItem,
+    nextQty: number,
+    reason = 'Count correction'
+  ) => {
     const qty = Math.max(0, Math.round(nextQty));
     const previous = item.onHandQty;
     if (qty === previous) return;
@@ -177,6 +191,21 @@ export default function InventoryPage() {
     if (item.branchInventoryId) {
       setSavingId(item.rawMaterialId);
       const { error } = await updateBranchStock(item.branchInventoryId, qty);
+      if (!error) {
+        const session = readStoredAuthSession();
+        await logStockMovement({
+          brandId: brand.dbBrandId,
+          branchId: branch.id,
+          rawMaterialId: item.rawMaterialId,
+          materialName: item.name,
+          movementType: qty > previous ? 'receive' : 'adjustment',
+          qtyBefore: previous,
+          qtyAfter: qty,
+          reason,
+          createdBy: session?.userName ?? 'Staff',
+        });
+        setMovements(await fetchStockMovements(branch.id));
+      }
       setSavingId(null);
       if (error) {
         setItems((prev) =>
@@ -188,6 +217,19 @@ export default function InventoryPage() {
         );
       }
     }
+  };
+
+  const requestAdjust = (item: BranchInventoryItem, nextQty: number) => {
+    const qty = Math.max(0, Math.round(nextQty));
+    if (qty === item.onHandQty) return;
+    setPendingAdjust({ item, previous: item.onHandQty, next: qty });
+    setAdjustReason('Count correction');
+  };
+
+  const confirmAdjust = async () => {
+    if (!pendingAdjust) return;
+    await commitQty(pendingAdjust.item, pendingAdjust.next, adjustReason);
+    setPendingAdjust(null);
   };
 
   const addToCart = (item: BranchInventoryItem) => {
@@ -262,6 +304,7 @@ export default function InventoryPage() {
           <h1>Inventory</h1>
           <span className="inventory-count">
             {branch.name} · {items.length} raw materials tracked
+            {syncing && <span className="inventory-sync-label"> · syncing…</span>}
           </span>
         </div>
         <div className="inventory-header-right">
@@ -291,8 +334,7 @@ export default function InventoryPage() {
       {confirmation && (
         <div className="inventory-confirm">
           <span>
-            ✅ Order <strong>{confirmation}</strong> placed. HQ has been notified —
-            track its status on the HQ Supply Orders page.
+            ✅ Order <strong>{confirmation}</strong> placed. Track it in Portal → Order History.
           </span>
           <button className="inventory-confirm-close" onClick={() => setConfirmation(null)}>
             Dismiss
@@ -300,7 +342,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {source === 'local' && !loading && (
+      {source === 'local' && !syncing && (
         <div className="inventory-offline-note">
           Showing the standard Coftea catalog (offline). Stock edits and orders won’t
           be saved until this branch is connected.
@@ -308,6 +350,22 @@ export default function InventoryPage() {
       )}
 
       <div className="inventory-toolbar">
+        <div className="inventory-page-tabs">
+          <button
+            type="button"
+            className={`inventory-filter ${pageTab === 'stock' ? 'active' : ''}`}
+            onClick={() => setPageTab('stock')}
+          >
+            Stock
+          </button>
+          <button
+            type="button"
+            className={`inventory-filter ${pageTab === 'history' ? 'active' : ''}`}
+            onClick={() => setPageTab('history')}
+          >
+            Movement History
+          </button>
+        </div>
         <div className="inventory-search">
           <input
             className="inventory-search-input"
@@ -337,10 +395,20 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="inventory-empty">
-          <div className="inventory-empty-icon">⏳</div>
-          Loading inventory…
+      {pageTab === 'history' ? (
+        <div className="inventory-movement-list">
+          {movements.length === 0 ? (
+            <div className="inventory-empty">No stock movements logged yet.</div>
+          ) : (
+            movements.map((m) => (
+              <div key={m.id} className="inventory-movement-row">
+                <strong>{m.materialName}</strong>
+                <span>{m.movementType} · {m.qtyDelta >= 0 ? '+' : ''}{m.qtyDelta}</span>
+                <span>{m.reason}</span>
+                <span>{new Date(m.createdAt).toLocaleString('en-PH')}</span>
+              </div>
+            ))
+          )}
         </div>
       ) : grouped.length === 0 ? (
         <div className="inventory-empty">
@@ -377,7 +445,7 @@ export default function InventoryPage() {
                       <div className="inventory-qty-editor">
                         <button
                           className="inventory-action-btn minus"
-                          onClick={() => commitQty(item, item.onHandQty - 1)}
+                          onClick={() => requestAdjust(item, item.onHandQty - 1)}
                           disabled={isSaving || item.onHandQty <= 0}
                           aria-label={`Remove one ${item.unit}`}
                         >
@@ -399,13 +467,13 @@ export default function InventoryPage() {
                                 )
                               );
                             }}
-                            onBlur={(e) => commitQty(item, Number(e.target.value))}
+                            onBlur={(e) => requestAdjust(item, Number(e.target.value))}
                           />
                           <span className="inventory-qty-unit">{item.unit}</span>
                         </div>
                         <button
                           className="inventory-action-btn plus"
-                          onClick={() => commitQty(item, item.onHandQty + 1)}
+                          onClick={() => requestAdjust(item, item.onHandQty + 1)}
                           disabled={isSaving}
                           aria-label={`Add one ${item.unit}`}
                         >
@@ -559,6 +627,36 @@ export default function InventoryPage() {
               </button>
             </div>
           </aside>
+        </div>
+      )}
+
+      {pendingAdjust && (
+        <div className="inventory-adjust-overlay" role="dialog" aria-modal="true">
+          <div className="inventory-adjust-modal">
+            <h3>Adjust Stock</h3>
+            <p>
+              {pendingAdjust.item.name}: {pendingAdjust.previous} → {pendingAdjust.next}{' '}
+              {pendingAdjust.item.unit}
+            </p>
+            <label htmlFor="adjust-reason">Reason</label>
+            <select
+              id="adjust-reason"
+              value={adjustReason}
+              onChange={(e) => setAdjustReason(e.target.value)}
+            >
+              <option>Count correction</option>
+              <option>Received delivery</option>
+              <option>Spoilage / waste</option>
+              <option>Used in production</option>
+              <option>Other</option>
+            </select>
+            <div className="inventory-adjust-actions">
+              <button type="button" onClick={() => setPendingAdjust(null)}>Cancel</button>
+              <button type="button" className="inventory-adjust-save" onClick={() => void confirmAdjust()}>
+                Save adjustment
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

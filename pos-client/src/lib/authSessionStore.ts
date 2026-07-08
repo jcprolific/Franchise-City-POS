@@ -3,7 +3,7 @@ export type StoredLoginMode = 'guest' | 'pin';
 export interface StoredAuthSession {
   userName: string;
   loginMode: StoredLoginMode;
-  role: 'cashier' | 'hq_admin';
+  role: string;
 }
 
 const AUTH_SESSION_KEY = 'coftea.pos.authSession';
@@ -16,7 +16,7 @@ export function readStoredAuthSession(): StoredAuthSession | null {
     if (
       !parsed?.userName ||
       (parsed.loginMode !== 'guest' && parsed.loginMode !== 'pin') ||
-      (parsed.role !== 'cashier' && parsed.role !== 'hq_admin')
+      typeof parsed.role !== 'string'
     ) {
       return null;
     }

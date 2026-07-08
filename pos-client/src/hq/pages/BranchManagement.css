@@ -420,6 +420,73 @@
   font-size: var(--font-sm);
 }
 
+.branch-owner-hint {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+.branch-owner-status {
+  font-size: var(--font-sm);
+  color: var(--status-success, #16a34a);
+  margin: 0;
+}
+
+.branch-transfer-section {
+  margin-top: 16px;
+}
+
+.branch-transfer-panel {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.branch-transfer-list {
+  margin-top: 16px;
+}
+
+.branch-transfer-list h3 {
+  font-size: var(--font-sm);
+  margin: 0 0 8px;
+}
+
+.branch-transfer-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.branch-transfer-status {
+  margin-left: 8px;
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+}
+
+.branch-transfer-status--pending {
+  color: #d97706;
+}
+
+.branch-transfer-status--approved {
+  color: #16a34a;
+}
+
+.branch-transfer-status--rejected {
+  color: #dc2626;
+}
+
+.branch-transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 @media (max-width: 900px) {
   .franchisee-grid {
     grid-template-columns: 1fr;

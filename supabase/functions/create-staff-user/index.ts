@@ -12,7 +12,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const ALLOWED_ROLES = ['cashier', 'branch_manager', 'hq_admin'] as const;
+const ALLOWED_ROLES = ['cashier', 'manager', 'supervisor', 'inventory_staff', 'hq_admin'] as const;
 type StaffRole = (typeof ALLOWED_ROLES)[number];
 
 const corsHeaders = {
@@ -143,6 +143,7 @@ Deno.serve(async (req: Request) => {
         phone,
         role,
         status: 'active',
+        account_level: 'staff',
       },
       { onConflict: 'brand_id,email' }
     )

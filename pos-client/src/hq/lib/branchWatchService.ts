@@ -215,6 +215,19 @@ export function watchItemToAlert(item: BranchWatchItem): HqBranchAlert {
   };
 }
 
+/** Synchronously seed/read local watch items so the UI can render immediately. */
+export function ensureLocalWatchItems(
+  brandId: string,
+  seeds: CreateWatchItemInput[] = []
+): BranchWatchItem[] {
+  const existing = readLocal(brandId);
+  if (existing.length > 0) return existing;
+  if (seeds.length === 0) return [];
+  const seeded = seeds.map((seed) => buildLocalItem(seed));
+  writeLocal(brandId, seeded);
+  return seeded;
+}
+
 /** Load watch items. Seeds from demo alerts on first run when the list is empty. */
 export async function fetchWatchItems(
   brandId: string,

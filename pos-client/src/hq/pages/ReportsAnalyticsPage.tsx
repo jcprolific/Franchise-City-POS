@@ -83,22 +83,29 @@ export default function ReportsAnalyticsPage() {
   const demo = useMemo(() => getHqDemoData(brand.slug), [brand.slug]);
 
   const [filters, setFilters] = useState<ReportsFilters>({ range: '7d', branchId: 'all' });
-  const [data, setData] = useState<ReportsData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<ReportsData | null>(() => ({
+    ...demo.sampleReports,
+    source: 'fallback',
+  }));
+  const [syncing, setSyncing] = useState(false);
   const [errorText, setErrorText] = useState('');
-  const [usingDemoData, setUsingDemoData] = useState(false);
+  const [usingDemoData, setUsingDemoData] = useState(true);
   const [activeTab, setActiveTab] = useState<ReportTab>('overview');
 
   const refresh = useCallback(async () => {
+    setSyncing(true);
     try {
       setErrorText('');
       const result = await fetchReportsData(brand.dbBrandId, filters);
-      setData(result);
       const hasLiveData = result.summary.orders > 0;
-      setUsingDemoData(!hasLiveData);
-      if (result.source === 'fallback' && hasLiveData) {
-        setErrorText('Using direct order aggregation. Run the HQ reports SQL functions for optimized metrics.');
-      } else if (!hasLiveData) {
+      if (hasLiveData) {
+        setData(result);
+        setUsingDemoData(false);
+        if (result.source === 'fallback') {
+          setErrorText('Using direct order aggregation. Run the HQ reports SQL functions for optimized metrics.');
+        }
+      } else {
+        setUsingDemoData(true);
         setErrorText(demo.demoDataMessage);
       }
     } catch (error) {
@@ -106,12 +113,11 @@ export default function ReportsAnalyticsPage() {
       setUsingDemoData(true);
       setErrorText(demo.demoDataMessage);
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   }, [brand.dbBrandId, demo.demoDataMessage, filters]);
 
   useEffect(() => {
-    setLoading(true);
     void refresh();
     const channel = supabase
       .channel(`hq-reports-${brand.slug}`)
@@ -142,7 +148,11 @@ export default function ReportsAnalyticsPage() {
   }, [branchRanking]);
 
   const leaderboard = useMemo(
-    () => branchRanking.slice(0, 8).map((row) => ({ ...row, shortName: row.branchName.replace(`${brand.name} `, '') })),
+    () =>
+      branchRanking.map((row) => ({
+        ...row,
+        shortName: row.branchName.replace(`${brand.name} `, ''),
+      })),
     [branchRanking, brand.name]
   );
 
@@ -214,8 +224,8 @@ export default function ReportsAnalyticsPage() {
         </div>
       )}
 
-      {loading && <div className="hq-status-note">Loading {brand.name} reports...</div>}
-      {!loading && errorText && <div className="hq-status-note">{errorText}</div>}
+      {syncing && <div className="hq-status-note hq-status-note--sync">Syncing live reports…</div>}
+      {!syncing && errorText && <div className="hq-status-note">{errorText}</div>}
 
       <section className="hq-reports-kpis">
         <article className="hq-stat-card hq-stat-card--dark">

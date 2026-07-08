@@ -7,11 +7,14 @@ import {
   nextOrderStatus,
   orderActionLabels,
   orderStatusLabels,
+  refundOrder,
   updateOrderStatus,
   voidOrder,
   type OrderStatus,
   type PosOrderRecord,
 } from '../lib/ordersService';
+import { useOutletContext } from 'react-router-dom';
+import type { PosOutletContext } from '../App';
 import './OrdersPage.css';
 
 type StatusFilter = 'ALL' | OrderStatus;
@@ -23,6 +26,7 @@ const statusFilters: { id: StatusFilter; label: string }[] = [
   { id: 'READY', label: 'Ready' },
   { id: 'COMPLETED', label: 'Completed' },
   { id: 'VOIDED', label: 'Voided' },
+  { id: 'REFUNDED', label: 'Refunded' },
 ];
 
 function formatPeso(value: number) {
@@ -31,14 +35,16 @@ function formatPeso(value: number) {
 
 export default function OrdersPage() {
   const { brand } = useBrand();
+  const { userName } = useOutletContext<PosOutletContext>();
   const [orders, setOrders] = useState<PosOrderRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [search, setSearch] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const refreshOrders = useCallback(async () => {
+    setSyncing(true);
     try {
       setLoadError('');
       const rows = await fetchTodayOrders(brand.dbBrandId);
@@ -48,7 +54,7 @@ export default function OrdersPage() {
       const message = error instanceof Error ? error.message : 'Unable to load orders from Supabase.';
       setLoadError(message);
     } finally {
-      setIsLoading(false);
+      setSyncing(false);
     }
   }, [brand.dbBrandId]);
 
@@ -88,7 +94,7 @@ export default function OrdersPage() {
   }, [orders, search, statusFilter]);
 
   const activeCount = orders.filter(
-    (order) => order.status !== 'COMPLETED' && order.status !== 'VOIDED'
+    (order) => order.status !== 'COMPLETED' && order.status !== 'VOIDED' && order.status !== 'REFUNDED'
   ).length;
 
   const todayRevenue = orders
@@ -112,6 +118,9 @@ export default function OrdersPage() {
   };
 
   const handleVoidOrder = async (order: PosOrderRecord) => {
+    const reason = window.prompt(`Void order ${order.orderNumber} — reason:`);
+    if (!reason?.trim()) return;
+
     const confirmed = window.confirm(
       `Void order ${order.orderNumber}? This removes it from today's sales totals.`
     );
@@ -119,7 +128,7 @@ export default function OrdersPage() {
 
     try {
       setUpdatingId(order.id);
-      await voidOrder(order.id);
+      await voidOrder(order.id, reason.trim(), userName || 'Staff');
       await refreshOrders();
     } catch (error) {
       console.error('Failed to void order:', error);
@@ -128,6 +137,36 @@ export default function OrdersPage() {
       setUpdatingId(null);
     }
   };
+
+  const handleRefundOrder = async (order: PosOrderRecord) => {
+    const reason = window.prompt(`Refund order ${order.orderNumber} — reason:`);
+    if (!reason?.trim()) return;
+
+    const amountStr = window.prompt(
+      `Refund amount (full order: ${formatPeso(order.total)}):`,
+      String(order.total)
+    );
+    if (!amountStr) return;
+    const amount = Number(amountStr);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      window.alert('Enter a valid refund amount.');
+      return;
+    }
+
+    try {
+      setUpdatingId(order.id);
+      await refundOrder(order.id, amount, reason.trim());
+      await refreshOrders();
+    } catch (error) {
+      console.error('Failed to refund order:', error);
+      window.alert('Could not process refund.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const canVoid = (status: OrderStatus) =>
+    status === 'NEW' || status === 'PREPARING' || status === 'READY' || status === 'COMPLETED';
 
   return (
     <div className="orders-page" id="orders-page">
@@ -138,7 +177,7 @@ export default function OrdersPage() {
             <span className="orders-branch-label">{brand.branchLabel}</span>
           </div>
           <span className="orders-live-badge">
-            {isLoading ? 'Syncing…' : loadError ? 'Offline' : `Live · ${activeCount} active`}
+            {syncing ? 'Syncing…' : loadError ? 'Offline' : `Live · ${activeCount} active`}
           </span>
         </div>
         <button type="button" className="orders-refresh-btn" onClick={() => void refreshOrders()}>
@@ -209,13 +248,13 @@ export default function OrdersPage() {
       </div>
 
       <div className="orders-list">
-        {isLoading && filteredOrders.length === 0 && (
+        {syncing && filteredOrders.length === 0 && (
           <div className="orders-empty">
-            <p>Loading today&apos;s orders…</p>
+            <p>Syncing today&apos;s orders…</p>
           </div>
         )}
 
-        {!isLoading && filteredOrders.length === 0 && (
+        {!syncing && filteredOrders.length === 0 && (
           <div className="orders-empty">
             <p>
               {orders.length === 0
@@ -281,7 +320,7 @@ export default function OrdersPage() {
                     </button>
                   )}
 
-                  {order.status === 'COMPLETED' && (
+                  {canVoid(order.status) && (
                     <button
                       type="button"
                       className="order-action-btn order-action-btn--ghost"
@@ -292,8 +331,27 @@ export default function OrdersPage() {
                     </button>
                   )}
 
+                  {order.status === 'COMPLETED' && (
+                    <button
+                      type="button"
+                      className="order-action-btn order-action-btn--ghost"
+                      disabled={isUpdating}
+                      onClick={() => void handleRefundOrder(order)}
+                    >
+                      Refund
+                    </button>
+                  )}
+
                   {order.status === 'VOIDED' && (
-                    <span className="order-void-note">Removed from sales</span>
+                    <span className="order-void-note">
+                      {order.voidReason ? order.voidReason : 'Removed from sales'}
+                    </span>
+                  )}
+
+                  {order.status === 'REFUNDED' && (
+                    <span className="order-void-note">
+                      Refunded {formatPeso(order.refundAmount || order.total)}
+                    </span>
                   )}
                 </div>
               </div>

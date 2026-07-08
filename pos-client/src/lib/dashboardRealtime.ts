@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { withTimeout, SUPABASE_TIMEOUT_MS } from './withTimeout';
 import { getManilaIsoDateKey, isSameManilaDate, toManilaTimeLabel } from './timezone';
 
 export interface DashboardTransaction {
@@ -42,6 +43,9 @@ interface ColumnMap {
   brandName?: string;
   subtotal?: string;
   discountAmount?: string;
+  discountType?: string;
+  voidReason?: string;
+  refundAmount?: string;
   status?: string;
   paymentStatus?: string;
   cashierId?: string;
@@ -61,6 +65,9 @@ const DEFAULT_POS_ORDER_COLUMNS: ColumnMap = {
   brandName: 'brand_name',
   subtotal: 'subtotal',
   discountAmount: 'discount_amount',
+  discountType: 'discount_type',
+  voidReason: 'void_reason',
+  refundAmount: 'refund_amount',
   status: 'status',
   paymentStatus: 'payment_status',
   cashierId: 'cashier_id',
@@ -88,6 +95,9 @@ function buildColumnMapFromRow(row: RowRecord): ColumnMap {
     brandName: pickColumn(keys, ['brand_name']),
     subtotal: pickColumn(keys, ['subtotal']),
     discountAmount: pickColumn(keys, ['discount_amount']),
+    discountType: pickColumn(keys, ['discount_type']),
+    voidReason: pickColumn(keys, ['void_reason']),
+    refundAmount: pickColumn(keys, ['refund_amount']),
     status: pickColumn(keys, ['status']),
     paymentStatus: pickColumn(keys, ['payment_status']),
     cashierId: pickColumn(keys, ['cashier_id']),
@@ -113,10 +123,18 @@ export async function resolvePosOrderColumns(): Promise<ColumnMap> {
     return cachedColumns;
   }
 
-  const { data, error } = await supabase.from('pos_order').select('*').limit(1);
-  if (!error && data?.[0]) {
-    cachedColumns = buildColumnMapFromRow(data[0] as RowRecord);
-    return cachedColumns;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('pos_order').select('*').limit(1),
+      SUPABASE_TIMEOUT_MS,
+      'pos_order column probe timed out'
+    );
+    if (!error && data?.[0]) {
+      cachedColumns = buildColumnMapFromRow(data[0] as RowRecord);
+      return cachedColumns;
+    }
+  } catch {
+    /* use defaults below */
   }
 
   cachedColumns = { ...DEFAULT_POS_ORDER_COLUMNS };
@@ -173,7 +191,6 @@ export function buildLiveDashboardData(
       const bTime = columns.date ? new Date(asString(b[columns.date])).getTime() : 0;
       return bTime - aTime;
     })
-    .slice(0, 8)
     .map((row) => toTransaction(row, columns));
 
   return {
@@ -240,6 +257,7 @@ export function getInsertPayloadForPosOrder(
     paymentReference?: string;
     subtotal: number;
     discountAmount: number;
+    discountType?: string;
     total: number;
     itemCount: number;
     branchValue?: string;
@@ -261,6 +279,7 @@ export function getInsertPayloadForPosOrder(
   if (columns.brandName && payload.brandName) data[columns.brandName] = payload.brandName;
   if (columns.subtotal) data[columns.subtotal] = payload.subtotal;
   if (columns.discountAmount) data[columns.discountAmount] = payload.discountAmount;
+  if (columns.discountType && payload.discountType) data[columns.discountType] = payload.discountType;
   if (columns.status) data[columns.status] = payload.status ?? 'NEW';
   if (columns.paymentStatus) data[columns.paymentStatus] = 'PAID';
   if (columns.cashierId && payload.cashierId) data[columns.cashierId] = payload.cashierId;

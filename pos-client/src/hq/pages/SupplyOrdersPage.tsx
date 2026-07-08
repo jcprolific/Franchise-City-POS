@@ -49,15 +49,16 @@ function formatDateTime(value: string): string {
 export default function SupplyOrdersPage() {
   const { brand } = useBrand();
   const [orders, setOrders] = useState<SupplyOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    setSyncing(true);
     const rows = await fetchSupplyOrders(brand.dbBrandId);
     setOrders(rows);
-    setLoading(false);
+    setSyncing(false);
   }, [brand.dbBrandId]);
 
   useEffect(() => {
@@ -151,17 +152,14 @@ export default function SupplyOrdersPage() {
         ))}
       </div>
 
-      {loading ? (
+      {filtered.length === 0 ? (
         <div className="so-empty">
-          <div className="so-empty-icon">⏳</div>
-          Loading supply orders…
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="so-empty">
-          <div className="so-empty-icon">📦</div>
-          {orders.length === 0
-            ? 'No supply orders yet. Orders placed by franchisees will appear here.'
-            : 'No orders match this filter.'}
+          <div className="so-empty-icon">{syncing ? '⏳' : '📦'}</div>
+          {syncing
+            ? 'Syncing supply orders…'
+            : orders.length === 0
+              ? 'No supply orders yet. Orders placed by franchisees will appear here.'
+              : 'No orders match this filter.'}
         </div>
       ) : (
         <div className="so-list">
