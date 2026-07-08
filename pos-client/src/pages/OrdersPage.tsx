@@ -87,6 +87,7 @@ export default function OrdersPage() {
         order.payment.toLowerCase().includes(query) ||
         order.orderType.toLowerCase().includes(query) ||
         order.paymentReference.toLowerCase().includes(query) ||
+        order.terminalId.toLowerCase().includes(query) ||
         `${order.itemCount} items`.includes(query);
 
       return matchesStatus && matchesSearch;
@@ -277,6 +278,9 @@ export default function OrdersPage() {
               <div className="order-card-top">
                 <div className="order-card-id-group">
                   <span className="order-card-number">{order.orderNumber}</span>
+                  {order.terminalId && (
+                    <span className="order-terminal-badge">{order.terminalId}</span>
+                  )}
                   <span className={`order-status order-status--${order.status.toLowerCase()}`}>
                     {orderStatusLabels[order.status]}
                   </span>

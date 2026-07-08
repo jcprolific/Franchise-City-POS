@@ -12,8 +12,12 @@ import type {
 import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
 import { getInsertPayloadForPosOrder, preloadPosOrderColumns, resolvePosOrderColumns } from '../lib/dashboardRealtime';
-import { insertPosOrderWithItems } from '../lib/posOrderItemService';
 import { getCurrentBranch } from '../lib/branchContext';
+import { logAuditEvent } from '../lib/auditLogService';
+import { createLocalOrderId } from '../lib/offline/offlineOrderQueue';
+import { queueAndSyncOrder } from '../lib/offline/orderSyncService';
+import { getNextOrderNumber } from '../lib/terminalOrderService';
+import { getTerminalId } from '../lib/terminalContext';
 import {
   fetchMenuCatalog,
   shouldPreferRemoteCatalog,
@@ -75,10 +79,11 @@ export default function POSPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
-  const [orderNumber, setOrderNumber] = useState(() => 4800 + Math.floor(Math.random() * 200));
+  const [orderNumber, setOrderNumber] = useState(5000);
 
   useEffect(() => {
     preloadPosOrderColumns();
+    void getNextOrderNumber().then((next) => setOrderNumber(next));
   }, []);
 
   useEffect(() => {
@@ -224,6 +229,8 @@ export default function POSPage() {
       supabase.auth.getUser(),
     ]);
     const branch = getCurrentBranch();
+    const clientOrderId = createLocalOrderId();
+    const cashierId = userResult.data.user?.id;
 
     const payload = getInsertPayloadForPosOrder(columns, {
       orderNumber: snapshot.orderNumber,
@@ -235,17 +242,36 @@ export default function POSPage() {
       total: snapshot.total,
       itemCount: snapshot.itemCount,
       branchValue: branch.id,
-      cashierId: userResult.data.user?.id,
+      cashierId,
       brandId: brand.dbBrandId,
       brandName: brand.name,
       status: 'NEW',
       orderType,
     });
 
-    const { error } = await insertPosOrderWithItems(payload, cartItems);
-    if (error) {
-      throw new Error(error);
-    }
+    payload.client_order_id = clientOrderId;
+    payload.terminal_id = getTerminalId();
+
+    const cartSnapshot = [...cartItems];
+    const result = await queueAndSyncOrder(clientOrderId, payload, cartSnapshot);
+
+    void logAuditEvent({
+      action: 'order_created',
+      entityType: 'pos_order',
+      entityId: result.remoteOrderId ?? clientOrderId,
+      brandId: brand.dbBrandId,
+      branchId: branch.id,
+      userId: cashierId,
+      afterData: {
+        orderNumber: snapshot.orderNumber,
+        total: snapshot.total,
+        paymentMethod: snapshot.paymentMethod,
+        synced: result.synced,
+      },
+      metadata: { clientOrderId, terminalId: getTerminalId() },
+    });
+
+    return result;
   }, [brand.dbBrandId, brand.name, cartItems, discountType, orderType]);
 
   const handleConfirmCheckout = async ({ paymentReference }: { paymentReference?: string }): Promise<boolean> => {
@@ -265,8 +291,13 @@ export default function POSPage() {
 
     try {
       setIsSavingOrder(true);
-      await persistOrder(snapshot);
+      const result = await persistOrder(snapshot);
       clearCartForSuccess();
+      if (!result.synced && result.error === 'offline') {
+        window.alert('You are offline. Order saved locally and will sync when connection returns.');
+      } else if (!result.synced) {
+        window.alert(`Order queued for sync: ${result.error ?? 'pending'}. Continuing to New Order.`);
+      }
       return true;
     } catch (error) {
       console.error('Failed to save order:', error);
@@ -275,9 +306,11 @@ export default function POSPage() {
           ? String(error.message)
           : 'Please try again.';
       if (message.toLowerCase().includes('row-level security')) {
-        window.alert('Order not synced to cloud due to permissions. We will still continue to New Order. Ask admin to run the pos_order RLS policy SQL so dashboard sync works.');
+        window.alert('Order saved locally and queued for sync. Ask admin to run enterprise schema migrations if cloud sync keeps failing.');
+      } else if (message === 'offline') {
+        window.alert('You are offline. Order saved locally and will sync when connection returns.');
       } else {
-        window.alert(`Order not synced: ${message}. Continuing to New Order.`);
+        window.alert(`Order queued for sync: ${message}. Continuing to New Order.`);
       }
 
       clearCartForSuccess();
@@ -288,7 +321,7 @@ export default function POSPage() {
   };
 
   const handleStartNewOrder = () => {
-    setOrderNumber((n) => n + 1);
+    void getNextOrderNumber().then((next) => setOrderNumber(next));
     setShowCheckout(false);
   };
 

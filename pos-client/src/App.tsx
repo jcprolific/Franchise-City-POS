@@ -51,6 +51,16 @@ import {
   writeStoredAuthSession,
 } from './lib/authSessionStore';
 import { preloadPosOrderColumns } from './lib/dashboardRealtime';
+import { startOrderSyncWorker } from './lib/offline/orderSyncService';
+import { getTerminalLabel, subscribeTerminal } from './lib/terminalContext';
+import {
+  buildShiftReport,
+  closeShift,
+  getActiveShiftLocal,
+  openShift,
+  printShiftReport,
+} from './lib/shiftService';
+import { ShiftCloseModal, ShiftOpenModal } from './components/ShiftModal';
 import './App.css';
 
 type LoginMode = 'guest' | 'pin' | 'email' | null;
@@ -147,8 +157,14 @@ function PosShell({ auth, onLogout }: PosShellProps) {
   const roleLabel = ROLE_LABELS[auth.role] ?? 'Staff';
 
   const [attendanceStatus, setAttendanceStatus] = useState<'IN' | 'OUT'>(
-    () => getLatestAttendanceStatus(displayName) ?? 'OUT'
+    () => (getActiveShiftLocal() ? 'IN' : getLatestAttendanceStatus(displayName) ?? 'OUT')
   );
+  const [shiftModal, setShiftModal] = useState<'open' | 'close' | null>(null);
+  const [shiftClosePreview, setShiftClosePreview] = useState({
+    expectedCash: 0,
+    totalSales: 0,
+    totalOrders: 0,
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setToday(new Date()), 60_000);
@@ -171,13 +187,69 @@ function PosShell({ auth, onLogout }: PosShellProps) {
   }, [location, navigate]);
 
   const handleToggleAttendance = useCallback(() => {
-    const nextStatus = attendanceStatus === 'IN' ? 'OUT' : 'IN';
-    addAttendanceEntry({ staffName: displayName, role: roleLabel, status: nextStatus });
-  }, [attendanceStatus, displayName, roleLabel]);
+    if (attendanceStatus === 'OUT') {
+      setShiftModal('open');
+      return;
+    }
+    void buildShiftReport('Z').then((report) => {
+      if (!report) {
+        setShiftModal('open');
+        return;
+      }
+      const expected = report.shift.openingCash + report.shift.cashSales;
+      setShiftClosePreview({
+        expectedCash: expected,
+        totalSales: report.shift.totalSales,
+        totalOrders: report.shift.totalOrders,
+      });
+      setShiftModal('close');
+    });
+  }, [attendanceStatus]);
+
+  const handleConfirmOpenShift = useCallback(async (openingCash: number) => {
+    const { shift, error } = await openShift({
+      cashierName: displayName,
+      openingCash,
+    });
+    if (error && !shift) {
+      window.alert(`Could not open shift: ${error}`);
+      return;
+    }
+    addAttendanceEntry({ staffName: displayName, role: roleLabel, status: 'IN' });
+    setAttendanceStatus('IN');
+    setShiftModal(null);
+  }, [displayName, roleLabel]);
+
+  const handleConfirmCloseShift = useCallback(async (closingCash: number) => {
+    const { shift, error } = await closeShift({ closingCash });
+    if (error || !shift) {
+      window.alert(error ? `Could not close shift: ${error}` : 'No active shift found.');
+      return;
+    }
+    addAttendanceEntry({ staffName: displayName, role: roleLabel, status: 'OUT' });
+    setAttendanceStatus('OUT');
+    setShiftModal(null);
+    printShiftReport({
+      shift,
+      reportType: 'Z',
+      generatedAt: new Date().toISOString(),
+    });
+  }, [displayName, roleLabel]);
+
+  const handleXReport = useCallback(async () => {
+    const report = await buildShiftReport('X');
+    if (!report) return;
+    printShiftReport(report);
+  }, []);
+
+  const terminalLabel = getTerminalLabel();
+  const [headerTerminal, setHeaderTerminal] = useState(terminalLabel);
+
+  useEffect(() => subscribeTerminal(() => setHeaderTerminal(getTerminalLabel())), []);
 
   const { title, subtitle } = useMemo(
-    () => getHeaderTitle(location.pathname, brand.terminalLabel),
-    [location.pathname, brand.terminalLabel]
+    () => getHeaderTitle(location.pathname, headerTerminal),
+    [location.pathname, headerTerminal]
   );
 
   return (
@@ -207,6 +279,25 @@ function PosShell({ auth, onLogout }: PosShellProps) {
           <Outlet context={{ userName: auth.userName, userRole: roleLabel }} />
         </main>
       </div>
+
+      {shiftModal === 'open' && (
+        <ShiftOpenModal
+          cashierName={displayName}
+          onConfirm={(cash) => void handleConfirmOpenShift(cash)}
+          onCancel={() => setShiftModal(null)}
+        />
+      )}
+      {shiftModal === 'close' && (
+        <ShiftCloseModal
+          cashierName={displayName}
+          expectedCash={shiftClosePreview.expectedCash}
+          totalSales={shiftClosePreview.totalSales}
+          totalOrders={shiftClosePreview.totalOrders}
+          onConfirm={(cash) => void handleConfirmCloseShift(cash)}
+          onCancel={() => setShiftModal(null)}
+          onXReport={() => void handleXReport()}
+        />
+      )}
     </div>
   );
 }
@@ -260,6 +351,7 @@ export default function App() {
 
   useEffect(() => {
     preloadPosOrderColumns();
+    return startOrderSyncWorker();
   }, []);
 
   const resolveUserRole = useCallback(async (userId: string): Promise<UserRole> => {

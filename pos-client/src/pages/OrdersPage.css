@@ -270,6 +270,15 @@
   color: var(--pc-green-deep, #007a33);
 }
 
+.order-terminal-badge {
+  font-size: var(--font-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
 .order-status {
   display: inline-flex;
   align-items: center;

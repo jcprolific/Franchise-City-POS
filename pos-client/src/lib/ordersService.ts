@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { resolvePosOrderColumns } from './dashboardRealtime';
 import { getManilaIsoDateKey, isSameManilaDate, toManilaTimeLabel, toRelativeTimeLabel } from './timezone';
+import { logAuditEvent } from './auditLogService';
 
 export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'COMPLETED' | 'VOIDED' | 'REFUNDED';
 
@@ -22,6 +23,7 @@ export interface PosOrderRecord {
   relativeTime: string;
   paymentReference: string;
   voidReason: string;
+  terminalId: string;
 }
 
 type RowRecord = Record<string, unknown>;
@@ -94,6 +96,7 @@ function rowToOrder(row: RowRecord, columns: Awaited<ReturnType<typeof resolvePo
     relativeTime: dateValue ? toRelativeTimeLabel(dateValue) : '--',
     paymentReference: columns.paymentReference ? asString(row[columns.paymentReference]) : '',
     voidReason: columns.voidReason ? asString(row[columns.voidReason]) : '',
+    terminalId: asString(row.terminal_id ?? row.terminalId ?? ''),
   };
 }
 
@@ -190,6 +193,13 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
     .eq(columns.primaryKey, orderId);
 
   if (error) throw error;
+
+  void logAuditEvent({
+    action: 'order_status_changed',
+    entityType: 'pos_order',
+    entityId: orderId,
+    afterData: { status },
+  });
 }
 
 export async function voidOrder(orderId: string, reason: string, voidedBy: string): Promise<void> {
@@ -212,6 +222,14 @@ export async function voidOrder(orderId: string, reason: string, voidedBy: strin
     .eq(columns.primaryKey, orderId);
 
   if (error) throw error;
+
+  void logAuditEvent({
+    action: 'order_voided',
+    entityType: 'pos_order',
+    entityId: orderId,
+    userId: voidedBy,
+    afterData: { reason, voidedBy },
+  });
 }
 
 export async function refundOrder(
@@ -239,6 +257,13 @@ export async function refundOrder(
     .eq(columns.primaryKey, orderId);
 
   if (error) throw error;
+
+  void logAuditEvent({
+    action: 'order_refunded',
+    entityType: 'pos_order',
+    entityId: orderId,
+    afterData: { amount, reason },
+  });
 }
 
 export function countOrdersByStatus(orders: PosOrderRecord[], status: OrderStatus) {

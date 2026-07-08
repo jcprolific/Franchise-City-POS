@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -6,6 +7,13 @@ import {
   type Capability,
   type UserRole,
 } from '../lib/permissions';
+import {
+  getSyncBadgeLabel,
+  getSyncDotClass,
+  subscribeSyncState,
+  type SyncState,
+} from '../lib/offline/syncState';
+import { getTerminalId, setTerminalId } from '../lib/terminalContext';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -159,6 +167,17 @@ function navItemsForRole(role: UserRole): NavItem[] {
 }
 
 export default function Sidebar({ userName, userRole, role, canAccessHq, onLogout }: SidebarProps) {
+  const [syncState, setSyncState] = useState<SyncState>(() => ({
+    connection: typeof navigator !== 'undefined' && navigator.onLine ? 'online' : 'offline',
+    pendingCount: 0,
+    failedCount: 0,
+    lastSyncAt: null,
+    lastError: null,
+  }));
+  const [terminalId, setTerminalIdState] = useState(getTerminalId);
+
+  useEffect(() => subscribeSyncState(setSyncState), []);
+
   const navClassName = ({ isActive }: { isActive: boolean }) =>
     `sidebar-nav-item ${isActive ? 'active' : ''}`;
 
@@ -201,9 +220,24 @@ export default function Sidebar({ userName, userRole, role, canAccessHq, onLogou
           </div>
         </div>
         <div className="sidebar-footer-actions">
-          <div className="sidebar-sync-badge">
-            <span className="sync-dot"></span>
-            Online · Synced
+          <div className="sidebar-terminal-picker" aria-label="Terminal selector">
+            {['T-01', 'T-02', 'T-03'].map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`sidebar-terminal-btn ${terminalId === id ? 'active' : ''}`}
+                onClick={() => {
+                  setTerminalId(id);
+                  setTerminalIdState(id);
+                }}
+              >
+                {id}
+              </button>
+            ))}
+          </div>
+          <div className="sidebar-sync-badge" title={syncState.lastError ?? undefined}>
+            <span className={getSyncDotClass(syncState)}></span>
+            {getSyncBadgeLabel(syncState)}
           </div>
           <button className="sidebar-logout-btn" onClick={onLogout} id="logout-btn">
             <span className="logout-icon"><LogoutIcon /></span>

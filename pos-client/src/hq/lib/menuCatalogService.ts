@@ -364,17 +364,7 @@ export async function deleteRecipeLine(recipeId: string) {
   return supabase.from('menu_recipe').delete().eq('id', recipeId);
 }
 
-// ============================================================
-// Yield computation
-// ============================================================
-//
-// NOTE (deferred — Phase 6): Automatic raw-material deduction on POS checkout
-// is intentionally NOT implemented here. It requires mapping each order line
-// (product/variant + add-ons) to recipe usage and deducting stock atomically
-// via a Supabase RPC/transaction, plus deduction logs for audit/correction.
-// That affects inventory accuracy and needs dedicated testing, so it is
-// tracked as a separate implementation checkpoint. For now the catalog only
-// provides planning visibility through the yield helpers below.
+// Yield computation helpers for HQ catalog planning visibility.
 
 /** Estimated cups producible from one material's on-hand qty given per-cup usage. */
 export function computeMaterialYield(onHand: number, perCup: number): number {

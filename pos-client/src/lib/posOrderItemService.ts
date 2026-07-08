@@ -52,11 +52,31 @@ export async function insertPosOrderItems(
   return { error: error?.message ?? null };
 }
 
+interface InsertOrderOptions {
+  clientOrderId?: string;
+}
+
 /** Insert order header then line items; returns order id. */
 export async function insertPosOrderWithItems(
   headerPayload: Record<string, unknown>,
-  cartItems: CartItem[]
+  cartItems: CartItem[],
+  options?: InsertOrderOptions
 ): Promise<{ orderId: string | null; error: string | null }> {
+  if (options?.clientOrderId) {
+    const { data: existing, error: lookupError } = await supabase
+      .from('pos_order')
+      .select('id')
+      .eq('client_order_id', options.clientOrderId)
+      .maybeSingle();
+
+    if (lookupError) {
+      return { orderId: null, error: lookupError.message };
+    }
+    if (existing?.id) {
+      return { orderId: existing.id as string, error: null };
+    }
+  }
+
   const { data, error } = await supabase
     .from('pos_order')
     .insert(headerPayload)

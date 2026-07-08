@@ -149,6 +149,29 @@
   gap: var(--space-sm);
 }
 
+.sidebar-terminal-picker {
+  display: flex;
+  gap: 4px;
+}
+
+.sidebar-terminal-btn {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-family);
+}
+
+.sidebar-terminal-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .sidebar-sync-badge {
   display: flex;
   align-items: center;
@@ -166,6 +189,24 @@
   border-radius: var(--radius-full);
   background: var(--success);
   animation: pulse 2s ease-in-out infinite;
+}
+
+.sync-dot--offline {
+  background: var(--text-muted);
+  animation: none;
+}
+
+.sync-dot--syncing {
+  background: var(--warning, #f39c12);
+}
+
+.sync-dot--pending {
+  background: var(--warning, #f39c12);
+}
+
+.sync-dot--failed {
+  background: var(--danger);
+  animation: none;
 }
 
 .sidebar-logout-btn {
