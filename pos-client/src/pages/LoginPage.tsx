@@ -145,16 +145,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className={`login-page brand-${brandSlug}`} id="login-page">
-      <div className="login-card">
-        <a
-          href={landingPageUrl()}
-          className="login-back"
-          aria-label="Back to Franchise City landing page"
-        >
-          <ArrowLeft size={18} aria-hidden="true" />
-          <span>Back to Franchise City</span>
-        </a>
+      <a
+        href={landingPageUrl()}
+        className="login-back-landing"
+        aria-label="Back to Franchise City landing page"
+      >
+        <ArrowLeft size={20} aria-hidden="true" />
+        <span>Back to Franchise City</span>
+      </a>
 
+      <div className="login-card">
         {showBrandSwitcher && (
           <div className="login-brand-switcher" role="tablist" aria-label="Select brand">
             {LOGIN_BRAND_LIST.map((option) => (
@@ -330,6 +330,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         <div className="login-footer">
+          <a href={landingPageUrl()} className="login-footer-landing-link">
+            ← Franchise City landing page
+          </a>
           <p className="login-footer-text">
             {brand.footerText} · <span className="version">v1.0.0</span>
           </p>
