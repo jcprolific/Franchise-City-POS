@@ -63,25 +63,23 @@
     0 8px 24px rgba(46, 29, 17, 0.08);
   animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  padding-top: 12px;
 }
 
 .login-back {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: var(--login-surface);
+  gap: 8px;
+  margin: 0 16px 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--login-surface-muted);
   border: 1px solid var(--login-border);
   color: var(--login-text-soft);
-  font-size: var(--font-xs);
+  font-size: var(--font-sm);
   font-weight: 600;
   text-decoration: none;
-  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
 .login-back:hover {

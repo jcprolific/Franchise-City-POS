@@ -149,10 +149,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         <a
           href={landingPageUrl()}
           className="login-back"
-          aria-label="Back to Franchise City"
+          aria-label="Back to Franchise City landing page"
         >
           <ArrowLeft size={18} aria-hidden="true" />
-          <span>Franchise City</span>
+          <span>Back to Franchise City</span>
         </a>
 
         {showBrandSwitcher && (
