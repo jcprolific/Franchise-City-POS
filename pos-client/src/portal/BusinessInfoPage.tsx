@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { buildBranchRef, setCurrentBranch } from '../lib/branchContext';
 import {
   fetchOwnerBranch,
   updateOwnerBranchInfo,
@@ -15,6 +16,7 @@ export default function BusinessInfoPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
+  const [storeName, setStoreName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -40,6 +42,7 @@ export default function BusinessInfoPage() {
     }
 
     setBranch(row);
+    setStoreName(row.name ?? '');
     setBusinessName(row.business_name ?? '');
     setPhone(row.franchisee_phone ?? '');
     setAddress(row.address ?? '');
@@ -60,6 +63,7 @@ export default function BusinessInfoPage() {
     setError('');
 
     const result = await updateOwnerBranchInfo(branch.id, {
+      name: storeName.trim() || undefined,
       business_name: businessName.trim() || undefined,
       franchisee_phone: phone.trim() || undefined,
       address: address.trim() || undefined,
@@ -68,12 +72,23 @@ export default function BusinessInfoPage() {
 
     setSaving(false);
 
-    if (!result.ok) {
+    if (!result.ok || !result.branch) {
       setError(result.error ?? 'Failed to save.');
       return;
     }
 
-    setNotice('Business information updated.');
+    const updated = result.branch;
+    setBranch(updated);
+    setCurrentBranch(
+      buildBranchRef({
+        id: updated.id,
+        name: updated.name,
+        city: updated.city,
+        address: updated.address,
+      })
+    );
+
+    setNotice('Branch location updated. Your portal dashboard will reflect the new address.');
   };
 
   return (
@@ -81,7 +96,7 @@ export default function BusinessInfoPage() {
       <div className="page-header">
         <div className="page-title">
           <h1>Business Information</h1>
-          <p>Update your branch contact and business details.</p>
+          <p>Update your store name and branch location shown on your dashboard.</p>
         </div>
       </div>
 
@@ -94,9 +109,37 @@ export default function BusinessInfoPage() {
           <fieldset className="franchisee-fieldset">
             <legend>
               <Building2 size={16} style={{ display: 'inline', marginRight: 6 }} />
-              Branch: {branch.name}
+              Branch location
             </legend>
             <div className="franchisee-grid">
+              <label className="franchisee-field franchisee-field-wide">
+                <span>Store / branch name (shown on dashboard)</span>
+                <input
+                  className="branch-input"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  placeholder="e.g. Coftea BGC Central"
+                  required
+                />
+              </label>
+              <label className="franchisee-field franchisee-field-wide">
+                <span>Street address</span>
+                <input
+                  className="branch-input"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Street, building, landmark"
+                />
+              </label>
+              <label className="franchisee-field">
+                <span>City / area</span>
+                <input
+                  className="branch-input"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g. Taguig City"
+                />
+              </label>
               <label className="franchisee-field">
                 <span>Registered business name</span>
                 <input
@@ -113,24 +156,6 @@ export default function BusinessInfoPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="0917 000 0000"
-                />
-              </label>
-              <label className="franchisee-field franchisee-field-wide">
-                <span>Address</span>
-                <input
-                  className="branch-input"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Street, building, landmark"
-                />
-              </label>
-              <label className="franchisee-field">
-                <span>City / area</span>
-                <input
-                  className="branch-input"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Taguig City"
                 />
               </label>
               <label className="franchisee-field">

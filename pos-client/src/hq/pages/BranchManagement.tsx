@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Search, Building2, CheckCircle2, Hammer, Ban, ArrowUpDown, UserPlus, ArrowRightLeft } from 'lucide-react';
 import { useBrand } from '../../context/BrandContext';
+import { supabase } from '../../lib/supabase';
 import { getHqDemoData, type HqDisplayBranch } from '../data/getHqDemoData';
 import {
   deleteFranchisee,
@@ -115,13 +116,14 @@ function toDisplayBranch(branch: FranchiseeRow): HqDisplayBranch {
 }
 
 export default function BranchManagement() {
-  const { brand } = useBrand();
-  const demo = useMemo(() => getHqDemoData(brand.slug), [brand.slug]);
+  const { brand, brandSlug } = useBrand();
+  const demo = useMemo(() => getHqDemoData(brandSlug), [brandSlug]);
 
   const [branches, setBranches] = useState<FranchiseeRow[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [noticeText, setNoticeText] = useState('');
+  const [hqAuthWarning, setHqAuthWarning] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -135,7 +137,6 @@ export default function BranchManagement() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const [ownerPassword, setOwnerPassword] = useState('');
-  const [provisioningOwner, setProvisioningOwner] = useState(false);
   const [showTransferPanel, setShowTransferPanel] = useState(false);
   const [transferEmail, setTransferEmail] = useState('');
   const [transferDocs, setTransferDocs] = useState('');
@@ -149,6 +150,8 @@ export default function BranchManagement() {
     [editingId, branches]
   );
 
+  const canSetOwnerLogin = !editingBranch?.owner_user_id;
+
   const updateField = <K extends keyof typeof emptyForm>(
     key: K,
     value: (typeof emptyForm)[K]
@@ -159,6 +162,7 @@ export default function BranchManagement() {
   const resetForm = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setOwnerPassword('');
   };
 
   const closeForm = () => {
@@ -192,6 +196,34 @@ export default function BranchManagement() {
       })),
     [demo.sampleBranches]
   );
+
+  useEffect(() => {
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        setHqAuthWarning(
+          'HQ demo PIN is view-only. Log out, then sign in with Email Login using hq@coftea.com to register franchisees.'
+        );
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (profile?.role !== 'hq_admin') {
+        setHqAuthWarning('Sign in with hq@coftea.com (HQ admin) to register franchisees.');
+        return;
+      }
+
+      setHqAuthWarning('');
+    })();
+  }, []);
 
   const loadBranches = useCallback(async (options?: { background?: boolean }) => {
     const background = options?.background ?? false;
@@ -239,45 +271,6 @@ export default function BranchManagement() {
       void loadTransferRequests(editingId);
     }
   }, [editingId, loadTransferRequests]);
-
-  const handleProvisionOwner = async () => {
-    if (!editingId || !editingBranch) return;
-    if (!form.franchiseeEmail.trim()) {
-      setErrorText('Owner email is required to create an account.');
-      return;
-    }
-    if (ownerPassword.length < 6) {
-      setErrorText('Temporary password must be at least 6 characters.');
-      return;
-    }
-    if (editingBranch.owner_user_id) {
-      setErrorText('This branch already has a registered owner. Use Transfer Ownership.');
-      return;
-    }
-
-    setProvisioningOwner(true);
-    setErrorText('');
-    setNoticeText('');
-
-    const result = await provisionFranchiseOwner({
-      branchId: editingId,
-      email: form.franchiseeEmail.trim(),
-      password: ownerPassword,
-      fullName: form.franchiseeName.trim(),
-      brandId: brand.dbBrandId,
-    });
-
-    setProvisioningOwner(false);
-
-    if (!result.ok) {
-      setErrorText(result.error ?? 'Failed to create owner account.');
-      return;
-    }
-
-    setNoticeText(`Owner account created for ${form.franchiseeEmail.trim()}. They can log in and change their password.`);
-    setOwnerPassword('');
-    await loadBranches({ background: true });
-  };
 
   const handleSubmitTransferRequest = async () => {
     if (!editingId || !editingBranch) return;
@@ -347,8 +340,25 @@ export default function BranchManagement() {
       setErrorText('Franchisee name is required.');
       return false;
     }
-    if (!form.franchiseeEmail.trim() && !form.franchiseePhone.trim()) {
+    if (!editingId) {
+      if (!form.franchiseeEmail.trim()) {
+        setErrorText('Email is required for franchisee portal login.');
+        return false;
+      }
+      if (ownerPassword.length < 6) {
+        setErrorText('Set a portal login password (at least 6 characters).');
+        return false;
+      }
+    } else if (!form.franchiseeEmail.trim() && !form.franchiseePhone.trim()) {
       setErrorText('Add at least one franchisee contact (email or mobile).');
+      return false;
+    }
+    if (canSetOwnerLogin && ownerPassword.length > 0 && ownerPassword.length < 6) {
+      setErrorText('Portal login password must be at least 6 characters.');
+      return false;
+    }
+    if (canSetOwnerLogin && ownerPassword.length >= 6 && !form.franchiseeEmail.trim()) {
+      setErrorText('Email is required when setting a portal login password.');
       return false;
     }
     return true;
@@ -375,6 +385,11 @@ export default function BranchManagement() {
     e.preventDefault();
     if (!validateForm()) return;
 
+    const shouldProvisionOwner =
+      canSetOwnerLogin &&
+      ownerPassword.length >= 6 &&
+      form.franchiseeEmail.trim().length > 0;
+
     setSaving(true);
     setErrorText('');
     setNoticeText('');
@@ -384,36 +399,70 @@ export default function BranchManagement() {
       ? await updateFranchisee(editingId, input)
       : await registerFranchisee(input);
 
-    setSaving(false);
-
     if (!result.ok) {
+      setSaving(false);
       setErrorText(result.error ?? 'Failed to save franchisee.');
       return;
     }
 
+    const branchId = result.branch?.id ?? editingId;
     const actionLabel = editingId ? 'Updated' : 'Registered';
-    const savedId = editingId;
-    closeForm();
+    let noticeMessage = `${actionLabel} ${input.branchName.trim()} successfully.`;
 
-    if (result.savedLocally) {
-      setNoticeText(
-        `${actionLabel} ${input.branchName.trim()} saved on this device. Connect Supabase to sync live HQ data.`
-      );
+    if (shouldProvisionOwner && branchId) {
+      const provisionResult = await provisionFranchiseOwner({
+        branchId,
+        email: form.franchiseeEmail.trim(),
+        password: ownerPassword,
+        fullName: form.franchiseeName.trim(),
+        brandId: brand.dbBrandId,
+      });
+
+      if (!provisionResult.ok) {
+        setSaving(false);
+        setErrorText(
+          `Franchisee saved but portal login failed: ${provisionResult.error ?? 'Unknown error'}`
+        );
+        if (result.branch) {
+          if (editingId) {
+            setBranches((prev) =>
+              prev.map((row) => (row.id === editingId ? { ...result.branch!, _local: true } : row))
+            );
+          } else {
+            setBranches((prev) => [...prev, { ...result.branch!, _local: true }]);
+            setEditingId(branchId);
+          }
+        }
+        return;
+      }
+
+      noticeMessage = `${actionLabel} ${input.branchName.trim()}. Owner can log in with ${form.franchiseeEmail.trim()}.`;
+      setOwnerPassword('');
+      await loadBranches({ background: true });
+    } else if (result.savedLocally) {
+      noticeMessage = `${actionLabel} ${input.branchName.trim()} saved on this device. Connect Supabase to sync live HQ data.`;
     } else if (result.usedFallback) {
-      setNoticeText(
-        `${actionLabel} ${input.branchName.trim()} with core branch fields only. Run supabase-franchisee-fields.sql to save full franchisee details.`
-      );
-    } else {
-      setNoticeText(`${actionLabel} ${input.branchName.trim()} successfully.`);
+      noticeMessage = `${actionLabel} ${input.branchName.trim()} with core branch fields only. Run supabase-franchisee-fields.sql to save full franchisee details.`;
     }
 
+    setSaving(false);
+
+    const savedId = editingId ?? branchId;
+    closeForm();
+    setNoticeText(noticeMessage);
+
     if (result.branch) {
-      if (savedId) {
+      if (savedId && editingId) {
         setBranches((prev) =>
           prev.map((row) => (row.id === savedId ? { ...result.branch!, _local: true } : row))
         );
-      } else {
-        setBranches((prev) => [...prev, { ...result.branch!, _local: true }]);
+      } else if (result.branch) {
+        setBranches((prev) => {
+          const exists = prev.some((row) => row.id === result.branch!.id);
+          return exists
+            ? prev.map((row) => (row.id === result.branch!.id ? { ...result.branch!, _local: true } : row))
+            : [...prev, { ...result.branch!, _local: true }];
+        });
       }
     } else {
       await loadBranches({ background: true });
@@ -431,7 +480,7 @@ export default function BranchManagement() {
 
   const handleDelete = async (row: FranchiseeRow) => {
     const confirmed = window.confirm(
-      `Delete franchisee "${row.name}"? This cannot be undone.`
+      `Delete franchisee "${row.name}"?\n\nThis removes the branch and any linked franchisee login from Supabase. This cannot be undone.`
     );
     if (!confirmed) return;
 
@@ -676,7 +725,7 @@ export default function BranchManagement() {
                 />
               </label>
               <label className="franchisee-field">
-                <span>Email address</span>
+                <span>Email address{!editingId ? ' *' : ''}</span>
                 <input
                   className="branch-input"
                   type="email"
@@ -685,48 +734,37 @@ export default function BranchManagement() {
                   onChange={(e) => updateField('franchiseeEmail', e.target.value)}
                 />
               </label>
-            </div>
-          </fieldset>
-
-          {editingId && editingBranch && (
-            <fieldset className="franchisee-fieldset">
-              <legend>
-                <UserPlus size={16} style={{ display: 'inline', marginRight: 6 }} />
-                Owner account (Level 1)
-              </legend>
-              {editingBranch.owner_user_id ? (
-                <p className="branch-owner-status">
-                  Registered owner account is active for this branch.
-                </p>
-              ) : (
-                <div className="franchisee-grid">
-                  <p className="franchisee-field-wide branch-owner-hint">
-                    Create the franchise owner login using the email and name above. HQ verifies
-                    identity before provisioning (OTP verification coming later).
-                  </p>
+              {canSetOwnerLogin && (
+                <>
                   <label className="franchisee-field">
-                    <span>Temporary password *</span>
+                    <span>Portal login password{!editingId ? ' *' : ''}</span>
                     <input
                       className="branch-input"
                       type="text"
                       value={ownerPassword}
                       onChange={(e) => setOwnerPassword(e.target.value)}
                       placeholder="At least 6 characters"
-                      autoComplete="off"
+                      autoComplete="new-password"
                     />
                   </label>
-                  <div className="franchisee-field franchisee-form-actions">
-                    <button
-                      className="btn-primary"
-                      type="button"
-                      disabled={provisioningOwner}
-                      onClick={() => void handleProvisionOwner()}
-                    >
-                      {provisioningOwner ? 'Creating...' : 'Create Owner Account'}
-                    </button>
-                  </div>
-                </div>
+                  <p className="franchisee-field-wide branch-owner-hint">
+                    Franchisee signs in to their portal using this email and password.
+                    {!editingId ? ' Login is created when you register.' : ' Save to create login if not set yet.'}
+                  </p>
+                </>
               )}
+            </div>
+          </fieldset>
+
+          {editingId && editingBranch && editingBranch.owner_user_id && (
+            <fieldset className="franchisee-fieldset">
+              <legend>
+                <UserPlus size={16} style={{ display: 'inline', marginRight: 6 }} />
+                Owner account (Level 1)
+              </legend>
+              <p className="branch-owner-status">
+                Registered owner account is active for this branch.
+              </p>
 
               <div className="branch-transfer-section">
                 <button
@@ -912,7 +950,9 @@ export default function BranchManagement() {
               </button>
               <button className="btn-primary" type="submit" disabled={saving}>
                 {saving
-                  ? 'Saving...'
+                  ? canSetOwnerLogin && ownerPassword.length >= 6
+                    ? 'Saving & creating login...'
+                    : 'Saving...'
                   : editingId
                     ? 'Save Changes'
                     : 'Register Franchisee'}
@@ -922,6 +962,7 @@ export default function BranchManagement() {
         </form>
       )}
 
+      {hqAuthWarning && <div className="branch-error">{hqAuthWarning}</div>}
       {noticeText && <div className="branch-notice">{noticeText}</div>}
       {errorText && <div className="branch-error">{errorText}</div>}
 

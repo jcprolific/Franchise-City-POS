@@ -14,19 +14,14 @@ import {
 } from './lib/branchStaffService';
 import '../hq/pages/StaffDirectoryPage.css';
 
-const ROLE_OPTIONS: BranchStaffRole[] = [
-  'cashier',
-  'manager',
-  'supervisor',
-  'inventory_staff',
-];
+const ROLE_OPTIONS: BranchStaffRole[] = ['barista'];
 
 const emptyForm = {
   fullName: '',
   email: '',
   password: '',
   phone: '',
-  role: 'cashier' as BranchStaffRole,
+  role: 'barista' as BranchStaffRole,
 };
 
 export default function StaffManagementPage() {
@@ -83,25 +78,28 @@ export default function StaffManagementPage() {
       return;
     }
     setSaving(true);
-    setNotice('');
-    const result = await createBranchStaff({
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
-      password: form.password,
-      phone: form.phone.trim() || null,
-      role: form.role,
-    });
-    setSaving(false);
+    setNotice('Creating barista account — this may take a few seconds…');
+    try {
+      const result = await createBranchStaff({
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        phone: form.phone.trim() || null,
+        role: form.role,
+      });
 
-    if (!result.ok) {
-      setNotice(result.error ?? 'Failed to create staff.');
-      return;
+      if (!result.ok) {
+        setNotice(result.error ?? 'Failed to create staff.');
+        return;
+      }
+
+      setNotice(`Created ${form.fullName.trim()} as ${BRANCH_STAFF_ROLE_LABELS[form.role]}.`);
+      setForm(emptyForm);
+      setShowForm(false);
+      await load();
+    } finally {
+      setSaving(false);
     }
-
-    setNotice(`Created ${form.fullName.trim()} as ${BRANCH_STAFF_ROLE_LABELS[form.role]}.`);
-    setForm(emptyForm);
-    setShowForm(false);
-    await load();
   };
 
   const handleToggleStatus = async (member: BranchStaffMember) => {
@@ -218,7 +216,7 @@ export default function StaffManagementPage() {
               onClick={() => void handleCreate()}
               disabled={saving}
             >
-              {saving ? 'Creating...' : 'Create Staff Account'}
+              {saving ? 'Creating…' : 'Create Staff Account'}
             </button>
           </div>
         </div>
@@ -260,8 +258,7 @@ export default function StaffManagementPage() {
             {displayStaff.length === 0 && !loading && (
               <tr>
                 <td colSpan={5} className="staff-muted">
-                  No staff yet. Use &quot;Add Staff&quot; to create cashier, manager, supervisor, or
-                  inventory accounts.
+                  No staff yet. Use &quot;Add Staff&quot; to create barista accounts.
                 </td>
               </tr>
             )}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
 import { fetchLiveDashboardData } from '../lib/dashboardRealtime';
-import { getCurrentBranch } from '../lib/branchContext';
+import { getCurrentBranch, subscribeBranch, type BranchRef } from '../lib/branchContext';
 import {
   fetchDailySalesTrend,
   fetchFranchiseSummary,
@@ -18,7 +18,9 @@ function formatYAxis(value: number) {
 
 export default function DashboardPage() {
   const { brand } = useBrand();
-  const branch = useMemo(() => getCurrentBranch(), []);
+  const [branch, setBranch] = useState<BranchRef>(() => getCurrentBranch());
+
+  useEffect(() => subscribeBranch(() => setBranch(getCurrentBranch())), []);
 
   const [liveDashboard, setLiveDashboard] = useState({
     todaySales: 0,
@@ -152,7 +154,7 @@ export default function DashboardPage() {
     <div className="dashboard-page" id="dashboard-page">
       <div className="dashboard-header">
         <div className="dashboard-header-main">
-          <span className="branch-label">{brand.branchLabel}</span>
+          <span className="branch-label">{branch.locationLabel || branch.name}</span>
         </div>
         <div className="dashboard-header-badges">
           {isLoading && <span className="dashboard-status is-loading">Syncing orders…</span>}

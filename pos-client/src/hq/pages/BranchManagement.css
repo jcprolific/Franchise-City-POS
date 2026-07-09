@@ -420,7 +420,8 @@
   font-size: var(--font-sm);
 }
 
-.branch-owner-hint {
+.branch-owner-hint,
+.branch-location-hint {
   font-size: var(--font-sm);
   color: var(--text-muted);
   margin: 0 0 8px;

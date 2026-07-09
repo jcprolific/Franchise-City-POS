@@ -65,6 +65,31 @@
   overflow: hidden;
 }
 
+.login-back {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--login-surface);
+  border: 1px solid var(--login-border);
+  color: var(--login-text-soft);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.login-back:hover {
+  color: var(--login-text);
+  border-color: var(--login-border-strong);
+  box-shadow: 0 2px 8px rgba(46, 29, 17, 0.06);
+}
+
 /* ---- Brand Header ---- */
 .login-brand-switcher {
   display: grid;

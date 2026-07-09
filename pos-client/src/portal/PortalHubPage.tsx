@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Megaphone,
   BookOpen,
@@ -40,6 +40,7 @@ import {
   resolveFranchiseeBranch,
   type FranchiseeWelcome,
 } from '../lib/franchiseeBranch';
+import { BRANCH_UPDATED_EVENT } from '../lib/branchContext';
 import './PortalHubPage.css';
 
 type TileAccent = 'news' | 'ops' | 'support' | 'sales';
@@ -119,6 +120,7 @@ interface PortalHubPageProps {
 
 export default function PortalHubPage({ userRole }: PortalHubPageProps) {
   const { brand } = useBrand();
+  const location = useLocation();
   const [welcome, setWelcome] = useState<FranchiseeWelcome | null>(null);
   const [userEmail, setUserEmail] = useState('');
   const [notices, setNotices] = useState<SystemNotice[]>([]);
@@ -126,34 +128,43 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
   const [announcementCount, setAnnouncementCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const [{ data: { session } }, systemNotices, announcements] = await Promise.all([
-        supabase.auth.getSession(),
-        fetchActiveSystemNotices(brand.dbBrandId),
-        fetchAnnouncements(brand.dbBrandId),
-      ]);
-      const email = session?.user?.email ?? '';
-      const userId = session?.user?.id;
-      const resolved = await resolveFranchiseeBranch(email, userId);
-      if (!cancelled) {
-        setUserEmail(email);
-        setWelcome(resolved);
-        setNotices(systemNotices);
-        setAnnouncementCount(announcements.length);
-        setSpotlight(announcements.find((a) => a.pinned) ?? announcements[0] ?? null);
-        setLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
+  const loadWelcome = useCallback(async () => {
+    setLoading(true);
+    const [{ data: { session } }, systemNotices, announcements] = await Promise.all([
+      supabase.auth.getSession(),
+      fetchActiveSystemNotices(brand.dbBrandId),
+      fetchAnnouncements(brand.dbBrandId),
+    ]);
+    const email = session?.user?.email ?? '';
+    const userId = session?.user?.id;
+    const resolved = await resolveFranchiseeBranch(email, userId);
+    setUserEmail(email);
+    setWelcome(resolved);
+    setNotices(systemNotices);
+    setAnnouncementCount(announcements.length);
+    setSpotlight(announcements.find((a) => a.pinned) ?? announcements[0] ?? null);
+    setLoading(false);
   }, [brand.dbBrandId]);
+
+  useEffect(() => {
+    void loadWelcome();
+  }, [loadWelcome, location.pathname]);
+
+  useEffect(() => {
+    const onBranchUpdated = () => {
+      void loadWelcome();
+    };
+    window.addEventListener(BRANCH_UPDATED_EVENT, onBranchUpdated);
+    return () => window.removeEventListener(BRANCH_UPDATED_EVENT, onBranchUpdated);
+  }, [loadWelcome]);
 
   const displayName = useMemo(() => {
     if (welcome?.isLinked) return welcome.welcomeName;
+    return brand.franchiseName;
+  }, [welcome, brand.franchiseName]);
+
+  const locationLabel = useMemo(() => {
+    if (welcome?.isLinked && welcome.locationLabel) return welcome.locationLabel;
     return brand.franchiseName;
   }, [welcome, brand.franchiseName]);
 
@@ -161,7 +172,7 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
 
   const ownerTiles: PortalTile[] = isFranchiseOwner(userRole)
     ? [
-        { icon: Users, label: 'Manage Staff', desc: 'Create cashier, manager & inventory accounts', to: '/portal/staff', accent: 'ops' },
+        { icon: Users, label: 'Manage Staff', desc: 'Create barista accounts for your store', to: '/portal/staff', accent: 'ops' },
         { icon: Building2, label: 'Business Information', desc: 'Update branch contact & business details', to: '/portal/business', accent: 'ops' },
       ]
     : [];
@@ -217,12 +228,14 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
             )}
             <span className="portal-hub-period">.</span>
           </h1>
-          <p className="portal-hub-sub">What would you like to do today?</p>
+          <p className="portal-hub-sub">
+            {loading ? 'What would you like to do today?' : locationLabel}
+          </p>
 
           <div className="portal-hub-meta">
             <span className="portal-hub-chip">
               <MapPin size={13} aria-hidden="true" />
-              {brand.franchiseName}
+              {loading ? brand.franchiseName : locationLabel}
             </span>
             <span className="portal-hub-chip">
               <CalendarDays size={13} aria-hidden="true" />

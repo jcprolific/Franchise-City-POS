@@ -2,6 +2,7 @@
 export type UserRole =
   | 'hq_admin'
   | 'franchise_owner'
+  | 'barista'
   | 'manager'
   | 'supervisor'
   | 'cashier'
@@ -11,6 +12,7 @@ export type UserRole =
 const LEGACY_ROLE_MAP: Record<string, UserRole> = {
   franchisee: 'franchise_owner',
   branch_manager: 'manager',
+  cashier: 'barista',
 };
 
 export type Capability =
@@ -45,7 +47,10 @@ const ALL_CAPABILITIES: Capability[] = [
 
 const ROLE_CAPABILITIES: Record<UserRole, Capability[] | '*'> = {
   hq_admin: '*',
+  /** Franchisee (owner) — full franchisee portal + branch operations. */
   franchise_owner: '*',
+  /** Barista — POS and Orders only. No portal, dashboard, or inventory. */
+  barista: ['pos', 'orders'],
   manager: [
     'portal',
     'portal_reports',
@@ -67,16 +72,7 @@ const ROLE_CAPABILITIES: Record<UserRole, Capability[] | '*'> = {
     'dashboard',
     'promotions',
   ],
-  cashier: [
-    'portal',
-    'portal_manual',
-    'portal_orders',
-    'portal_reports',
-    'dashboard',
-    'pos',
-    'orders',
-    'inventory_view',
-  ],
+  cashier: ['pos', 'orders'],
   inventory_staff: [
     'portal',
     'portal_manual',
@@ -89,32 +85,30 @@ const ROLE_CAPABILITIES: Record<UserRole, Capability[] | '*'> = {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   hq_admin: 'HQ Admin',
-  franchise_owner: 'Franchise Owner',
+  franchise_owner: 'Franchisee',
+  barista: 'Barista',
   manager: 'Manager',
   supervisor: 'Supervisor',
-  cashier: 'Cashier',
+  cashier: 'Barista',
   inventory_staff: 'Inventory Staff',
 };
 
-/** Staff roles an owner may create (not HQ admin or franchise_owner). */
-export type BranchStaffRole = 'cashier' | 'manager' | 'supervisor' | 'inventory_staff';
+/** Staff roles a franchisee may create via the portal. */
+export type BranchStaffRole = 'barista';
 
 export const BRANCH_STAFF_ROLE_LABELS: Record<BranchStaffRole, string> = {
-  cashier: 'Cashier',
-  manager: 'Manager',
-  supervisor: 'Supervisor',
-  inventory_staff: 'Inventory Staff',
+  barista: 'Barista',
 };
 
 export function normalizeRole(raw: string | null | undefined): UserRole {
-  if (!raw) return 'cashier';
+  if (!raw) return 'barista';
   if (raw in LEGACY_ROLE_MAP) {
     return LEGACY_ROLE_MAP[raw as keyof typeof LEGACY_ROLE_MAP];
   }
   if (raw in ROLE_LABELS) {
     return raw as UserRole;
   }
-  return 'cashier';
+  return 'barista';
 }
 
 export function hasPermission(role: UserRole, capability: Capability): boolean {
@@ -139,6 +133,7 @@ export function homePathForRole(role: UserRole): string {
   if (role === 'franchise_owner') return '/portal';
   if (role === 'manager' || role === 'supervisor') return '/dashboard';
   if (role === 'inventory_staff') return '/inventory';
+  if (role === 'barista' || role === 'cashier') return '/pos';
   return '/pos';
 }
 
@@ -183,4 +178,8 @@ export function isPortalRole(role: UserRole): boolean {
 
 export function isFranchiseOwner(role: UserRole): boolean {
   return role === 'franchise_owner';
+}
+
+export function isBarista(role: UserRole): boolean {
+  return role === 'barista' || role === 'cashier';
 }

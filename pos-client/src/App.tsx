@@ -50,6 +50,8 @@ import {
   readStoredAuthSession,
   writeStoredAuthSession,
 } from './lib/authSessionStore';
+import { clearCurrentBranch } from './lib/branchContext';
+import { syncBranchSessionForUser } from './portal/lib/branchStaffService';
 import { preloadPosOrderColumns } from './lib/dashboardRealtime';
 import { startOrderSyncWorker } from './lib/offline/orderSyncService';
 import { getTerminalLabel, subscribeTerminal } from './lib/terminalContext';
@@ -345,7 +347,7 @@ export default function App() {
     isLoggedIn: false,
     userName: '',
     loginMode: null,
-    role: 'cashier',
+    role: 'barista',
     isLoading: true,
   });
 
@@ -361,9 +363,13 @@ export default function App() {
       .eq('id', userId)
       .maybeSingle();
     if (error || !data?.role) {
-      return 'cashier';
+      return 'barista';
     }
     return normalizeRole(data.role);
+  }, []);
+
+  const syncBranchFromProfile = useCallback(async (userId: string) => {
+    await syncBranchSessionForUser(userId);
   }, []);
 
   const syncSessionUser = useCallback(
@@ -371,6 +377,7 @@ export default function App() {
       clearStoredAuthSession();
       const role = await resolveUserRole(user.id);
       await resolveBrandFromProfile(user.id);
+      await syncBranchFromProfile(user.id);
       setAuth({
         isLoggedIn: true,
         userName: user.email?.split('@')[0] || 'User',
@@ -380,7 +387,7 @@ export default function App() {
       });
       return role;
     },
-    [resolveUserRole, resolveBrandFromProfile]
+    [resolveUserRole, resolveBrandFromProfile, syncBranchFromProfile]
   );
 
   useEffect(() => {
@@ -425,7 +432,7 @@ export default function App() {
           isLoggedIn: false,
           userName: '',
           loginMode: null,
-          role: 'cashier',
+          role: 'barista',
           isLoading: false,
         });
       }
@@ -449,7 +456,7 @@ export default function App() {
       if (mode === 'pin' && targetArea === 'hq') {
         setBrandSlug('coftea');
       }
-      const role = mode === 'pin' && targetArea === 'hq' ? 'hq_admin' : 'cashier';
+      const role = mode === 'pin' && targetArea === 'hq' ? 'hq_admin' : 'barista';
       const userName = name || 'User';
       if (mode === 'pin' || mode === 'guest') {
         writeStoredAuthSession({ userName, loginMode: mode, role });
@@ -493,6 +500,7 @@ export default function App() {
 
   const handleLogout = useCallback(async () => {
     clearStoredAuthSession();
+    clearCurrentBranch();
     if (auth.loginMode === 'email') {
       await supabase.auth.signOut();
     }
@@ -500,7 +508,7 @@ export default function App() {
       isLoggedIn: false,
       userName: '',
       loginMode: null,
-      role: 'cashier',
+      role: 'barista',
       isLoading: false,
     });
     navigate('/login', { replace: true });

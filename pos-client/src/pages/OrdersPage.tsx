@@ -15,6 +15,7 @@ import {
 } from '../lib/ordersService';
 import { useOutletContext } from 'react-router-dom';
 import type { PosOutletContext } from '../App';
+import { getCurrentBranch, subscribeBranch, type BranchRef } from '../lib/branchContext';
 import './OrdersPage.css';
 
 type StatusFilter = 'ALL' | OrderStatus;
@@ -36,6 +37,7 @@ function formatPeso(value: number) {
 export default function OrdersPage() {
   const { brand } = useBrand();
   const { userName } = useOutletContext<PosOutletContext>();
+  const [branch, setBranch] = useState<BranchRef>(() => getCurrentBranch());
   const [orders, setOrders] = useState<PosOrderRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [search, setSearch] = useState('');
@@ -57,6 +59,8 @@ export default function OrdersPage() {
       setSyncing(false);
     }
   }, [brand.dbBrandId]);
+
+  useEffect(() => subscribeBranch(() => setBranch(getCurrentBranch())), []);
 
   useEffect(() => {
     void refreshOrders();
@@ -175,7 +179,7 @@ export default function OrdersPage() {
         <div className="orders-header-main">
           <div>
             <h2 className="orders-title">Today&apos;s Orders</h2>
-            <span className="orders-branch-label">{brand.branchLabel}</span>
+            <span className="orders-branch-label">{branch.locationLabel || branch.name}</span>
           </div>
           <span className="orders-live-badge">
             {syncing ? 'Syncing…' : loadError ? 'Offline' : `Live · ${activeCount} active`}

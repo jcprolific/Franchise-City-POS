@@ -4,7 +4,8 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const ALLOWED_ROLES = ['cashier', 'manager', 'supervisor', 'inventory_staff'] as const;
+/** Franchisee portal staff: barista only (POS + Orders). */
+const ALLOWED_ROLES = ['barista'] as const;
 type BranchStaffRole = (typeof ALLOWED_ROLES)[number];
 
 const corsHeaders = {
@@ -100,7 +101,7 @@ Deno.serve(async (req: Request) => {
   const password = payload.password ?? '';
   const fullName = payload.fullName?.trim() ?? '';
   const phone = payload.phone?.trim() || null;
-  const role = (payload.role?.trim() ?? 'cashier') as BranchStaffRole;
+  const role = (payload.role?.trim() ?? 'barista') as BranchStaffRole;
 
   if (!email || !email.includes('@')) {
     return jsonResponse({ error: 'A valid email is required.' }, 400);

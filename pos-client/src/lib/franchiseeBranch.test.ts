@@ -5,6 +5,8 @@ const ROW: FranchiseeBranchRow = {
   id: 'b-1',
   name: 'BGC Central',
   business_name: 'Coftea BGC Central Inc.',
+  city: 'Taguig City',
+  address: '26th St corner 7th Ave',
 };
 
 describe('buildWelcome', () => {
@@ -12,6 +14,7 @@ describe('buildWelcome', () => {
     expect(buildWelcome(ROW, 'owner@coftea.com')).toEqual({
       branchId: 'b-1',
       welcomeName: 'BGC Central',
+      locationLabel: 'Taguig City · 26th St corner 7th Ave',
       isLinked: true,
     });
   });
@@ -21,6 +24,7 @@ describe('buildWelcome', () => {
     expect(buildWelcome(row, 'owner@coftea.com')).toEqual({
       branchId: 'b-1',
       welcomeName: 'Coftea BGC Central Inc.',
+      locationLabel: 'Taguig City · 26th St corner 7th Ave',
       isLinked: true,
     });
   });
@@ -29,6 +33,7 @@ describe('buildWelcome', () => {
     expect(buildWelcome(null, 'owner@coftea.com')).toEqual({
       branchId: null,
       welcomeName: 'owner',
+      locationLabel: 'owner',
       isLinked: false,
     });
   });

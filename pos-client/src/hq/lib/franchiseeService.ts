@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { deleteFranchiseeFromBackend } from './franchiseOwnerService';
 
 export type OnboardingStatus =
   | 'signed_contract'
@@ -157,12 +158,45 @@ function mapSupabaseError(message: string) {
     return 'Could not reach Supabase. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in pos-client/.env.local, then restart the dev server.';
   }
   if (message.toLowerCase().includes('row-level security')) {
-    return 'Franchisee create blocked by Supabase RLS policy. Run supabase-branch-policy.sql first.';
+    return 'Cannot save franchisee: HQ must sign in with Email Login (hq@coftea.com), not Staff PIN demo. Log out, sign in with HQ email, then register again.';
   }
   if (isColumnError(message)) {
     return 'Franchisee fields are missing on the branch table. Run supabase-franchisee-fields.sql in Supabase SQL Editor.';
   }
   return message;
+}
+
+async function ensureHqWriteAccess(): Promise<{ ok: true } | { ok: false; error: string }> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.user) {
+    return {
+      ok: false,
+      error:
+        'HQ demo PIN cannot register franchisees. Log out, then sign in with Email Login using hq@coftea.com.',
+    };
+  }
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: mapSupabaseError(error.message) };
+  }
+
+  if (profile?.role !== 'hq_admin') {
+    return {
+      ok: false,
+      error: 'Only HQ admin accounts can register franchisees. Sign in with hq@coftea.com.',
+    };
+  }
+
+  return { ok: true };
 }
 
 function buildExtendedInsert(input: RegisterFranchiseeInput) {
@@ -398,6 +432,11 @@ export async function fetchFranchisees(
 export async function registerFranchisee(
   input: RegisterFranchiseeInput
 ): Promise<RegisterFranchiseeResult> {
+  const access = await ensureHqWriteAccess();
+  if (!access.ok) {
+    return { ok: false, error: access.error };
+  }
+
   try {
     let usedFallback = false;
 
@@ -459,6 +498,11 @@ export async function updateFranchisee(
     return { ok: true, savedLocally: true, branch };
   }
 
+  const access = await ensureHqWriteAccess();
+  if (!access.ok) {
+    return { ok: false, error: access.error };
+  }
+
   try {
     let usedFallback = false;
 
@@ -511,6 +555,24 @@ export async function deleteFranchisee(
     return { ok: true, deletedLocally: true };
   }
 
+  const access = await ensureHqWriteAccess();
+  if (!access.ok) {
+    return { ok: false, error: access.error };
+  }
+
+  const backendResult = await deleteFranchiseeFromBackend({ branchId: id, brandId });
+  if (backendResult.ok) {
+    return { ok: true };
+  }
+
+  if (
+    backendResult.error &&
+    !backendResult.error.toLowerCase().includes('could not reach') &&
+    !backendResult.error.toLowerCase().includes('function')
+  ) {
+    return { ok: false, error: backendResult.error };
+  }
+
   try {
     const { error } = await supabase
       .from('branch')
@@ -525,7 +587,11 @@ export async function deleteFranchisee(
       return { ok: false, error: mapSupabaseError(error.message) };
     }
 
-    return { ok: true };
+    return {
+      ok: false,
+      error:
+        'Branch removed from list but owner login may still exist. Deploy delete-franchisee edge function, then delete again.',
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to delete franchisee.';
     if (isNetworkError(message)) {

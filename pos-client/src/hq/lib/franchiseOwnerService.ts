@@ -1,5 +1,66 @@
 import { supabase } from '../../lib/supabase';
 
+async function readEdgeFunctionError(error: {
+  message: string;
+  context?: Response;
+}): Promise<string> {
+  let message = error.message;
+  try {
+    const ctx = error.context;
+    if (ctx && typeof ctx.json === 'function') {
+      const body = await ctx.json();
+      if (body?.error) message = body.error;
+    }
+  } catch {
+    /* keep default */
+  }
+  return message;
+}
+
+export interface DeleteFranchiseeBackendInput {
+  branchId: string;
+  brandId: string;
+}
+
+export interface DeleteFranchiseeBackendResult {
+  ok: boolean;
+  error?: string;
+  removedOwner?: boolean;
+  removedStaffCount?: number;
+}
+
+export async function deleteFranchiseeFromBackend(
+  input: DeleteFranchiseeBackendInput
+): Promise<DeleteFranchiseeBackendResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('delete-franchisee', {
+      body: {
+        branchId: input.branchId,
+        brandId: input.brandId,
+      },
+    });
+
+    if (error) {
+      return { ok: false, error: await readEdgeFunctionError(error) };
+    }
+
+    if (data?.error) {
+      return { ok: false, error: data.error as string };
+    }
+
+    return {
+      ok: true,
+      removedOwner: Boolean(data?.deleted?.removedOwner),
+      removedStaffCount: (data?.deleted?.removedStaffCount as number | undefined) ?? 0,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Could not reach delete service.',
+    };
+  }
+}
+
 export interface ProvisionOwnerInput {
   branchId: string;
   email: string;
@@ -35,17 +96,7 @@ export async function provisionFranchiseOwner(
     });
 
     if (error) {
-      let message = error.message;
-      try {
-        const ctx = (error as { context?: Response }).context;
-        if (ctx && typeof ctx.json === 'function') {
-          const body = await ctx.json();
-          if (body?.error) message = body.error;
-        }
-      } catch {
-        /* keep default */
-      }
-      return { ok: false, error: message };
+      return { ok: false, error: await readEdgeFunctionError(error) };
     }
 
     if (data?.error) {
@@ -139,17 +190,7 @@ export async function processOwnerTransfer(input: {
     });
 
     if (error) {
-      let message = error.message;
-      try {
-        const ctx = (error as { context?: Response }).context;
-        if (ctx && typeof ctx.json === 'function') {
-          const body = await ctx.json();
-          if (body?.error) message = body.error;
-        }
-      } catch {
-        /* keep default */
-      }
-      return { ok: false, error: message };
+      return { ok: false, error: await readEdgeFunctionError(error) };
     }
 
     if (data?.error) {

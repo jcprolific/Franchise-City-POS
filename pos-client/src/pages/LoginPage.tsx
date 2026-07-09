@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LOGIN_BRAND_LIST } from '../brands';
 import { useBrand } from '../context/BrandContext';
+import { landingPageUrl } from '../lib/landing';
 import './LoginPage.css';
 
 interface LoginPageProps {
@@ -32,7 +34,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     if (new URLSearchParams(window.location.search).get('area') === 'hq') {
       setTargetArea('hq');
       setActiveTab('pin');
-      setHqHint('Sign in with your Coftea HQ account, or use staff PIN 1234 for Coftea HQ Demo.');
+      setHqHint('Sign in with HQ email (hq@coftea.com) to register franchisees. Staff PIN 1234 is demo view-only.');
     }
   }, []);
 
@@ -144,6 +146,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   return (
     <div className={`login-page brand-${brandSlug}`} id="login-page">
       <div className="login-card">
+        <a
+          href={landingPageUrl()}
+          className="login-back"
+          aria-label="Back to Franchise City"
+        >
+          <ArrowLeft size={18} aria-hidden="true" />
+          <span>Franchise City</span>
+        </a>
+
         {showBrandSwitcher && (
           <div className="login-brand-switcher" role="tablist" aria-label="Select brand">
             {LOGIN_BRAND_LIST.map((option) => (

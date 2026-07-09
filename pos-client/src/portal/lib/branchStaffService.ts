@@ -1,5 +1,9 @@
 import { supabase } from '../../lib/supabase';
+import { buildBranchRef, setCurrentBranch } from '../../lib/branchContext';
+import { withTimeout } from '../../lib/withTimeout';
 import type { BranchStaffRole } from '../../lib/permissions';
+
+const CREATE_STAFF_TIMEOUT_MS = 20_000;
 
 export type StaffStatus = 'active' | 'inactive';
 
@@ -59,7 +63,10 @@ export async function fetchBranchStaff(branchId: string): Promise<BranchStaffMem
     .eq('account_level', 'staff')
     .order('created_at', { ascending: false });
 
-  if (error) return null;
+  if (error) {
+    console.error('fetchBranchStaff:', error.message);
+    return [];
+  }
   return (data as StaffRow[]) ?? [];
 }
 
@@ -67,15 +74,19 @@ export async function createBranchStaff(
   input: CreateBranchStaffInput
 ): Promise<CreateBranchStaffResult> {
   try {
-    const { data, error } = await supabase.functions.invoke('create-branch-staff', {
-      body: {
-        email: input.email,
-        password: input.password,
-        fullName: input.fullName,
-        role: input.role,
-        phone: input.phone,
-      },
-    });
+    const { data, error } = await withTimeout(
+      supabase.functions.invoke('create-branch-staff', {
+        body: {
+          email: input.email,
+          password: input.password,
+          fullName: input.fullName,
+          role: input.role,
+          phone: input.phone,
+        },
+      }),
+      CREATE_STAFF_TIMEOUT_MS,
+      'Staff creation timed out. The account may still have been created — refresh the page.'
+    );
 
     if (error) {
       let message = error.message;
@@ -136,16 +147,58 @@ export async function fetchOwnerBranch(userId: string): Promise<OwnerBranchInfo 
 export async function updateOwnerBranchInfo(
   branchId: string,
   updates: {
+    name?: string;
     business_name?: string;
     franchisee_phone?: string;
     address?: string;
     city?: string;
   }
-): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase.from('branch').update(updates).eq('id', branchId);
+): Promise<{ ok: boolean; error?: string; branch?: OwnerBranchInfo }> {
+  const { data, error } = await supabase
+    .from('branch')
+    .update(updates)
+    .eq('id', branchId)
+    .select(
+      'id,name,business_name,franchisee_name,franchisee_phone,franchisee_email,address,city,owner_user_id'
+    )
+    .single();
 
   if (error) {
     return { ok: false, error: error.message };
   }
-  return { ok: true };
+  return { ok: true, branch: data as OwnerBranchInfo };
+}
+
+export async function syncBranchSessionForUser(userId: string) {
+  const { data: owned } = await supabase
+    .from('branch')
+    .select('id,name,address,city')
+    .eq('owner_user_id', userId)
+    .maybeSingle();
+
+  if (owned?.id && owned.name) {
+    const ref = buildBranchRef(owned);
+    setCurrentBranch(ref);
+    return ref;
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('branch_id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!profile?.branch_id) return null;
+
+  const { data: branch } = await supabase
+    .from('branch')
+    .select('id,name,address,city')
+    .eq('id', profile.branch_id)
+    .maybeSingle();
+
+  if (!branch?.id || !branch.name) return null;
+
+  const ref = buildBranchRef(branch);
+  setCurrentBranch(ref);
+  return ref;
 }
