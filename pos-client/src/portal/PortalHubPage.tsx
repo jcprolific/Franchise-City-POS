@@ -42,7 +42,6 @@ import {
 } from '../lib/franchiseeBranch';
 import { BRANCH_UPDATED_EVENT } from '../lib/branchContext';
 import './PortalHubPage.css';
-import OwnerPushBanner from './OwnerPushBanner';
 
 type TileAccent = 'news' | 'ops' | 'support' | 'sales';
 
@@ -232,8 +231,6 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
           <p className="portal-hub-sub">
             {loading ? 'What would you like to do today?' : locationLabel}
           </p>
-
-          {isFranchiseOwner(userRole) && <OwnerPushBanner />}
 
           <div className="portal-hub-meta">
             <span className="portal-hub-chip">

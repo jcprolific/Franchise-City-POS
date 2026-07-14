@@ -264,6 +264,7 @@ function PosShell({ auth, onLogout }: PosShellProps) {
         subtitle={subtitle}
         dateLabel={formatToday(today)}
         cashierName={displayName}
+        roleLabel={roleLabel}
         attendanceStatus={attendanceStatus}
         onToggleAttendance={handleToggleAttendance}
         onLogout={onLogout}

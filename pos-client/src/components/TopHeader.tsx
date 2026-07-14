@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  enableOwnerSaleNotifications,
+  getNotificationPermission,
+  isPushSupported,
+  maintainOwnerPushSubscription,
+} from '../lib/pushNotifications';
 import './TopHeader.css';
 
 interface TopHeaderProps {
@@ -9,6 +15,7 @@ interface TopHeaderProps {
   subtitle: string;
   dateLabel: string;
   cashierName: string;
+  roleLabel?: string;
   attendanceStatus: 'IN' | 'OUT';
   onToggleAttendance: () => void;
   onLogout: () => void;
@@ -16,6 +23,21 @@ interface TopHeaderProps {
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || 'G';
+}
+
+function pushErrorMessage(reason: string): string {
+  switch (reason) {
+    case 'ios_not_standalone':
+      return 'Open the app from your Home Screen icon, then try again.';
+    case 'denied':
+      return 'Notifications are blocked in device settings.';
+    case 'missing_public_key':
+      return 'Push is not configured yet. Contact HQ.';
+    case 'unsupported':
+      return 'This device does not support push notifications.';
+    default:
+      return `Could not enable notifications (${reason}).`;
+  }
 }
 
 export default function TopHeader({
@@ -26,14 +48,36 @@ export default function TopHeader({
   subtitle,
   dateLabel,
   cashierName,
+  roleLabel = 'Cashier',
   attendanceStatus,
   onToggleAttendance,
   onLogout,
 }: TopHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  const refreshPushStatus = useCallback(async () => {
+    if (!isPushSupported()) {
+      setPushEnabled(false);
+      return;
+    }
+    const permission = await getNotificationPermission();
+    if (permission === 'granted') {
+      void maintainOwnerPushSubscription();
+      setPushEnabled(true);
+      return;
+    }
+    setPushEnabled(false);
+  }, []);
+
+  useEffect(() => {
+    void refreshPushStatus();
+  }, [refreshPushStatus]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -59,6 +103,20 @@ export default function TopHeader({
   const handleLogout = () => {
     closeMenu();
     onLogout();
+  };
+
+  const handleEnableNotifications = async () => {
+    setPushBusy(true);
+    setPushMessage('');
+    const result = await enableOwnerSaleNotifications();
+    setPushBusy(false);
+    if (result.ok) {
+      setPushEnabled(true);
+      setPushMessage('Sale notifications are on.');
+      return;
+    }
+    setPushMessage(pushErrorMessage(result.reason));
+    await refreshPushStatus();
   };
 
   return (
@@ -117,8 +175,33 @@ export default function TopHeader({
             <div className="top-header-profile-menu" role="menu">
               <div className="top-header-profile-menu-header">
                 <span className="top-header-profile-menu-name">{cashierName}</span>
-                <span className="top-header-profile-menu-role">Cashier</span>
+                <span className="top-header-profile-menu-role">{roleLabel}</span>
               </div>
+
+              <button
+                type="button"
+                className={`top-header-profile-menu-item top-header-profile-menu-item--neutral${pushEnabled ? ' is-enabled' : ''}`}
+                role="menuitem"
+                id="enable-notifications-btn"
+                disabled={pushBusy}
+                onClick={() => void handleEnableNotifications()}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
+                {pushBusy
+                  ? 'Enabling…'
+                  : pushEnabled
+                    ? 'Notifications on'
+                    : 'Enable notifications'}
+              </button>
+              {pushMessage && (
+                <p className="top-header-profile-menu-note" role="status">
+                  {pushMessage}
+                </p>
+              )}
+
               <button
                 type="button"
                 className="top-header-profile-menu-item"
