@@ -12,7 +12,7 @@ import type {
 import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
 import { getInsertPayloadForPosOrder, preloadPosOrderColumns, resolvePosOrderColumns } from '../lib/dashboardRealtime';
-import { getCurrentBranch } from '../lib/branchContext';
+import { getCurrentBranch, isSeedBranchId } from '../lib/branchContext';
 import { logAuditEvent } from '../lib/auditLogService';
 import { createLocalOrderId } from '../lib/offline/offlineOrderQueue';
 import { queueAndSyncOrder } from '../lib/offline/orderSyncService';
@@ -70,7 +70,13 @@ export default function POSPage() {
   const variants = catalog?.variants ?? brand.menu.variants;
   const addons = catalog?.addons ?? brand.menu.addons;
 
-  const [activeCategoryId, setActiveCategoryId] = useState(categories[0]?.id ?? '');
+  const defaultCategoryId = useMemo(() => {
+    const latte = categories.find((c) => /cafe\s*latte/i.test(c.name));
+    return latte?.id ?? categories[0]?.id ?? '';
+  }, [categories]);
+
+  const [activeCategoryId, setActiveCategoryId] = useState(defaultCategoryId);
+  const [categoryInitialized, setCategoryInitialized] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<DiscountType>('NONE');
@@ -87,10 +93,16 @@ export default function POSPage() {
   }, []);
 
   useEffect(() => {
-    if (categories.length > 0 && !categories.some((c) => c.id === activeCategoryId)) {
-      setActiveCategoryId(categories[0].id);
+    if (!defaultCategoryId) return;
+    if (!categoryInitialized) {
+      setActiveCategoryId(defaultCategoryId);
+      setCategoryInitialized(true);
+      return;
     }
-  }, [categories, activeCategoryId]);
+    if (!categories.some((c) => c.id === activeCategoryId)) {
+      setActiveCategoryId(defaultCategoryId);
+    }
+  }, [categories, activeCategoryId, defaultCategoryId, categoryInitialized]);
 
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -229,8 +241,22 @@ export default function POSPage() {
       supabase.auth.getUser(),
     ]);
     const branch = getCurrentBranch();
-    const clientOrderId = createLocalOrderId();
     const cashierId = userResult.data.user?.id;
+
+    if (!brand.dbBrandId) {
+      return { synced: false as const, error: 'Missing brand. Re-login and try again.' };
+    }
+
+    if (!branch.id || isSeedBranchId(branch.id)) {
+      return {
+        synced: false as const,
+        error: cashierId
+          ? 'No branch linked to this account. Ask HQ/franchisee to assign your barista profile to a branch, then re-login.'
+          : 'Demo seed branch cannot sync to cloud. Sign in with a barista account linked to a store.',
+      };
+    }
+
+    const clientOrderId = createLocalOrderId();
 
     const payload = getInsertPayloadForPosOrder(columns, {
       orderNumber: snapshot.orderNumber,
@@ -267,6 +293,7 @@ export default function POSPage() {
         total: snapshot.total,
         paymentMethod: snapshot.paymentMethod,
         synced: result.synced,
+        error: result.error ?? null,
       },
       metadata: { clientOrderId, terminalId: getTerminalId() },
     });
@@ -292,12 +319,25 @@ export default function POSPage() {
     try {
       setIsSavingOrder(true);
       const result = await persistOrder(snapshot);
-      clearCartForSuccess();
+
       if (!result.synced && result.error === 'offline') {
+        clearCartForSuccess();
         window.alert('You are offline. Order saved locally and will sync when connection returns.');
-      } else if (!result.synced) {
-        window.alert(`Order queued for sync: ${result.error ?? 'pending'}. Continuing to New Order.`);
+        setShowCheckout(false);
+        setOrderNumber((n) => n + 1);
+        return true;
       }
+
+      if (!result.synced) {
+        window.alert(
+          `Order did not sync to the cloud.\n\n${result.error ?? 'Unknown sync error'}\n\nCart kept so you can retry.`
+        );
+        return false;
+      }
+
+      clearCartForSuccess();
+      setShowCheckout(false);
+      setOrderNumber((n) => n + 1);
       return true;
     } catch (error) {
       console.error('Failed to save order:', error);
@@ -305,16 +345,15 @@ export default function POSPage() {
         typeof error === 'object' && error && 'message' in error
           ? String(error.message)
           : 'Please try again.';
-      if (message.toLowerCase().includes('row-level security')) {
-        window.alert('Order saved locally and queued for sync. Ask admin to run enterprise schema migrations if cloud sync keeps failing.');
-      } else if (message === 'offline') {
+      if (message === 'offline') {
+        clearCartForSuccess();
         window.alert('You are offline. Order saved locally and will sync when connection returns.');
-      } else {
-        window.alert(`Order queued for sync: ${message}. Continuing to New Order.`);
+        setShowCheckout(false);
+        setOrderNumber((n) => n + 1);
+        return true;
       }
-
-      clearCartForSuccess();
-      return true;
+      window.alert(`Order did not sync to the cloud.\n\n${message}\n\nCart kept so you can retry.`);
+      return false;
     } finally {
       setIsSavingOrder(false);
     }

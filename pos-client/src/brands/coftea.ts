@@ -6,8 +6,8 @@ const IMG = '/menu/coftea';
 const DRINK_CATEGORIES = new Set(['cat-c1', 'cat-c2', 'cat-c3', 'cat-c4', 'cat-c5']);
 
 const categories: Category[] = [
-  { id: 'cat-c1', name: 'Cafe Amerikano', sort_order: 1, icon: '☕' },
-  { id: 'cat-c2', name: 'Cafe Latte', sort_order: 2, icon: '☕' },
+  { id: 'cat-c2', name: 'Cafe Latte', sort_order: 1, icon: '☕' },
+  { id: 'cat-c1', name: 'Cafe Amerikano', sort_order: 2, icon: '☕' },
   { id: 'cat-c3', name: 'Frappe', sort_order: 3, icon: '🥤' },
   { id: 'cat-c4', name: 'Fruit / Soda Series', sort_order: 4, icon: '🧋' },
   { id: 'cat-c5', name: 'Milktea', sort_order: 5, icon: '🧋' },
