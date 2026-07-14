@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { withTimeout, SUPABASE_TIMEOUT_MS } from './withTimeout';
 import { getManilaIsoDateKey, isSameManilaDate, toManilaTimeLabel } from './timezone';
+import { isCountablePaidSale } from './saleEligibility';
 
 export interface DashboardTransaction {
   id: string;
@@ -205,11 +206,11 @@ export function buildLiveDashboardData(
 }
 
 function isCountableSale(row: RowRecord, columns: ColumnMap) {
-  const status = columns.status ? asString(row[columns.status], 'COMPLETED').toUpperCase() : 'COMPLETED';
+  const status = columns.status ? asString(row[columns.status], 'NEW') : null;
   const paymentStatus = columns.paymentStatus
-    ? asString(row[columns.paymentStatus], 'PAID').toUpperCase()
-    : 'PAID';
-  return status === 'COMPLETED' && paymentStatus === 'PAID';
+    ? asString(row[columns.paymentStatus], 'PAID')
+    : null;
+  return isCountablePaidSale(status, paymentStatus);
 }
 
 export async function fetchLiveDashboardData(branchValue?: string) {

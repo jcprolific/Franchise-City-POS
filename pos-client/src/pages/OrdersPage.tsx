@@ -65,6 +65,15 @@ export default function OrdersPage() {
   useEffect(() => {
     void refreshOrders();
 
+    const POLL_MS = 15_000;
+    const pollId = window.setInterval(() => {
+      void refreshOrders();
+    }, POLL_MS);
+    const onFocus = () => {
+      void refreshOrders();
+    };
+    window.addEventListener('focus', onFocus);
+
     const channel = supabase
       .channel('orders-pos-order-realtime')
       .on(
@@ -77,6 +86,8 @@ export default function OrdersPage() {
       .subscribe();
 
     return () => {
+      window.clearInterval(pollId);
+      window.removeEventListener('focus', onFocus);
       void supabase.removeChannel(channel);
     };
   }, [refreshOrders]);

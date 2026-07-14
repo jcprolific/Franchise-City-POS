@@ -73,6 +73,9 @@ export default function DashboardPage() {
       if (products.rows[0]) {
         setTopProductName(products.rows[0].productName);
         setTopProductSold(products.rows[0].quantity);
+      } else {
+        setTopProductName('—');
+        setTopProductSold(0);
       }
       setLowStockItems(
         lowStock.map((i) => ({
@@ -95,6 +98,20 @@ export default function DashboardPage() {
   useEffect(() => {
     void refreshDashboard();
 
+    // Realtime is primary; poll + focus refresh keep KPIs current if the channel drops.
+    const POLL_MS = 15_000;
+    const pollId = window.setInterval(() => {
+      void refreshDashboard();
+    }, POLL_MS);
+    const onFocus = () => {
+      void refreshDashboard();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') onFocus();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+
     const channel = supabase
       .channel('dashboard-pos-order-realtime')
       .on(
@@ -107,6 +124,9 @@ export default function DashboardPage() {
       .subscribe();
 
     return () => {
+      window.clearInterval(pollId);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
       void supabase.removeChannel(channel);
     };
   }, [refreshDashboard]);

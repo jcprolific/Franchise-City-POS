@@ -20,6 +20,11 @@ export const DEFAULT_COFTEA_BRANCH: BranchRef = {
   locationLabel: 'Taguig · BGC Central',
 };
 
+/** Seed placeholder — not a real `branch` row. Email staff must not punch against this. */
+export function isSeedBranchId(branchId: string | null | undefined): boolean {
+  return branchId === DEFAULT_COFTEA_BRANCH.id;
+}
+
 const BRANCH_STORAGE_KEY = 'coftea.pos.selectedBranch';
 
 const branchListeners = new Set<() => void>();

@@ -20,7 +20,7 @@ as $$
       (timezone(p_tz, created_at))::date as manila_date
     from public.pos_order
     where coalesce(payment_status, 'PAID') = 'PAID'
-      and coalesce(status, 'COMPLETED') = 'COMPLETED'
+      and upper(coalesce(status, 'NEW')) not in ('VOIDED', 'REFUNDED')
   ),
   day_values as (
     select
@@ -60,7 +60,7 @@ as $$
       (timezone(p_tz, created_at))::date as manila_date
     from public.pos_order
     where coalesce(payment_status, 'PAID') = 'PAID'
-      and coalesce(status, 'COMPLETED') = 'COMPLETED'
+      and upper(coalesce(status, 'NEW')) not in ('VOIDED', 'REFUNDED')
   )
   select
     to_char(d.day_date, 'Dy') as day_label,

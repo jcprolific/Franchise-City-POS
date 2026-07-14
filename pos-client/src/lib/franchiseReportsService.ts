@@ -4,6 +4,7 @@ import { fetchProductSales } from './posOrderItemService';
 import { fetchBranchInventory, type BranchInventoryItem } from './inventoryService';
 import { fetchStockMovements } from './stockMovementService';
 import { getManilaIsoDateKey } from './timezone';
+import { isCountablePaidSale } from './saleEligibility';
 import {
   portalLowStockItems,
   portalReportSnapshots,
@@ -73,9 +74,9 @@ async function fetchOrdersInRange(
   if (error || !data) return [];
 
   return (data as Record<string, unknown>[]).filter((row) => {
-    const status = columns.status ? String(row[columns.status]).toUpperCase() : 'COMPLETED';
-    const pay = columns.paymentStatus ? String(row[columns.paymentStatus]).toUpperCase() : 'PAID';
-    return status === 'COMPLETED' && pay === 'PAID';
+    const status = columns.status ? String(row[columns.status]) : null;
+    const pay = columns.paymentStatus ? String(row[columns.paymentStatus]) : null;
+    return isCountablePaidSale(status, pay);
   });
 }
 
@@ -149,6 +150,22 @@ export async function fetchDailySalesTrend(
   return points;
 }
 
+const SAMPLE_TOP_SELLER = {
+  productName: 'Brown Sugar Milk Tea',
+  quantity: 42,
+  revenue: 6216,
+};
+
+/** Pure helper — sample fallback only for offline/demo; live empty stays empty. */
+export function resolveProductPerformance(
+  rows: Awaited<ReturnType<typeof fetchProductSales>>,
+  configured: boolean
+): { rows: Awaited<ReturnType<typeof fetchProductSales>>; source: 'live' | 'fallback' } {
+  if (rows.length) return { rows, source: 'live' };
+  if (configured) return { rows: [], source: 'live' };
+  return { rows: [SAMPLE_TOP_SELLER], source: 'fallback' };
+}
+
 export async function fetchProductPerformance(
   brandId: string,
   range: '7d' | '30d',
@@ -158,11 +175,7 @@ export async function fetchProductPerformance(
   const startKey = manilaDateKeyOffset(range === '7d' ? 6 : 29);
   const { start, end } = rangeIso(startKey, endKey);
   const rows = await fetchProductSales(brandId, start, end, branchId);
-  if (rows.length) return { rows, source: 'live' as const };
-  return {
-    rows: [{ productName: 'Brown Sugar Milk Tea', quantity: 42, revenue: 6216 }],
-    source: 'fallback' as const,
-  };
+  return resolveProductPerformance(rows, isSupabaseConfigured());
 }
 
 export async function fetchInventoryReport(

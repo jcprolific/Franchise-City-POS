@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import type { CartItem } from '../types';
+import { isCountablePaidSale } from './saleEligibility';
 
 export interface PosOrderItemRow {
   id: string;
@@ -120,9 +121,10 @@ export async function fetchProductSales(
   const validIds = orders
     .filter((o) => {
       const row = o as Record<string, unknown>;
-      const status = String(row.status ?? 'COMPLETED').toUpperCase();
-      const pay = String(row.payment_status ?? 'PAID').toUpperCase();
-      return status === 'COMPLETED' && pay === 'PAID';
+      return isCountablePaidSale(
+        row.status != null ? String(row.status) : null,
+        row.payment_status != null ? String(row.payment_status) : null
+      );
     })
     .map((o) => (o as { id: string }).id);
 

@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { getManilaIsoDateKey } from '../../lib/timezone';
+import { isCountablePaidSale } from '../../lib/saleEligibility';
 
 export type ReportDateRange = 'today' | '7d' | '30d' | 'custom';
 
@@ -292,11 +293,9 @@ async function fetchFallback(brandId: string, range: ResolvedRange, branchId: st
   const { data: orderData, error: orderError } = await orderQuery;
   if (orderError) throw orderError;
 
-  const paidRows = ((orderData as PosOrderRow[] | null) ?? []).filter((row) => {
-    const payment = (row.payment_status ?? 'PAID').toUpperCase();
-    const status = (row.status ?? 'COMPLETED').toUpperCase();
-    return payment === 'PAID' && status === 'COMPLETED' && Boolean(row.created_at);
-  });
+  const paidRows = ((orderData as PosOrderRow[] | null) ?? []).filter(
+    (row) => isCountablePaidSale(row.status, row.payment_status) && Boolean(row.created_at)
+  );
 
   const inRange = (key: string) => key >= range.start && key <= range.end;
   const inPrev = (key: string) => key >= range.prevStart && key < range.start;

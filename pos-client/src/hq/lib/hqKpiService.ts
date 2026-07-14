@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { getManilaIsoDateKey, isSameManilaDate } from '../../lib/timezone';
+import { isCountablePaidSale } from '../../lib/saleEligibility';
 
 export interface HqKpiSnapshot {
   todayRevenue: number;
@@ -62,11 +63,7 @@ function buildFallbackFromRows(rows: PosOrderRow[]): {
   snapshot: HqKpiSnapshot;
   weeklyRevenue: HqWeeklyRevenueItem[];
 } {
-  const paidRows = rows.filter((row) => {
-    const payment = (row.payment_status ?? 'PAID').toUpperCase();
-    const status = (row.status ?? 'COMPLETED').toUpperCase();
-    return payment === 'PAID' && status === 'COMPLETED';
-  });
+  const paidRows = rows.filter((row) => isCountablePaidSale(row.status, row.payment_status));
 
   const todayKey = getManilaIsoDateKey(new Date());
   const yesterdayDate = new Date();

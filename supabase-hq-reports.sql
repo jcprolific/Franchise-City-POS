@@ -3,7 +3,7 @@
 -- supabase-branch-inventory-setup.sql.
 --
 -- All sales functions aggregate public.pos_order with the same filters used by
--- the existing KPI functions: payment_status = 'PAID', status = 'COMPLETED'.
+-- Option A: payment_status = 'PAID', status NOT IN (VOIDED, REFUNDED).
 -- Date bounds (p_start, p_end) are inclusive and evaluated in the requested
 -- timezone (Asia/Manila by default). p_branch_id is optional; null = whole brand.
 
@@ -43,7 +43,7 @@ as $$
       (timezone(p_tz, o.created_at))::date as manila_date
     from public.pos_order o
     where coalesce(o.payment_status, 'PAID') = 'PAID'
-      and coalesce(o.status, 'COMPLETED') = 'COMPLETED'
+      and upper(coalesce(o.status, 'NEW')) not in ('VOIDED', 'REFUNDED')
       and o.brand_id = p_brand_id
       and (p_branch_id is null or o.branch_id = p_branch_id)
   ),
@@ -109,7 +109,7 @@ as $$
       (timezone(p_tz, o.created_at))::date as manila_date
     from public.pos_order o
     where coalesce(o.payment_status, 'PAID') = 'PAID'
-      and coalesce(o.status, 'COMPLETED') = 'COMPLETED'
+      and upper(coalesce(o.status, 'NEW')) not in ('VOIDED', 'REFUNDED')
       and o.brand_id = p_brand_id
       and (p_branch_id is null or o.branch_id = p_branch_id)
   )
@@ -154,7 +154,7 @@ as $$
       coalesce(avg(coalesce(o.total_amount, 0)), 0)::numeric as aov
     from public.pos_order o
     where coalesce(o.payment_status, 'PAID') = 'PAID'
-      and coalesce(o.status, 'COMPLETED') = 'COMPLETED'
+      and upper(coalesce(o.status, 'NEW')) not in ('VOIDED', 'REFUNDED')
       and o.brand_id = p_brand_id
       and (timezone(p_tz, o.created_at))::date between p_start and p_end
     group by o.branch_id
@@ -198,7 +198,7 @@ as $$
     coalesce(sum(coalesce(o.total_amount, 0)), 0)::numeric as amount
   from public.pos_order o
   where coalesce(o.payment_status, 'PAID') = 'PAID'
-    and coalesce(o.status, 'COMPLETED') = 'COMPLETED'
+    and upper(coalesce(o.status, 'NEW')) not in ('VOIDED', 'REFUNDED')
     and o.brand_id = p_brand_id
     and (p_branch_id is null or o.branch_id = p_branch_id)
     and (timezone(p_tz, o.created_at))::date between p_start and p_end
