@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useBrand } from '../context/BrandContext';
+import type { PosOutletContext } from '../App';
 import { getCurrentBranch } from '../lib/branchContext';
 import { readStoredAuthSession } from '../lib/authSessionStore';
+import { hasPermission } from '../lib/permissions';
 import {
   fetchBranchInventory,
   updateBranchStock,
@@ -65,7 +68,10 @@ const pesoExact = new Intl.NumberFormat('en-PH', {
 
 export default function InventoryPage() {
   const { brand } = useBrand();
+  const { role } = useOutletContext<PosOutletContext>();
   const branch = useMemo(() => getCurrentBranch(), []);
+  const canManageInventory = hasPermission(role, 'inventory');
+  const viewOnly = !canManageInventory && hasPermission(role, 'inventory_view');
 
   const [items, setItems] = useState<BranchInventoryItem[]>(() => localFallbackItems());
   const [source, setSource] = useState<StockSource>('local');
@@ -178,6 +184,7 @@ export default function InventoryPage() {
     nextQty: number,
     reason = 'Count correction'
   ) => {
+    if (!canManageInventory) return;
     const qty = Math.max(0, Math.round(nextQty));
     const previous = item.onHandQty;
     if (qty === previous) return;
@@ -220,6 +227,7 @@ export default function InventoryPage() {
   };
 
   const requestAdjust = (item: BranchInventoryItem, nextQty: number) => {
+    if (!canManageInventory) return;
     const qty = Math.max(0, Math.round(nextQty));
     if (qty === item.onHandQty) return;
     setPendingAdjust({ item, previous: item.onHandQty, next: qty });
@@ -233,6 +241,7 @@ export default function InventoryPage() {
   };
 
   const addToCart = (item: BranchInventoryItem) => {
+    if (!canManageInventory) return;
     setCart((prev) => {
       const existing = prev[item.rawMaterialId];
       return {
@@ -259,7 +268,7 @@ export default function InventoryPage() {
   const clearCart = () => setCart({});
 
   const handlePlaceOrder = async () => {
-    if (cartLines.length === 0) return;
+    if (!canManageInventory || cartLines.length === 0) return;
     setPlacing(true);
     setOrderError(null);
     const session = readStoredAuthSession();
@@ -308,7 +317,7 @@ export default function InventoryPage() {
           </span>
         </div>
         <div className="inventory-header-right">
-          {cartCount > 0 && (
+          {canManageInventory && cartCount > 0 && (
             <button className="inventory-cart-pill" onClick={() => setCheckoutOpen(true)}>
               <span className="inventory-cart-icon">🛒</span>
               <span className="inventory-cart-copy">
@@ -342,10 +351,17 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {viewOnly && (
+        <div className="inventory-view-only-note" role="status">
+          View only — you can check stock levels here. Ask a franchisee or manager to adjust counts or place supply orders.
+        </div>
+      )}
+
       {source === 'local' && !syncing && (
         <div className="inventory-offline-note">
-          Showing the standard Coftea catalog (offline). Stock edits and orders won’t
-          be saved until this branch is connected.
+          {viewOnly
+            ? 'Showing the standard Coftea catalog (offline). Live stock will appear when this branch is connected.'
+            : 'Showing the standard Coftea catalog (offline). Stock edits and orders won’t be saved until this branch is connected.'}
         </div>
       )}
 
@@ -442,51 +458,60 @@ export default function InventoryPage() {
                       </div>
                     </div>
                     <div className="inventory-item-right">
-                      <div className="inventory-qty-editor">
-                        <button
-                          className="inventory-action-btn minus"
-                          onClick={() => requestAdjust(item, item.onHandQty - 1)}
-                          disabled={isSaving || item.onHandQty <= 0}
-                          aria-label={`Remove one ${item.unit}`}
-                        >
-                          −
-                        </button>
-                        <div className="inventory-qty-field">
-                          <input
-                            className="inventory-qty-input"
-                            type="number"
-                            min={0}
-                            value={item.onHandQty}
-                            onChange={(e) => {
-                              const v = Number(e.target.value);
-                              setItems((prev) =>
-                                prev.map((i) =>
-                                  i.rawMaterialId === item.rawMaterialId
-                                    ? { ...i, onHandQty: Number.isFinite(v) ? v : 0 }
-                                    : i
-                                )
-                              );
-                            }}
-                            onBlur={(e) => requestAdjust(item, Number(e.target.value))}
-                          />
-                          <span className="inventory-qty-unit">{item.unit}</span>
+                      {canManageInventory ? (
+                        <>
+                          <div className="inventory-qty-editor">
+                            <button
+                              className="inventory-action-btn minus"
+                              onClick={() => requestAdjust(item, item.onHandQty - 1)}
+                              disabled={isSaving || item.onHandQty <= 0}
+                              aria-label={`Remove one ${item.unit}`}
+                            >
+                              −
+                            </button>
+                            <div className="inventory-qty-field">
+                              <input
+                                className="inventory-qty-input"
+                                type="number"
+                                min={0}
+                                value={item.onHandQty}
+                                onChange={(e) => {
+                                  const v = Number(e.target.value);
+                                  setItems((prev) =>
+                                    prev.map((i) =>
+                                      i.rawMaterialId === item.rawMaterialId
+                                        ? { ...i, onHandQty: Number.isFinite(v) ? v : 0 }
+                                        : i
+                                    )
+                                  );
+                                }}
+                                onBlur={(e) => requestAdjust(item, Number(e.target.value))}
+                              />
+                              <span className="inventory-qty-unit">{item.unit}</span>
+                            </div>
+                            <button
+                              className="inventory-action-btn plus"
+                              onClick={() => requestAdjust(item, item.onHandQty + 1)}
+                              disabled={isSaving}
+                              aria-label={`Add one ${item.unit}`}
+                            >
+                              +
+                            </button>
+                          </div>
+                          <button
+                            className={`inventory-reorder-btn ${inCart > 0 ? 'in-cart' : ''}`}
+                            onClick={() => addToCart(item)}
+                            aria-label={`Reorder ${item.name}`}
+                          >
+                            {inCart > 0 ? `In cart · ${inCart}` : 'Reorder'}
+                          </button>
+                        </>
+                      ) : (
+                        <div className="inventory-qty-readonly" aria-label={`${item.onHandQty} ${item.unit} on hand`}>
+                          <strong>{item.onHandQty}</strong>
+                          <span>{item.unit}</span>
                         </div>
-                        <button
-                          className="inventory-action-btn plus"
-                          onClick={() => requestAdjust(item, item.onHandQty + 1)}
-                          disabled={isSaving}
-                          aria-label={`Add one ${item.unit}`}
-                        >
-                          +
-                        </button>
-                      </div>
-                      <button
-                        className={`inventory-reorder-btn ${inCart > 0 ? 'in-cart' : ''}`}
-                        onClick={() => addToCart(item)}
-                        aria-label={`Reorder ${item.name}`}
-                      >
-                        {inCart > 0 ? `In cart · ${inCart}` : 'Reorder'}
-                      </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -496,7 +521,7 @@ export default function InventoryPage() {
         ))
       )}
 
-      {cartCount > 0 && !checkoutOpen && (
+      {canManageInventory && cartCount > 0 && !checkoutOpen && (
         <div className="reorder-bar">
           <div className="reorder-bar-info">
             <span className="reorder-bar-count">
@@ -515,7 +540,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {checkoutOpen && (
+      {canManageInventory && checkoutOpen && (
         <div className="checkout-overlay" onClick={() => setCheckoutOpen(false)}>
           <aside className="checkout-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="checkout-head">
@@ -630,7 +655,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {pendingAdjust && (
+      {canManageInventory && pendingAdjust && (
         <div className="inventory-adjust-overlay" role="dialog" aria-modal="true">
           <div className="inventory-adjust-modal">
             <h3>Adjust Stock</h3>

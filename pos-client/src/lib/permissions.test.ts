@@ -32,14 +32,14 @@ describe('hasPermission', () => {
     expect(hasPermission('franchise_owner', 'inventory')).toBe(true);
   });
 
-  it('grants barista POS and Orders only', () => {
+  it('grants barista POS, Orders, and view-only Inventory', () => {
     expect(hasPermission('barista', 'pos')).toBe(true);
     expect(hasPermission('barista', 'orders')).toBe(true);
+    expect(hasPermission('barista', 'inventory_view')).toBe(true);
     expect(hasPermission('barista', 'portal')).toBe(false);
     expect(hasPermission('barista', 'portal_staff')).toBe(false);
     expect(hasPermission('barista', 'dashboard')).toBe(false);
     expect(hasPermission('barista', 'inventory')).toBe(false);
-    expect(hasPermission('barista', 'inventory_view')).toBe(false);
   });
 
   it('grants manager sales and inventory', () => {
@@ -67,11 +67,11 @@ describe('canAccessPath', () => {
     expect(canAccessPath('barista', '/portal/reports')).toBe(false);
   });
 
-  it('allows barista on POS and Orders only', () => {
+  it('allows barista on POS, Orders, and Inventory (view)', () => {
     expect(canAccessPath('barista', '/pos')).toBe(true);
     expect(canAccessPath('barista', '/orders')).toBe(true);
+    expect(canAccessPath('barista', '/inventory')).toBe(true);
     expect(canAccessPath('barista', '/dashboard')).toBe(false);
-    expect(canAccessPath('barista', '/inventory')).toBe(false);
   });
 
   it('allows franchise owner on all portal and branch pages', () => {

@@ -49,8 +49,8 @@ const ROLE_CAPABILITIES: Record<UserRole, Capability[] | '*'> = {
   hq_admin: '*',
   /** Franchisee (owner) — full franchisee portal + branch operations. */
   franchise_owner: '*',
-  /** Barista — POS and Orders only. No portal, dashboard, or inventory. */
-  barista: ['pos', 'orders'],
+  /** Barista — POS, Orders, and view-only Inventory. No portal, dashboard, or stock edits. */
+  barista: ['pos', 'orders', 'inventory_view'],
   manager: [
     'portal',
     'portal_reports',
@@ -72,7 +72,7 @@ const ROLE_CAPABILITIES: Record<UserRole, Capability[] | '*'> = {
     'dashboard',
     'promotions',
   ],
-  cashier: ['pos', 'orders'],
+  cashier: ['pos', 'orders', 'inventory_view'],
   inventory_staff: [
     'portal',
     'portal_manual',

@@ -278,7 +278,7 @@ function PosShell({ auth, onLogout }: PosShellProps) {
         />
         <main className="app-main">
           {bannerMessage && <div className="access-banner">{bannerMessage}</div>}
-          <Outlet context={{ userName: auth.userName, userRole: roleLabel }} />
+          <Outlet context={{ userName: auth.userName, userRole: roleLabel, role: auth.role }} />
         </main>
       </div>
 
@@ -307,6 +307,7 @@ function PosShell({ auth, onLogout }: PosShellProps) {
 export interface PosOutletContext {
   userName: string;
   userRole: string;
+  role: UserRole;
 }
 
 function HqShell({ userName, onLogout }: HqShellProps) {
