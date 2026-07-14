@@ -1,0 +1,101 @@
+.owner-push-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 14px 0 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #f4fff8;
+  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 1;
+}
+
+.portal-hub .owner-push-card--ok {
+  background: rgba(238, 248, 242, 0.95);
+  border-color: rgba(42, 171, 111, 0.55);
+  color: #1a5c3a;
+}
+
+.owner-push-card--loading {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.owner-push-card-main {
+  display: flex;
+  gap: 12px;
+  flex: 1 1 240px;
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.owner-push-card-main strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1rem;
+}
+
+.owner-push-card-main p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  opacity: 0.95;
+}
+
+.owner-push-card-tip {
+  margin-top: 8px !important;
+  color: #c9f0d8;
+}
+
+.owner-push-card--ok .owner-push-card-tip {
+  color: #1a5c3a;
+}
+
+.owner-push-card-error {
+  margin-top: 8px !important;
+  color: #ffd0c8;
+  font-weight: 600;
+}
+
+.owner-push-card--ok .owner-push-card-error {
+  color: #9b2c2c;
+}
+
+.owner-push-card-btn {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  background: #2aab6f;
+  color: #0b1a12;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.owner-push-card-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.owner-push-card-btn--ghost {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .owner-push-card-btn {
+    width: 100%;
+  }
+}

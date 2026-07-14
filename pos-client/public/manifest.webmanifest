@@ -1,0 +1,24 @@
+{
+  "name": "COFTEA Franchise Portal",
+  "short_name": "COFTEA",
+  "description": "Franchise owner portal and POS for Franchise City brands",
+  "start_url": "/portal",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f141c",
+  "theme_color": "#1a5c3a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
