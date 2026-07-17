@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
@@ -5,7 +6,6 @@ import { fetchLiveDashboardData } from '../lib/dashboardRealtime';
 import { getCurrentBranch, subscribeBranch, type BranchRef } from '../lib/branchContext';
 import {
   fetchDailySalesTrend,
-  fetchFranchiseSummary,
   fetchLowStockItems,
   fetchProductPerformance,
 } from '../lib/franchiseReportsService';
@@ -151,25 +151,6 @@ export default function DashboardPage() {
     return `conic-gradient(${stops.join(', ')})`;
   }, [topProducts, totalProducts]);
 
-  const handlePrintEod = async () => {
-    const summary = await fetchFranchiseSummary(brand.dbBrandId, 'today', branch.id);
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(`
-      <html><head><title>EOD Report</title></head><body style="font-family:sans-serif;padding:24px">
-      <h1>Daily Sales Report — ${branch.name}</h1>
-      <p>${new Date().toLocaleDateString('en-PH')}</p>
-      <ul>
-        <li>Revenue: ₱${summary.revenue.toLocaleString()}</li>
-        <li>Orders: ${summary.orders}</li>
-        <li>Avg Order: ₱${summary.avgOrderValue.toFixed(2)}</li>
-      </ul>
-      </body></html>
-    `);
-    w.document.close();
-    w.print();
-  };
-
   return (
     <div className="dashboard-page" id="dashboard-page">
       <div className="dashboard-header">
@@ -186,9 +167,9 @@ export default function DashboardPage() {
               {dataSource === 'live' ? `Live · ${liveDashboard.totalOrders} orders today` : 'Sample / offline data'}
             </span>
           )}
-          <button type="button" className="dashboard-eod-btn" onClick={() => void handlePrintEod()}>
-            Print EOD
-          </button>
+          <Link to="/eod-report" className="dashboard-eod-btn">
+            End of Day Report
+          </Link>
         </div>
       </div>
 

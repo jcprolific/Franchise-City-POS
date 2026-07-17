@@ -150,6 +150,7 @@ export const ROUTE_CAPABILITY: Record<string, Capability> = {
   '/orders': 'orders',
   '/inventory': 'inventory',
   '/dashboard': 'dashboard',
+  '/eod-report': 'dashboard',
   '/promotions': 'promotions',
 };
 

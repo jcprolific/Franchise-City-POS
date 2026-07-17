@@ -1,0 +1,271 @@
+.hq-eod {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 28px 32px;
+  min-height: 100%;
+  background: #fbf7ef;
+  color: #23311f;
+}
+
+.hq-eod-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.hq-eod-header h1 {
+  font-size: 1.75rem;
+  margin-top: 4px;
+}
+
+.hq-eod-header p {
+  color: #4f5a48;
+  font-size: 0.84rem;
+  margin-top: 4px;
+}
+
+.hq-eod-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hq-eod-filter {
+  padding: 8px 12px;
+  border: 1px solid #ece6da;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.84rem;
+}
+
+.hq-eod-alert {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff4e8;
+  border: 1px solid #f5dcc0;
+  color: #8a4b2f;
+  font-size: 0.85rem;
+}
+
+.hq-eod-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.hq-stat-value--success {
+  color: #008d36;
+}
+
+.hq-stat-value--warn {
+  color: #d97706;
+}
+
+.hq-eod-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .hq-eod-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hq-eod-table-wrap {
+  background: #fff;
+  border: 1px solid #ece6da;
+  border-radius: 12px;
+  overflow: auto;
+}
+
+.hq-eod-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.hq-eod-table th,
+.hq-eod-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid #f0ebe0;
+}
+
+.hq-eod-table th {
+  background: #faf8f3;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #98a08f;
+}
+
+.hq-eod-table tbody tr {
+  cursor: pointer;
+}
+
+.hq-eod-table tbody tr:hover {
+  background: #faf8f3;
+}
+
+.hq-eod-table tbody tr.is-selected {
+  background: #fff4e8;
+}
+
+.hq-eod-empty {
+  text-align: center;
+  color: #98a08f;
+  padding: 32px !important;
+}
+
+.hq-eod-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.hq-eod-badge--submitted {
+  background: #e8f5ec;
+  color: #008d36;
+}
+
+.hq-eod-badge--draft {
+  background: #fff4e8;
+  color: #d97706;
+}
+
+.hq-variance-up {
+  color: #d97706;
+  font-size: 0.78rem;
+}
+
+.hq-variance-down {
+  color: #c0392b;
+  font-size: 0.78rem;
+}
+
+.hq-eod-detail {
+  background: #fff;
+  border: 1px solid #ece6da;
+  border-radius: 12px;
+  padding: 18px;
+  position: sticky;
+  top: 16px;
+}
+
+.hq-eod-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 16px;
+  color: #98a08f;
+  text-align: center;
+}
+
+.hq-eod-detail-header h2 {
+  font-size: 1.1rem;
+}
+
+.hq-eod-detail-header p {
+  font-size: 0.84rem;
+  color: #4f5a48;
+  margin: 2px 0 8px;
+}
+
+.hq-eod-detail-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.hq-eod-detail-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hq-eod-detail-stats span {
+  font-size: 0.72rem;
+  color: #98a08f;
+  text-transform: uppercase;
+}
+
+.hq-eod-detail-stats strong {
+  font-size: 0.95rem;
+}
+
+.hq-text-danger {
+  color: #c0392b !important;
+}
+
+.hq-eod-variance-box {
+  background: #faf8f3;
+  border: 1px solid #ece6da;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.84rem;
+}
+
+.hq-eod-variance-note {
+  color: #4f5a48;
+  font-size: 0.78rem;
+}
+
+.hq-eod-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f0ebe0;
+}
+
+.hq-eod-section h3 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #98a08f;
+  margin-bottom: 8px;
+}
+
+.hq-eod-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+  padding: 4px 0;
+}
+
+.hq-eod-line--total {
+  font-weight: 700;
+  border-top: 1px solid #ece6da;
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.hq-eod-meta {
+  margin-top: 16px;
+  font-size: 0.75rem;
+  color: #98a08f;
+}
+
+.hq-spin {
+  animation: hq-spin 0.8s linear infinite;
+}
+
+@keyframes hq-spin {
+  to { transform: rotate(360deg); }
+}

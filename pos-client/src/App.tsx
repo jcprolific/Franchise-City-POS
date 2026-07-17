@@ -20,6 +20,7 @@ import LoginPage from './pages/LoginPage';
 import POSPage from './pages/POSPage';
 import InventoryPage from './pages/InventoryPage';
 import DashboardPage from './pages/DashboardPage';
+import EodReportPage from './pages/EodReportPage';
 import OrdersPage from './pages/OrdersPage';
 import AdminSidebar from './hq/components/AdminSidebar';
 import GlobalDashboard from './hq/pages/GlobalDashboard';
@@ -30,6 +31,7 @@ import MenuCatalogPage from './hq/pages/MenuCatalogPage';
 import StaffDirectoryPage from './hq/pages/StaffDirectoryPage';
 import ReportsAnalyticsPage from './hq/pages/ReportsAnalyticsPage';
 import BranchHealthPage from './hq/pages/BranchHealthPage';
+import HqEodReportsPage from './hq/pages/HqEodReportsPage';
 import PortalHubPage from './portal/PortalHubPage';
 import PortalModulePage from './portal/PortalModulePage';
 import SupplyOrdersPage from './hq/pages/SupplyOrdersPage';
@@ -555,6 +557,7 @@ export default function App() {
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/eod-report" element={<EodReportPage />} />
             <Route
               path="/promotions"
               element={<HqPlaceholder title="Promotions" subtitle="Discounts & combo deals coming soon." />}
@@ -570,6 +573,7 @@ export default function App() {
             <Route path="/hq" element={<GlobalDashboard />} />
             <Route path="/hq/branches" element={<BranchManagement />} />
             <Route path="/hq/branch-health" element={<BranchHealthPage />} />
+            <Route path="/hq/eod-reports" element={<HqEodReportsPage />} />
             <Route path="/hq/warehouse" element={<WarehouseManagement />} />
             <Route path="/hq/supply-orders" element={<SupplyOrdersPage />} />
             <Route path="/hq/suppliers" element={<SupplierManagement />} />

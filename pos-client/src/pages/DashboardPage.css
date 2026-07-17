@@ -46,6 +46,9 @@
   font-size: var(--font-xs);
   font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
 .dashboard-eod-btn:hover {

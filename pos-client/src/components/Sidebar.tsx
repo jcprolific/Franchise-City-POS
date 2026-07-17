@@ -151,6 +151,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'nav-staff', to: '/portal/staff', label: 'Manage Staff', icon: <StaffIcon />, capability: 'portal_staff' },
   { id: 'nav-business', to: '/portal/business', label: 'Business Info', icon: <BusinessIcon />, capability: 'portal_business' },
   { id: 'nav-dashboard', to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon />, capability: 'dashboard' },
+  { id: 'nav-eod', to: '/eod-report', label: 'EOD Report', icon: <DashboardIcon />, capability: 'dashboard' },
   { id: 'nav-pos', to: '/pos', label: 'POS', icon: <PosIcon />, capability: 'pos' },
   { id: 'nav-orders', to: '/orders', label: 'Orders', icon: <OrdersIcon />, capability: 'orders' },
   { id: 'nav-inventory', to: '/inventory', label: 'Inventory', icon: <InventoryIcon />, capability: 'inventory' },
