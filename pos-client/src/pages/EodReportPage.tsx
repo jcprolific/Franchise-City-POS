@@ -1,5 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import {
+  Coffee,
+  CupSoda,
+  FileText,
+  IceCream,
+  Minus,
+  Plus,
+  Printer,
+  ReceiptText,
+  RefreshCw,
+  Send,
+  Trash2,
+  Wallet,
+} from 'lucide-react';
 import { useBrand } from '../context/BrandContext';
 import { getCurrentBranch, subscribeBranch, type BranchRef } from '../lib/branchContext';
 import {
@@ -17,50 +31,113 @@ import './EodReportPage.css';
 
 const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
 
-function LineTable({
+const COUNTER_LABELS: Record<string, string> = {
+  freeUpsize: 'Free Upsize',
+  freeAddon: 'Free Add-on',
+  freeDrink: 'Free Drink',
+  missing: 'Missing',
+  reject: 'Reject',
+};
+
+function QtyStepper({
+  value,
+  onChange,
+  readOnly,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+  readOnly?: boolean;
+}) {
+  if (readOnly) {
+    return <span className="eod-qty-readonly">{value}</span>;
+  }
+  return (
+    <div className="eod-stepper">
+      <button
+        type="button"
+        className="eod-stepper-btn"
+        onClick={() => onChange(Math.max(0, value - 1))}
+        aria-label="Decrease"
+        tabIndex={-1}
+      >
+        <Minus size={13} />
+      </button>
+      <input
+        type="number"
+        min={0}
+        inputMode="numeric"
+        className="eod-stepper-input"
+        value={value || ''}
+        placeholder="0"
+        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+        onFocus={(e) => e.target.select()}
+      />
+      <button
+        type="button"
+        className="eod-stepper-btn"
+        onClick={() => onChange(value + 1)}
+        aria-label="Increase"
+        tabIndex={-1}
+      >
+        <Plus size={13} />
+      </button>
+    </div>
+  );
+}
+
+function LineSection({
+  step,
+  icon,
   title,
+  subtitle,
   rows,
   onQtyChange,
   readOnly,
 }: {
+  step: string;
+  icon: React.ReactNode;
   title: string;
+  subtitle: string;
   rows: EodLineRow[];
   onQtyChange: (key: string, qty: number) => void;
   readOnly?: boolean;
 }) {
+  const sectionTotal = rows.reduce((sum, r) => sum + r.qty * r.price, 0);
+  const sectionQty = rows.reduce((sum, r) => sum + r.qty, 0);
+
   return (
-    <div className="eod-table-block">
-      <h3 className="eod-table-title">{title}</h3>
-      <table className="eod-table">
-        <thead>
-          <tr>
-            <th>SIZE</th>
-            <th>QTY</th>
-            <th>TOTAL</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key}>
-              <td>
-                {row.label} <span className="eod-price">({row.price})</span>
-              </td>
-              <td>
-                <input
-                  type="number"
-                  min={0}
-                  className="eod-qty-input"
-                  value={row.qty || ''}
-                  readOnly={readOnly}
-                  onChange={(e) => onQtyChange(row.key, Number(e.target.value) || 0)}
-                />
-              </td>
-              <td className="eod-total-cell">{peso(row.qty * row.price)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <section className="eod-card">
+      <header className="eod-card-head">
+        <span className="eod-card-step">{step}</span>
+        <span className="eod-card-icon">{icon}</span>
+        <div className="eod-card-heading">
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+        <div className="eod-card-total">
+          <span>{sectionQty} cups</span>
+          <strong>{peso(sectionTotal)}</strong>
+        </div>
+      </header>
+      <div className="eod-lines">
+        {rows.map((row) => (
+          <div key={row.key} className="eod-line">
+            <div className="eod-line-label">
+              <strong>{row.label}</strong>
+              <span>{peso(row.price)} each</span>
+            </div>
+            <QtyStepper
+              value={row.qty}
+              readOnly={readOnly}
+              onChange={(qty) => onQtyChange(row.key, qty)}
+            />
+            <span className={`eod-line-total ${row.qty > 0 ? 'is-active' : ''}`}>
+              {peso(row.qty * row.price)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -98,6 +175,12 @@ export default function EodReportPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(''), 4000);
+    return () => clearTimeout(t);
+  }, [message]);
+
   const totals = useMemo(() => {
     if (!report) return null;
     return computeEodTotals(report.reportData, report.yesterdayBalance, report.gcashPayment);
@@ -109,7 +192,11 @@ export default function EodReportPage() {
     setReport((prev) => (prev ? updater(prev) : prev));
   };
 
-  const handleLineQty = (section: 'mainSizes' | 'specialFlavors' | 'frappe' | 'addons', key: string, qty: number) => {
+  const handleLineQty = (
+    section: 'mainSizes' | 'specialFlavors' | 'frappe' | 'addons',
+    key: string,
+    qty: number
+  ) => {
     updateReportData((prev) => ({
       ...prev,
       reportData: {
@@ -119,7 +206,10 @@ export default function EodReportPage() {
     }));
   };
 
-  const handleCounter = (field: 'freeUpsize' | 'freeAddon' | 'freeDrink' | 'missing' | 'reject', value: number) => {
+  const handleCounter = (
+    field: 'freeUpsize' | 'freeAddon' | 'freeDrink' | 'missing' | 'reject',
+    value: number
+  ) => {
     updateReportData((prev) => ({
       ...prev,
       reportData: { ...prev.reportData, [field]: Math.max(0, value) },
@@ -132,9 +222,7 @@ export default function EodReportPage() {
       reportData: {
         ...prev.reportData,
         expenses: prev.reportData.expenses.map((e) =>
-          e.id === id
-            ? { ...e, [field]: field === 'amount' ? Number(value) || 0 : value }
-            : e
+          e.id === id ? { ...e, [field]: field === 'amount' ? Number(value) || 0 : value } : e
         ),
       },
     }));
@@ -186,6 +274,10 @@ export default function EodReportPage() {
 
   const persist = async (status: 'draft' | 'submitted') => {
     if (!report || !totals) return;
+    if (status === 'submitted' && totals.totalSales === 0) {
+      const proceed = window.confirm('Total sales is ₱0. Submit anyway?');
+      if (!proceed) return;
+    }
     setSaving(true);
     setMessage('');
     setError('');
@@ -211,7 +303,7 @@ export default function EodReportPage() {
       return;
     }
     setReport(saved);
-    setMessage(status === 'submitted' ? 'EOD report submitted successfully.' : 'Draft saved.');
+    setMessage(status === 'submitted' ? 'EOD report submitted. Salamat!' : 'Draft saved.');
   };
 
   const handlePrint = () => window.print();
@@ -219,203 +311,368 @@ export default function EodReportPage() {
   if (loading || !report || !totals) {
     return (
       <div className="eod-page">
-        <div className="eod-loading">Loading end-of-day report…</div>
+        <div className="eod-loading">
+          <span className="eod-loading-spinner" aria-hidden="true" />
+          Loading end-of-day report…
+        </div>
       </div>
     );
   }
 
+  const varianceVsPos =
+    report.posTotalSales != null && report.posTotalSales > 0
+      ? totals.totalSales - report.posTotalSales
+      : null;
+
   return (
     <div className="eod-page">
-      <header className="eod-header no-print">
-        <div>
-          <p className="eod-eyebrow">End of Day</p>
-          <h1>Daily Sales Report</h1>
-          <p>{branch.name} · {report.reportDate}</p>
-        </div>
-        <div className="eod-header-actions">
-          {report.posTotalSales != null && (
-            <span className="eod-pos-badge">POS total: {peso(report.posTotalSales)}</span>
-          )}
-          <span className={`eod-status eod-status--${report.status}`}>
-            {report.status === 'submitted' ? 'Submitted' : 'Draft'}
-          </span>
-          {!readOnly && (
-            <button type="button" className="eod-btn eod-btn--ghost" onClick={() => void handleRefreshPos()} disabled={saving}>
-              Auto-fill from POS
+      <div className="eod-scroll">
+        {/* Sticky toolbar */}
+        <div className="eod-toolbar no-print">
+          <div className="eod-toolbar-title">
+            <span className="eod-toolbar-icon">
+              <ReceiptText size={18} />
+            </span>
+            <div>
+              <h1>End of Day Report</h1>
+              <p>
+                {branch.name} · {report.reportDate}
+              </p>
+            </div>
+          </div>
+          <div className="eod-toolbar-actions">
+            <span className={`eod-status eod-status--${report.status}`}>
+              <span className="eod-status-dot" aria-hidden="true" />
+              {report.status === 'submitted' ? 'Submitted' : 'Draft'}
+            </span>
+            {!readOnly && (
+              <button
+                type="button"
+                className="eod-btn eod-btn--ghost"
+                onClick={() => void handleRefreshPos()}
+                disabled={saving}
+              >
+                <RefreshCw size={14} className={saving ? 'eod-spin' : ''} />
+                <span className="eod-btn-label">Auto-fill from POS</span>
+              </button>
+            )}
+            <button type="button" className="eod-btn eod-btn--ghost" onClick={handlePrint}>
+              <Printer size={14} />
+              <span className="eod-btn-label">Print</span>
             </button>
-          )}
-          <button type="button" className="eod-btn eod-btn--ghost" onClick={handlePrint}>Print</button>
-          {!readOnly && (
-            <>
-              <button type="button" className="eod-btn eod-btn--ghost" onClick={() => void persist('draft')} disabled={saving}>
-                Save Draft
-              </button>
-              <button type="button" className="eod-btn eod-btn--primary" onClick={() => void persist('submitted')} disabled={saving}>
-                Submit EOD
-              </button>
-            </>
-          )}
-        </div>
-      </header>
-
-      {message && <div className="eod-alert eod-alert--success no-print">{message}</div>}
-      {error && <div className="eod-alert eod-alert--error no-print">{error}</div>}
-
-      <div className="eod-form-sheet">
-        <div className="eod-form-banner">
-          <div>
-            <p className="eod-brand-name">{branch.name.toUpperCase()}</p>
-            <h2>END OF DAY SALES REPORT</h2>
-          </div>
-          <div className="eod-form-date">{report.reportDate}</div>
-        </div>
-
-        <div className="eod-form-grid">
-          <LineTable
-            title="Main Sizes"
-            rows={report.reportData.mainSizes}
-            readOnly={readOnly}
-            onQtyChange={(key, qty) => handleLineQty('mainSizes', key, qty)}
-          />
-          <LineTable
-            title="Special Flavors"
-            rows={report.reportData.specialFlavors}
-            readOnly={readOnly}
-            onQtyChange={(key, qty) => handleLineQty('specialFlavors', key, qty)}
-          />
-          <LineTable
-            title="Frappe"
-            rows={report.reportData.frappe}
-            readOnly={readOnly}
-            onQtyChange={(key, qty) => handleLineQty('frappe', key, qty)}
-          />
-        </div>
-
-        <div className="eod-counters">
-          {(['freeUpsize', 'freeAddon', 'freeDrink', 'missing', 'reject'] as const).map((field) => (
-            <label key={field} className="eod-counter">
-              <span>{field.replace(/([A-Z])/g, ' $1').toUpperCase()}</span>
-              <input
-                type="number"
-                min={0}
-                readOnly={readOnly}
-                value={report.reportData[field] || ''}
-                onChange={(e) => handleCounter(field, Number(e.target.value) || 0)}
-              />
-            </label>
-          ))}
-          <div className="eod-counter eod-counter--highlight">
-            <span>TOTAL CUPS SOLD</span>
-            <strong>{totals.totalCupsSold}</strong>
-          </div>
-          <div className="eod-counter eod-counter--highlight">
-            <span>Drinks Subtotal</span>
-            <strong>{peso(totals.drinksSubtotal)}</strong>
           </div>
         </div>
 
-        <LineTable
-          title="Add-Ons"
-          rows={report.reportData.addons}
-          readOnly={readOnly}
-          onQtyChange={(key, qty) => handleLineQty('addons', key, qty)}
-        />
-
-        <div className="eod-summary-row">
-          <div className="eod-summary-highlight">
-            <span>TOTAL SALES</span>
-            <strong>{peso(totals.totalSales)}</strong>
+        {message && (
+          <div className="eod-alert eod-alert--success no-print" role="status">
+            {message}
           </div>
-          <div className="eod-summary-highlight">
-            <span>ADD-ONS TOTAL</span>
-            <strong>{peso(totals.addonsTotal)}</strong>
+        )}
+        {error && (
+          <div className="eod-alert eod-alert--error no-print" role="alert">
+            {error}
           </div>
-        </div>
+        )}
+        {readOnly && (
+          <div className="eod-alert eod-alert--info no-print">
+            Submitted na ang report para sa araw na ito
+            {report.submittedBy ? ` (ni ${report.submittedBy})` : ''}. View-only na ito.
+          </div>
+        )}
 
-        <div className="eod-financial">
-          <div className="eod-expenses">
-            <div className="eod-expenses-header">
-              <h3>Expenses</h3>
+        <div className="eod-layout">
+          {/* ---- Form column ---- */}
+          <div className="eod-form-col">
+            <div className="eod-sheet-banner">
+              <div>
+                <p>{branch.name.toUpperCase()}</p>
+                <h2>END OF DAY SALES REPORT</h2>
+              </div>
+              <span className="eod-sheet-date">{report.reportDate}</span>
+            </div>
+
+            <LineSection
+              step="1"
+              icon={<CupSoda size={16} />}
+              title="Main Sizes"
+              subtitle="Regular drinks per cup size"
+              rows={report.reportData.mainSizes}
+              readOnly={readOnly}
+              onQtyChange={(key, qty) => handleLineQty('mainSizes', key, qty)}
+            />
+
+            <LineSection
+              step="2"
+              icon={<Coffee size={16} />}
+              title="Special Flavors"
+              subtitle="Premium and special series"
+              rows={report.reportData.specialFlavors}
+              readOnly={readOnly}
+              onQtyChange={(key, qty) => handleLineQty('specialFlavors', key, qty)}
+            />
+
+            <LineSection
+              step="3"
+              icon={<IceCream size={16} />}
+              title="Frappe"
+              subtitle="Blended frappe series"
+              rows={report.reportData.frappe}
+              readOnly={readOnly}
+              onQtyChange={(key, qty) => handleLineQty('frappe', key, qty)}
+            />
+
+            <section className="eod-card">
+              <header className="eod-card-head">
+                <span className="eod-card-step">4</span>
+                <span className="eod-card-icon">
+                  <FileText size={16} />
+                </span>
+                <div className="eod-card-heading">
+                  <h3>Freebies, Missing &amp; Reject</h3>
+                  <p>Cups not counted as sales</p>
+                </div>
+              </header>
+              <div className="eod-counters">
+                {(['freeUpsize', 'freeAddon', 'freeDrink', 'missing', 'reject'] as const).map(
+                  (field) => (
+                    <div key={field} className="eod-counter">
+                      <span>{COUNTER_LABELS[field]}</span>
+                      <QtyStepper
+                        value={report.reportData[field]}
+                        readOnly={readOnly}
+                        onChange={(v) => handleCounter(field, v)}
+                      />
+                    </div>
+                  )
+                )}
+              </div>
+            </section>
+
+            <LineSection
+              step="5"
+              icon={<Plus size={16} />}
+              title="Add-Ons"
+              subtitle="Pearls, cream cheese, espresso shots…"
+              rows={report.reportData.addons}
+              readOnly={readOnly}
+              onQtyChange={(key, qty) => handleLineQty('addons', key, qty)}
+            />
+
+            <section className="eod-card">
+              <header className="eod-card-head">
+                <span className="eod-card-step">6</span>
+                <span className="eod-card-icon">
+                  <Wallet size={16} />
+                </span>
+                <div className="eod-card-heading">
+                  <h3>Expenses</h3>
+                  <p>Ice, supplies, cash advance, atbp.</p>
+                </div>
+                <div className="eod-card-total">
+                  <span>{report.reportData.expenses.length} items</span>
+                  <strong className="eod-expense-amount">-{peso(totals.expensesTotal)}</strong>
+                </div>
+              </header>
+              <div className="eod-expenses">
+                {report.reportData.expenses.length === 0 && (
+                  <p className="eod-expenses-empty">
+                    Walang expenses pa. {!readOnly && 'I-click ang "Add expense" para magdagdag.'}
+                  </p>
+                )}
+                {report.reportData.expenses.map((exp: EodExpenseRow) => (
+                  <div key={exp.id} className="eod-expense-row">
+                    <input
+                      type="text"
+                      placeholder="e.g. 2 sack ice (truck)"
+                      readOnly={readOnly}
+                      value={exp.description}
+                      onChange={(e) => handleExpenseChange(exp.id, 'description', e.target.value)}
+                    />
+                    <div className="eod-expense-amount-wrap">
+                      <span>₱</span>
+                      <input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        placeholder="0"
+                        readOnly={readOnly}
+                        value={exp.amount || ''}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => handleExpenseChange(exp.id, 'amount', e.target.value)}
+                      />
+                    </div>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="eod-expense-remove"
+                        onClick={() => removeExpense(exp.id)}
+                        aria-label="Remove expense"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {!readOnly && (
+                  <button type="button" className="eod-add-expense" onClick={addExpense}>
+                    <Plus size={14} />
+                    Add expense
+                  </button>
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* ---- Summary column ---- */}
+          <aside className="eod-summary-col">
+            <div className="eod-summary-card">
+              <h3 className="eod-summary-title">
+                <ReceiptText size={15} />
+                Daily Summary
+              </h3>
+
+              <div className="eod-summary-rows">
+                <div className="eod-summary-row">
+                  <span>Total cups sold</span>
+                  <strong>{totals.totalCupsSold}</strong>
+                </div>
+                <div className="eod-summary-row">
+                  <span>Drinks subtotal</span>
+                  <strong>{peso(totals.drinksSubtotal)}</strong>
+                </div>
+                <div className="eod-summary-row">
+                  <span>Add-ons</span>
+                  <strong>{peso(totals.addonsTotal)}</strong>
+                </div>
+                <div className="eod-summary-row eod-summary-row--sales">
+                  <span>TOTAL SALES</span>
+                  <strong>{peso(totals.totalSales)}</strong>
+                </div>
+                {varianceVsPos != null && (
+                  <div
+                    className={`eod-summary-variance ${
+                      Math.abs(varianceVsPos) < 1 ? 'is-match' : 'is-off'
+                    }`}
+                  >
+                    {Math.abs(varianceVsPos) < 1
+                      ? `✓ Tugma sa POS (${peso(report.posTotalSales ?? 0)})`
+                      : `POS recorded ${peso(report.posTotalSales ?? 0)} · diff ${
+                          varianceVsPos > 0 ? '+' : ''
+                        }${peso(varianceVsPos)}`}
+                  </div>
+                )}
+                <div className="eod-summary-row eod-summary-row--negative">
+                  <span>Less: expenses</span>
+                  <strong>-{peso(totals.expensesTotal)}</strong>
+                </div>
+                <div className="eod-summary-row eod-summary-row--strong">
+                  <span>Total net sales</span>
+                  <strong>{peso(totals.totalNetSales)}</strong>
+                </div>
+              </div>
+
+              <div className="eod-summary-inputs">
+                <label className="eod-summary-input">
+                  <span>GCash payment</span>
+                  <div className="eod-peso-input">
+                    <span>₱</span>
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      placeholder="0"
+                      readOnly={readOnly}
+                      value={report.gcashPayment || ''}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) =>
+                        setReport((prev) =>
+                          prev ? { ...prev, gcashPayment: Number(e.target.value) || 0 } : prev
+                        )
+                      }
+                    />
+                  </div>
+                </label>
+                <div className="eod-summary-row">
+                  <span>Cash on hand (today)</span>
+                  <strong>{peso(totals.cashOnHand)}</strong>
+                </div>
+                <label className="eod-summary-input">
+                  <span>+ Yesterday&apos;s balance</span>
+                  <div className="eod-peso-input">
+                    <span>₱</span>
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      placeholder="0"
+                      readOnly={readOnly}
+                      value={report.yesterdayBalance || ''}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) =>
+                        setReport((prev) =>
+                          prev ? { ...prev, yesterdayBalance: Number(e.target.value) || 0 } : prev
+                        )
+                      }
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <div className="eod-grand-total">
+                <span>TOTAL CASH ON HAND</span>
+                <strong>{peso(totals.totalCashOnHand)}</strong>
+              </div>
+
               {!readOnly && (
-                <button type="button" className="eod-btn eod-btn--ghost eod-btn--sm" onClick={addExpense}>
-                  + Add expense
-                </button>
+                <div className="eod-summary-actions no-print">
+                  <button
+                    type="button"
+                    className="eod-btn eod-btn--ghost eod-btn--block"
+                    onClick={() => void persist('draft')}
+                    disabled={saving}
+                  >
+                    Save Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="eod-btn eod-btn--primary eod-btn--block"
+                    onClick={() => void persist('submitted')}
+                    disabled={saving}
+                  >
+                    <Send size={14} />
+                    {saving ? 'Saving…' : 'Submit EOD Report'}
+                  </button>
+                </div>
+              )}
+
+              {report.submittedAt && (
+                <p className="eod-submitted-meta">
+                  Submitted {report.submittedBy ? `by ${report.submittedBy}` : ''} ·{' '}
+                  {new Date(report.submittedAt).toLocaleString('en-PH')}
+                </p>
               )}
             </div>
-            <ul className="eod-expense-list">
-              {report.reportData.expenses.map((exp: EodExpenseRow) => (
-                <li key={exp.id}>
-                  <input
-                    type="text"
-                    placeholder="Description"
-                    readOnly={readOnly}
-                    value={exp.description}
-                    onChange={(e) => handleExpenseChange(exp.id, 'description', e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Amount"
-                    readOnly={readOnly}
-                    value={exp.amount || ''}
-                    onChange={(e) => handleExpenseChange(exp.id, 'amount', e.target.value)}
-                  />
-                  {!readOnly && (
-                    <button type="button" className="eod-remove" onClick={() => removeExpense(exp.id)} aria-label="Remove">
-                      ×
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <div className="eod-expenses-total">Expenses Total: <strong>{peso(totals.expensesTotal)}</strong></div>
-          </div>
-
-          <div className="eod-cash-summary">
-            <div className="eod-cash-row">
-              <span>TOTAL NET SALES</span>
-              <strong>{peso(totals.totalNetSales)}</strong>
-            </div>
-            <div className="eod-cash-row">
-              <span>GCASH PAYMENT</span>
-              <input
-                type="number"
-                min={0}
-                readOnly={readOnly}
-                className="eod-cash-input"
-                value={report.gcashPayment || ''}
-                onChange={(e) =>
-                  setReport((prev) =>
-                    prev ? { ...prev, gcashPayment: Number(e.target.value) || 0 } : prev
-                  )
-                }
-              />
-            </div>
-            <div className="eod-cash-row">
-              <span>CASH ON HAND (Daily)</span>
-              <strong>{peso(totals.cashOnHand)}</strong>
-            </div>
-            <div className="eod-cash-row">
-              <span>+ YESTERDAY SALES</span>
-              <input
-                type="number"
-                min={0}
-                readOnly={readOnly}
-                className="eod-cash-input"
-                value={report.yesterdayBalance || ''}
-                onChange={(e) =>
-                  setReport((prev) =>
-                    prev ? { ...prev, yesterdayBalance: Number(e.target.value) || 0 } : prev
-                  )
-                }
-              />
-            </div>
-            <div className="eod-cash-row eod-cash-row--grand">
-              <span>TOTAL CASH ON HAND</span>
-              <strong>{peso(totals.totalCashOnHand)}</strong>
-            </div>
-          </div>
+          </aside>
         </div>
+
+        {/* Mobile sticky submit bar */}
+        {!readOnly && (
+          <div className="eod-mobile-bar no-print">
+            <div className="eod-mobile-bar-total">
+              <span>Total sales</span>
+              <strong>{peso(totals.totalSales)}</strong>
+            </div>
+            <button
+              type="button"
+              className="eod-btn eod-btn--primary"
+              onClick={() => void persist('submitted')}
+              disabled={saving}
+            >
+              <Send size={14} />
+              Submit
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
