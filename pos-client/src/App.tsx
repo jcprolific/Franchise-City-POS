@@ -29,6 +29,7 @@ import SupplierManagement from './hq/pages/SupplierManagement';
 import MenuCatalogPage from './hq/pages/MenuCatalogPage';
 import StaffDirectoryPage from './hq/pages/StaffDirectoryPage';
 import ReportsAnalyticsPage from './hq/pages/ReportsAnalyticsPage';
+import BranchHealthPage from './hq/pages/BranchHealthPage';
 import PortalHubPage from './portal/PortalHubPage';
 import PortalModulePage from './portal/PortalModulePage';
 import SupplyOrdersPage from './hq/pages/SupplyOrdersPage';
@@ -568,6 +569,7 @@ export default function App() {
           <Route element={<HqShell userName={auth.userName} onLogout={handleLogout} />}>
             <Route path="/hq" element={<GlobalDashboard />} />
             <Route path="/hq/branches" element={<BranchManagement />} />
+            <Route path="/hq/branch-health" element={<BranchHealthPage />} />
             <Route path="/hq/warehouse" element={<WarehouseManagement />} />
             <Route path="/hq/supply-orders" element={<SupplyOrdersPage />} />
             <Route path="/hq/suppliers" element={<SupplierManagement />} />

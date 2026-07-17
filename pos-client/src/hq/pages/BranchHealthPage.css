@@ -1,0 +1,365 @@
+.hq-health {
+  --hq-bg: #fbf7ef;
+  --hq-surface: #ffffff;
+  --hq-border: #ece6da;
+  --hq-text: #23311f;
+  --hq-text-soft: #4f5a48;
+  --hq-text-muted: #98a08f;
+  --hq-success: #008d36;
+  --hq-warn: #d97706;
+  --hq-danger: #c0392b;
+  --hq-accent: #f37021;
+
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 28px 32px;
+  min-height: 100%;
+  background: var(--hq-bg);
+  color: var(--hq-text);
+}
+
+.hq-health-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.hq-health-header h1 {
+  font-size: 1.75rem;
+  margin-top: 4px;
+}
+
+.hq-health-header p {
+  color: var(--hq-text-soft);
+  font-size: 0.84rem;
+  margin-top: 4px;
+}
+
+.hq-health-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hq-health-alert {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff4e8;
+  border: 1px solid #f5dcc0;
+  color: #8a4b2f;
+  font-size: 0.85rem;
+}
+
+.hq-health-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.hq-health-stat {
+  background: var(--hq-surface);
+  border: 1px solid var(--hq-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hq-health-stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--hq-text-muted);
+  font-weight: 700;
+}
+
+.hq-health-stat strong {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.hq-health-stat-sub {
+  font-size: 0.78rem;
+  color: var(--hq-text-soft);
+}
+
+.hq-health-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .hq-health-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hq-health-table-wrap {
+  background: var(--hq-surface);
+  border: 1px solid var(--hq-border);
+  border-radius: 14px;
+  overflow: auto;
+}
+
+.hq-health-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.hq-health-table th,
+.hq-health-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--hq-border);
+}
+
+.hq-health-table th {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hq-text-muted);
+  background: #faf6ee;
+}
+
+.hq-health-table tbody tr {
+  cursor: pointer;
+}
+
+.hq-health-table tbody tr:hover,
+.hq-health-table tbody tr.is-selected {
+  background: #fff8f0;
+}
+
+.hq-health-franchisee {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--hq-text-soft);
+  margin-top: 2px;
+}
+
+.hq-health-composite {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.hq-health-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--hq-text-muted);
+}
+
+.hq-health-detail {
+  background: var(--hq-surface);
+  border: 1px solid var(--hq-border);
+  border-radius: 14px;
+  padding: 18px;
+  position: sticky;
+  top: 16px;
+}
+
+.hq-health-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.hq-health-detail-header h2 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.hq-health-detail-header p {
+  font-size: 0.78rem;
+  color: var(--hq-text-soft);
+  margin: 2px 0 0;
+}
+
+.hq-health-detail-score {
+  margin-left: auto;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hq-health-detail-grade {
+  font-size: 0.8rem;
+  color: var(--hq-text-soft);
+  margin-bottom: 16px;
+}
+
+.health-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.health-breakdown-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 4px 10px;
+  align-items: center;
+}
+
+.health-breakdown-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.health-breakdown-weight {
+  color: var(--hq-text-muted);
+  font-size: 0.72rem;
+}
+
+.health-breakdown-bar-wrap {
+  grid-column: 1;
+  height: 6px;
+  background: #f0eadf;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.health-breakdown-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.health-breakdown-value {
+  grid-row: span 2;
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 28px;
+  text-align: right;
+}
+
+.health-breakdown--compact .health-breakdown-label span:first-child {
+  font-size: 0.72rem;
+}
+
+.hq-spin {
+  animation: hq-spin 0.8s linear infinite;
+}
+
+@keyframes hq-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Portal health widget */
+.portal-health-card {
+  background: linear-gradient(135deg, #fff8f0 0%, #ffffff 60%);
+  border: 1px solid #ece6da;
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.portal-health-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.portal-health-score-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+}
+
+.portal-health-score-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.portal-health-score-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #98a08f;
+  margin-top: 4px;
+}
+
+.portal-health-actions {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.portal-health-action {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: #faf6ee;
+  border-radius: 10px;
+  font-size: 0.8rem;
+}
+
+.portal-health-action-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f37021;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.portal-health-action strong {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.portal-health-action span {
+  color: #4f5a48;
+  font-size: 0.76rem;
+}
+
+.portal-btn-ack {
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #f37021;
+  background: #fff8f0;
+  color: #c95f19;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.portal-btn-ack:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.portal-btn-ack.is-done {
+  border-color: #008d36;
+  background: #f0faf3;
+  color: #008d36;
+}
+
+.portal-training-done {
+  font-size: 0.78rem;
+  color: #008d36;
+  font-weight: 600;
+}

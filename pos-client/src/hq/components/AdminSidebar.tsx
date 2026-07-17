@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
+  Activity,
   BarChart3,
   Bell,
   BookOpen,
@@ -30,6 +31,7 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
   const navItems = [
     { path: '/hq', label: 'Network Overview', icon: <LayoutDashboard size={18} /> },
     { path: '/hq/branches', label: 'Franchisees', icon: <Store size={18} /> },
+    { path: '/hq/branch-health', label: 'Branch Health', icon: <Activity size={18} /> },
     { path: '/hq/supply-orders', label: 'Supply Orders', icon: <ClipboardList size={18} /> },
     { path: '/hq/portal-content', label: 'Portal Content', icon: <Megaphone size={18} /> },
     { path: '/hq/documents', label: 'Document Library', icon: <FolderOpen size={18} /> },

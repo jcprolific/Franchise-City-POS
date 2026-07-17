@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import {
   AlertTriangle,
+  Activity,
   Boxes,
   CreditCard,
   Package,
@@ -32,9 +33,16 @@ import {
   type ReportsData,
   type ReportsFilters,
 } from '../lib/reportsService';
+import {
+  fetchBranchHealthScores,
+  scoreColor,
+  scoreGrade,
+  type BranchHealthRow,
+} from '../lib/branchHealthService';
 import './ReportsAnalyticsPage.css';
+import './BranchHealthPage.css';
 
-type ReportTab = 'overview' | 'franchisees' | 'inventory';
+type ReportTab = 'overview' | 'franchisees' | 'inventory' | 'health';
 
 const RANGE_OPTIONS: { id: ReportDateRange; label: string }[] = [
   { id: 'today', label: 'Today' },
@@ -47,6 +55,7 @@ const TAB_OPTIONS: { id: ReportTab; label: string }[] = [
   { id: 'overview', label: 'Sales Overview' },
   { id: 'franchisees', label: 'Franchisees' },
   { id: 'inventory', label: 'Inventory' },
+  { id: 'health', label: 'Branch Health' },
 ];
 
 const PAYMENT_COLORS = ['#d98724', '#8a4b2f', '#c9a27a', '#5a8f69', '#b0563f'];
@@ -91,6 +100,8 @@ export default function ReportsAnalyticsPage() {
   const [errorText, setErrorText] = useState('');
   const [usingDemoData, setUsingDemoData] = useState(true);
   const [activeTab, setActiveTab] = useState<ReportTab>('overview');
+  const [healthRows, setHealthRows] = useState<BranchHealthRow[]>([]);
+  const [healthLoading, setHealthLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     setSyncing(true);
@@ -132,6 +143,24 @@ export default function ReportsAnalyticsPage() {
       void supabase.removeChannel(channel);
     };
   }, [refresh, brand.slug]);
+
+  useEffect(() => {
+    if (activeTab !== 'health') return;
+    let cancelled = false;
+    const loadHealth = async () => {
+      setHealthLoading(true);
+      try {
+        const rows = await fetchBranchHealthScores(brand.dbBrandId);
+        if (!cancelled) setHealthRows(rows);
+      } catch {
+        if (!cancelled) setHealthRows([]);
+      } finally {
+        if (!cancelled) setHealthLoading(false);
+      }
+    };
+    void loadHealth();
+    return () => { cancelled = true; };
+  }, [activeTab, brand.dbBrandId]);
 
   const display = usingDemoData || !data ? { ...demo.sampleReports, source: 'fallback' as const } : data;
   const { summary, revenueTrend, branchRanking, paymentMix, inventoryStatus } = display;
@@ -532,6 +561,68 @@ export default function ReportsAnalyticsPage() {
                 </li>
               )}
             </ul>
+          </section>
+        </section>
+      )}
+
+      {activeTab === 'health' && (
+        <section className="hq-reports-grid">
+          <section className="hq-panel hq-panel--wide">
+            <div className="hq-panel-head">
+              <div>
+                <span className="hq-eyebrow">Branch Health</span>
+                <h2>Weighted performance scores</h2>
+              </div>
+              <a href="/hq/branch-health" className="hq-btn-secondary" style={{ textDecoration: 'none' }}>
+                <Activity size={14} />
+                Full dashboard
+              </a>
+            </div>
+            {healthLoading ? (
+              <p className="hq-orders-time">Computing branch health scores…</p>
+            ) : (
+              <div className="hq-orders-scroller">
+                <table className="hq-orders-table">
+                  <thead>
+                    <tr>
+                      <th>Branch</th>
+                      <th>Score</th>
+                      <th>Grade</th>
+                      <th>Sales</th>
+                      <th>POS</th>
+                      <th>Inventory</th>
+                      <th>Orders</th>
+                      <th>Training</th>
+                      <th>Marketing</th>
+                      <th>Updates</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {healthRows.map((row) => (
+                      <tr key={row.branchId}>
+                        <td className="hq-orders-total">{row.branchName}</td>
+                        <td style={{ color: scoreColor(row.scores.composite), fontWeight: 700 }}>
+                          {Math.round(row.scores.composite)}
+                        </td>
+                        <td>{scoreGrade(row.scores.composite)}</td>
+                        <td>{Math.round(row.scores.salesGrowth)}</td>
+                        <td>{Math.round(row.scores.posUsage)}</td>
+                        <td>{Math.round(row.scores.inventoryAccuracy)}</td>
+                        <td>{Math.round(row.scores.orderingCompliance)}</td>
+                        <td>{Math.round(row.scores.trainingCompletion)}</td>
+                        <td>{Math.round(row.scores.marketingCompliance)}</td>
+                        <td>{Math.round(row.scores.storeUpdates)}</td>
+                      </tr>
+                    ))}
+                    {healthRows.length === 0 && (
+                      <tr>
+                        <td colSpan={10} className="hq-orders-time">No branch health data yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         </section>
       )}

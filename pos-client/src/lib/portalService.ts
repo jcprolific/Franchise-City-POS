@@ -15,6 +15,7 @@ export interface PortalAnnouncement {
   body: string;
   tag: AnnouncementTag;
   pinned: boolean;
+  requiresAck: boolean;
   publishedAt: string;
   source: 'live' | 'fallback';
 }
@@ -48,6 +49,7 @@ function mapAnnouncement(row: Record<string, unknown>): PortalAnnouncement {
     body: String(row.body),
     tag: String(row.tag) as AnnouncementTag,
     pinned: Boolean(row.pinned),
+    requiresAck: Boolean(row.requires_ack),
     publishedAt: String(row.published_at),
     source: 'live',
   };
@@ -75,6 +77,7 @@ function fallbackAnnouncements(): PortalAnnouncement[] {
     body: a.body,
     tag: a.tag.toLowerCase() as AnnouncementTag,
     pinned: Boolean(a.pinned),
+    requiresAck: a.tag.toLowerCase() === 'campaign' || a.tag.toLowerCase() === 'promo',
     publishedAt: `${a.date}T00:00:00Z`,
     source: 'fallback' as const,
   }));
