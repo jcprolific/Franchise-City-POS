@@ -85,6 +85,15 @@ function DashboardIcon() {
   );
 }
 
+function EodIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  );
+}
+
 function HqIcon() {
   return (
     <svg {...iconProps}>
@@ -151,7 +160,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'nav-staff', to: '/portal/staff', label: 'Manage Staff', icon: <StaffIcon />, capability: 'portal_staff' },
   { id: 'nav-business', to: '/portal/business', label: 'Business Info', icon: <BusinessIcon />, capability: 'portal_business' },
   { id: 'nav-dashboard', to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon />, capability: 'dashboard' },
-  { id: 'nav-eod', to: '/eod-report', label: 'EOD Report', icon: <DashboardIcon />, capability: 'dashboard' },
+  { id: 'nav-eod', to: '/eod-report', label: 'EOD Report', icon: <EodIcon />, capability: 'dashboard' },
   { id: 'nav-pos', to: '/pos', label: 'POS', icon: <PosIcon />, capability: 'pos' },
   { id: 'nav-orders', to: '/orders', label: 'Orders', icon: <OrdersIcon />, capability: 'orders' },
   { id: 'nav-inventory', to: '/inventory', label: 'Inventory', icon: <InventoryIcon />, capability: 'inventory' },

@@ -49,6 +49,7 @@ export interface HealthImprovementAction {
   label: string;
   detail: string;
   priority: number;
+  href?: string;
 }
 
 interface BranchRow {
@@ -606,6 +607,16 @@ export function getImprovementActions(scores: BranchHealthScores): HealthImprove
     storeUpdates: 'Submit end-of-day reports and acknowledge required HQ updates.',
   };
 
+  const links: Partial<Record<keyof typeof HEALTH_WEIGHTS, string>> = {
+    storeUpdates: '/eod-report',
+    trainingCompletion: '/portal/training',
+    marketingCompliance: '/portal/announcements',
+    posUsage: '/pos',
+    orderingCompliance: '/inventory',
+    inventoryAccuracy: '/inventory',
+    salesGrowth: '/portal/reports',
+  };
+
   return entries
     .filter((e) => e.score < 85)
     .slice(0, 3)
@@ -614,6 +625,7 @@ export function getImprovementActions(scores: BranchHealthScores): HealthImprove
       label: HEALTH_CATEGORY_LABELS[e.category],
       detail: tips[e.category],
       priority: idx + 1,
+      href: links[e.category],
     }));
 }
 

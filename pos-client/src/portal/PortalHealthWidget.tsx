@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Activity } from 'lucide-react';
 import { useBrand } from '../context/BrandContext';
 import {
@@ -68,15 +69,26 @@ export default function PortalHealthWidget({ branchId }: PortalHealthWidgetProps
 
       {actions.length > 0 ? (
         <div className="portal-health-actions">
-          {actions.map((action: HealthImprovementAction) => (
-            <div key={action.category} className="portal-health-action">
-              <span className="portal-health-action-num">{action.priority}</span>
-              <div>
-                <strong>{action.label}</strong>
-                <span>{action.detail}</span>
+          {actions.map((action: HealthImprovementAction) => {
+            const inner = (
+              <>
+                <span className="portal-health-action-num">{action.priority}</span>
+                <div>
+                  <strong>{action.label}</strong>
+                  <span>{action.detail}</span>
+                </div>
+              </>
+            );
+            return action.href ? (
+              <Link key={action.category} to={action.href} className="portal-health-action portal-health-action--link">
+                {inner}
+              </Link>
+            ) : (
+              <div key={action.category} className="portal-health-action">
+                {inner}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <p style={{ fontSize: '0.82rem', color: '#008d36' }}>

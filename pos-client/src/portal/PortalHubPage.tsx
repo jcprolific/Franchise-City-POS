@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Video,
   ClipboardList,
+  FileText,
   Ticket,
   Monitor,
   ArrowRight,
@@ -62,6 +63,7 @@ interface PortalSection {
 }
 
 const QUICK_ACTIONS = [
+  { icon: FileText, label: 'EOD Report', desc: 'Submit daily sales', to: '/eod-report' },
   { icon: Monitor, label: 'Open POS', desc: 'Ring up sales', to: '/pos' },
   { icon: Package, label: 'Inventory', desc: 'Stock & reorder', to: '/inventory' },
   { icon: TrendingUp, label: 'Reports', desc: 'Branch analytics', to: '/portal/reports' },
@@ -94,6 +96,7 @@ const SECTIONS: PortalSection[] = [
       { icon: Monitor, label: 'POS Terminal', desc: 'Record sales transactions', to: '/pos', accent: 'sales' },
       { icon: Package, label: 'Inventory', desc: 'Stock monitoring & adjustments', to: '/inventory', accent: 'sales' },
       { icon: Wallet, label: 'Sales Dashboard', desc: 'Daily sales at a glance', to: '/dashboard', accent: 'sales' },
+      { icon: FileText, label: 'End of Day Report', desc: 'Submit daily sales summary', to: '/eod-report', accent: 'sales' },
       { icon: TrendingUp, label: 'Business Reports', desc: 'Daily, weekly, monthly reports', to: '/portal/reports', accent: 'sales' },
     ],
   },
@@ -188,7 +191,7 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
       if (tile.to === '/portal/orders') return hasPermission(userRole, 'portal_orders');
       if (tile.to === '/pos') return hasPermission(userRole, 'pos');
       if (tile.to === '/inventory') return hasPermission(userRole, 'inventory') || hasPermission(userRole, 'inventory_view');
-      if (tile.to === '/dashboard') return hasPermission(userRole, 'dashboard');
+      if (tile.to === '/dashboard' || tile.to === '/eod-report') return hasPermission(userRole, 'dashboard');
       return hasPermission(userRole, 'portal');
     }),
   }));
@@ -198,6 +201,7 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
   );
 
   const quickActions = QUICK_ACTIONS.filter((action) => {
+    if (action.to === '/eod-report') return hasPermission(userRole, 'dashboard');
     if (action.to === '/pos') return hasPermission(userRole, 'pos');
     if (action.to === '/inventory') return hasPermission(userRole, 'inventory') || hasPermission(userRole, 'inventory_view');
     if (action.to === '/portal/reports') return hasPermission(userRole, 'portal_reports');

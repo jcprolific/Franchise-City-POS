@@ -311,6 +311,18 @@
   font-size: 0.8rem;
 }
 
+.portal-health-action--link {
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.portal-health-action--link:hover {
+  border-color: #f37021;
+  background: #fff4e8;
+}
+
 .portal-health-action-num {
   width: 22px;
   height: 22px;
