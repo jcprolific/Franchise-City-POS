@@ -2,8 +2,18 @@ import { supabase, isSupabaseConfigured } from './supabase';
 import { resolvePosOrderColumns } from './dashboardRealtime';
 import { getManilaIsoDateKey, isSameManilaDate, toManilaTimeLabel, toRelativeTimeLabel } from './timezone';
 import { logAuditEvent } from './auditLogService';
+import { isCountablePaidSale, isOpenUnpaidOrder } from './saleEligibility';
 
 export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'COMPLETED' | 'VOIDED' | 'REFUNDED';
+
+export interface PosOrderItemDetail {
+  id: string;
+  productName: string;
+  variantName: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
 
 export interface PosOrderRecord {
   id: string;
@@ -19,11 +29,17 @@ export interface PosOrderRecord {
   paymentStatus: string;
   orderType: string;
   placedAt: string;
+  completedAt: string;
   timeLabel: string;
   relativeTime: string;
   paymentReference: string;
   voidReason: string;
   terminalId: string;
+  customerName: string;
+  orderNote: string;
+  chargedByName: string;
+  voidedByName: string;
+  refundedAt: string;
 }
 
 type RowRecord = Record<string, unknown>;
@@ -71,32 +87,48 @@ function formatOrderType(value: string) {
   return value || 'Walk-in';
 }
 
+function formatOrderNumberDisplay(orderNo: unknown): string {
+  const raw = asString(orderNo, '---');
+  const num = Number(raw);
+  if (Number.isFinite(num) && num > 0) {
+    return `#${String(num).padStart(4, '0')}`;
+  }
+  return `#${raw}`;
+}
+
 function rowToOrder(row: RowRecord, columns: Awaited<ReturnType<typeof resolvePosOrderColumns>>): PosOrderRecord {
   const id = asString(columns.primaryKey ? row[columns.primaryKey] : row.id);
   const orderNo = columns.orderNo ? row[columns.orderNo] : id;
   const dateValue = columns.date ? asString(row[columns.date]) : '';
+  const completedAt = asString(row.completed_at ?? row.completedAt ?? '');
   const payment = formatPaymentLabel(asString(columns.payment ? row[columns.payment] : 'Unknown'));
   const orderTypeRaw = columns.orderType ? asString(row[columns.orderType]) : '';
 
   return {
     id,
-    orderNumber: `#${asString(orderNo, '---')}`,
+    orderNumber: formatOrderNumberDisplay(orderNo),
     status: normalizeStatus(columns.status ? row[columns.status] : 'NEW'),
-    itemCount: Math.max(1, Math.round(toNumber(columns.itemCount ? row[columns.itemCount] : 1))),
+    itemCount: Math.max(0, Math.round(toNumber(columns.itemCount ? row[columns.itemCount] : 0))),
     subtotal: toNumber(columns.subtotal ? row[columns.subtotal] : 0),
     discountAmount: toNumber(columns.discountAmount ? row[columns.discountAmount] : 0),
     discountType: asString(columns.discountType ? row[columns.discountType] : 'NONE', 'NONE'),
     total: toNumber(columns.total ? row[columns.total] : 0),
     refundAmount: toNumber(columns.refundAmount ? row[columns.refundAmount] : 0),
     payment,
-    paymentStatus: asString(columns.paymentStatus ? row[columns.paymentStatus] : 'PAID', 'PAID'),
+    paymentStatus: asString(columns.paymentStatus ? row[columns.paymentStatus] : 'UNPAID', 'UNPAID'),
     orderType: formatOrderType(orderTypeRaw),
     placedAt: dateValue,
+    completedAt,
     timeLabel: dateValue ? toManilaTimeLabel(dateValue) : '--',
     relativeTime: dateValue ? toRelativeTimeLabel(dateValue) : '--',
     paymentReference: columns.paymentReference ? asString(row[columns.paymentReference]) : '',
     voidReason: columns.voidReason ? asString(row[columns.voidReason]) : '',
     terminalId: asString(row.terminal_id ?? row.terminalId ?? ''),
+    customerName: asString(row.customer_name ?? row.customerName),
+    orderNote: asString(row.order_note ?? row.orderNote),
+    chargedByName: asString(row.charged_by_name ?? row.chargedByName),
+    voidedByName: asString(row.voided_by_name ?? row.voided_by ?? ''),
+    refundedAt: asString(row.refunded_at ?? ''),
   };
 }
 
@@ -107,19 +139,6 @@ export const orderStatusLabels: Record<OrderStatus, string> = {
   COMPLETED: 'Completed',
   VOIDED: 'Voided',
   REFUNDED: 'Refunded',
-};
-
-export const nextOrderStatus: Partial<Record<OrderStatus, OrderStatus>> = {
-  NEW: 'PREPARING',
-  PREPARING: 'READY',
-  READY: 'COMPLETED',
-};
-
-export const orderActionLabels: Partial<Record<OrderStatus, string>> = {
-  NEW: 'Start Prep',
-  PREPARING: 'Mark Ready',
-  READY: 'Complete',
-  COMPLETED: 'View Receipt',
 };
 
 function formatOrdersError(error: unknown): string {
@@ -171,35 +190,24 @@ export async function fetchTodayOrders(brandId?: string): Promise<PosOrderRecord
     .sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime());
 }
 
-export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
-  const columns = await resolvePosOrderColumns();
-  if (!columns.primaryKey || !columns.status) {
-    throw new Error('Order status updates are not supported by the current database schema.');
-  }
+export async function fetchOrderItems(orderId: string): Promise<PosOrderItemDetail[]> {
+  if (!isSupabaseConfigured()) return [];
 
-  const payload: Record<string, unknown> = {
-    [columns.status]: status,
-  };
-  if (status === 'COMPLETED' && columns.paymentStatus) {
-    payload[columns.paymentStatus] = 'PAID';
-  }
-  if (status === 'VOIDED' && columns.paymentStatus) {
-    payload[columns.paymentStatus] = 'VOIDED';
-  }
+  const { data, error } = await supabase
+    .from('pos_order_item')
+    .select('id, product_name, variant_name, quantity, unit_price, line_total')
+    .eq('pos_order_id', orderId);
 
-  const { error } = await supabase
-    .from('pos_order')
-    .update(payload)
-    .eq(columns.primaryKey, orderId);
+  if (error || !data) return [];
 
-  if (error) throw error;
-
-  void logAuditEvent({
-    action: 'order_status_changed',
-    entityType: 'pos_order',
-    entityId: orderId,
-    afterData: { status },
-  });
+  return (data as Record<string, unknown>[]).map((row) => ({
+    id: asString(row.id),
+    productName: asString(row.product_name),
+    variantName: row.variant_name ? asString(row.variant_name) : null,
+    quantity: toNumber(row.quantity),
+    unitPrice: toNumber(row.unit_price),
+    lineTotal: toNumber(row.line_total),
+  }));
 }
 
 export async function voidOrder(orderId: string, reason: string, voidedBy: string): Promise<void> {
@@ -214,6 +222,7 @@ export async function voidOrder(orderId: string, reason: string, voidedBy: strin
   if (columns.paymentStatus) payload[columns.paymentStatus] = 'VOIDED';
   if (columns.voidReason) payload[columns.voidReason] = reason;
   payload.voided_by = voidedBy;
+  payload.voided_by_name = voidedBy;
   payload.voided_at = new Date().toISOString();
 
   const { error } = await supabase
@@ -267,5 +276,52 @@ export async function refundOrder(
 }
 
 export function countOrdersByStatus(orders: PosOrderRecord[], status: OrderStatus) {
+  if (status === 'NEW') {
+    return orders.filter((order) => isOpenUnpaidOrder(order.status, order.paymentStatus)).length;
+  }
   return orders.filter((order) => order.status === status).length;
+}
+
+export function filterOrdersByTab(
+  orders: PosOrderRecord[],
+  tab: 'ALL' | OrderStatus | 'REVENUE'
+): PosOrderRecord[] {
+  if (tab === 'ALL') return orders;
+  if (tab === 'REVENUE') {
+    return orders.filter((order) => isCountablePaidSale(order.status, order.paymentStatus));
+  }
+  if (tab === 'NEW') {
+    return orders.filter((order) => isOpenUnpaidOrder(order.status, order.paymentStatus));
+  }
+  return orders.filter((order) => order.status === tab);
+}
+
+export function computeTodayRevenue(orders: PosOrderRecord[]): number {
+  return orders
+    .filter((order) => isCountablePaidSale(order.status, order.paymentStatus))
+    .reduce((sum, order) => sum + order.total, 0);
+}
+
+export function toRecentTransactions(orders: PosOrderRecord[]) {
+  return orders
+    .filter((order) => isCountablePaidSale(order.status, order.paymentStatus))
+    .slice(0, 12)
+    .map((order) => ({
+      id: order.orderNumber,
+      time: order.timeLabel,
+      items: order.itemCount,
+      total: order.total,
+      payment: order.payment,
+      customerName: order.customerName,
+      staffName: order.chargedByName,
+    }));
+}
+
+export function toBaristaRecentTransactions(orders: PosOrderRecord[], staffName: string) {
+  const normalized = staffName.trim().toLowerCase();
+  if (!normalized) return toRecentTransactions(orders);
+
+  return toRecentTransactions(
+    orders.filter((order) => order.chargedByName.trim().toLowerCase() === normalized)
+  ).slice(0, 8);
 }

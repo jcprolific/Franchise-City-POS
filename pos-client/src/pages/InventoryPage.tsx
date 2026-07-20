@@ -11,7 +11,7 @@ import {
   type BranchInventoryItem,
 } from '../lib/inventoryService';
 import { placeSupplyOrder } from '../lib/supplyOrderService';
-import { fetchStockMovements, logStockMovement, type StockMovement } from '../lib/stockMovementService';
+import { fetchStockMovements, downloadMovementsCsv, logStockMovement, type StockMovement } from '../lib/stockMovementService';
 import {
   cofteaRawMaterials,
   RAW_MATERIAL_CATEGORY_ORDER,
@@ -413,6 +413,16 @@ export default function InventoryPage() {
 
       {pageTab === 'history' ? (
         <div className="inventory-movement-list">
+          <div className="inventory-history-actions">
+            <button
+              type="button"
+              className="inventory-export-btn"
+              disabled={movements.length === 0}
+              onClick={() => downloadMovementsCsv(movements, `stock-movements-${branch.id}.csv`)}
+            >
+              Export CSV
+            </button>
+          </div>
           {movements.length === 0 ? (
             <div className="inventory-empty">No stock movements logged yet.</div>
           ) : (
@@ -421,6 +431,7 @@ export default function InventoryPage() {
                 <strong>{m.materialName}</strong>
                 <span>{m.movementType} · {m.qtyDelta >= 0 ? '+' : ''}{m.qtyDelta}</span>
                 <span>{m.reason}</span>
+                <span>{m.createdBy}</span>
                 <span>{new Date(m.createdAt).toLocaleString('en-PH')}</span>
               </div>
             ))

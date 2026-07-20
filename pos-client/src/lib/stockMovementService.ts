@@ -88,3 +88,28 @@ export async function fetchStockMovements(
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map(mapRow);
 }
+
+export function movementsToCsv(rows: StockMovement[]): string {
+  const header = ['Timestamp', 'Staff', 'Material', 'Type', 'Delta', 'Before', 'After', 'Reason'];
+  const lines = rows.map((row) => [
+    new Date(row.createdAt).toISOString(),
+    row.createdBy,
+    row.materialName,
+    row.movementType,
+    String(row.qtyDelta),
+    String(row.qtyBefore),
+    String(row.qtyAfter),
+    row.reason.replace(/"/g, '""'),
+  ].map((cell) => `"${cell}"`).join(','));
+  return [header.join(','), ...lines].join('\n');
+}
+
+export function downloadMovementsCsv(rows: StockMovement[], filename: string) {
+  const blob = new Blob([movementsToCsv(rows)], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}

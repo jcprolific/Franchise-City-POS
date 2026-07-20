@@ -11,6 +11,11 @@ import {
   type StaffMember,
   type StaffRole,
 } from '../lib/staffAccessService';
+import {
+  fetchBrandPresence,
+  presenceLabel,
+  type PresenceStatus,
+} from '../../lib/staffPresenceService';
 import './StaffDirectoryPage.css';
 
 const ROLE_OPTIONS: StaffRole[] = ['cashier', 'manager', 'supervisor', 'inventory_staff'];
@@ -89,6 +94,24 @@ export default function StaffDirectoryPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [presenceByStaff, setPresenceByStaff] = useState<
+    Map<string, { status: PresenceStatus; branchName: string; lastSeen: string }>
+  >(new Map());
+
+  const loadPresence = useCallback(async () => {
+    const rows = await fetchBrandPresence(brand.dbBrandId);
+    const next = new Map<string, { status: PresenceStatus; branchName: string; lastSeen: string }>();
+    for (const row of rows) {
+      const key = row.staff_name.trim().toLowerCase();
+      if (!key || next.has(key)) continue;
+      next.set(key, {
+        status: row.status,
+        branchName: row.branchName,
+        lastSeen: row.last_seen_at,
+      });
+    }
+    setPresenceByStaff(next);
+  }, [brand.dbBrandId]);
 
   const load = useCallback(async () => {
     try {
@@ -117,6 +140,12 @@ export default function StaffDirectoryPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void loadPresence();
+    const timer = window.setInterval(() => void loadPresence(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [loadPresence]);
 
   const sampleStaff = useMemo(() => buildSampleStaff(), []);
   const displayStaff = staff ?? sampleStaff;
@@ -308,6 +337,7 @@ export default function StaffDirectoryPage() {
               <th>Email</th>
               <th>Branch</th>
               <th>Role</th>
+              <th>Presence</th>
               <th>Created By</th>
               <th>Status</th>
               <th>Last Login</th>
@@ -315,12 +345,26 @@ export default function StaffDirectoryPage() {
             </tr>
           </thead>
           <tbody>
-            {displayStaff.map((member) => (
+            {displayStaff.map((member) => {
+              const presence = presenceByStaff.get(member.full_name.trim().toLowerCase());
+              return (
               <tr key={member.id}>
                 <td className="staff-name-cell">{member.full_name}</td>
                 <td>{member.email}</td>
                 <td>{member.branch_name || 'Unassigned'}</td>
                 <td>{ROLE_LABELS[member.role]}</td>
+                <td>
+                  {presence ? (
+                    <span
+                      className={`staff-presence-badge staff-presence-badge--${presence.status}`}
+                      title={`${presence.branchName} · ${new Date(presence.lastSeen).toLocaleString()}`}
+                    >
+                      {presenceLabel(presence.status)}
+                    </span>
+                  ) : (
+                    <span className="staff-presence-badge staff-presence-badge--offline">Offline</span>
+                  )}
+                </td>
                 <td className="staff-muted">
                   {member.created_by ? 'Owner' : 'HQ'}
                 </td>
@@ -341,11 +385,11 @@ export default function StaffDirectoryPage() {
                 </td>
                 <td className="staff-muted">{member.phone || ''}</td>
               </tr>
-            ))}
+            );})}
 
             {displayStaff.length === 0 && (
               <tr>
-                <td colSpan={8} className="staff-muted">
+                <td colSpan={9} className="staff-muted">
                   {tableReady
                     ? 'No staff yet. Use "Add Staff" to create POS access.'
                     : 'Staff table not detected. Run the setup SQL to start managing access.'}

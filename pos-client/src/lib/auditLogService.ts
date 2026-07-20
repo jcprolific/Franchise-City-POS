@@ -4,6 +4,7 @@ import { getTerminalId } from './terminalContext';
 
 export type AuditAction =
   | 'order_created'
+  | 'order_charged'
   | 'order_synced'
   | 'order_status_changed'
   | 'order_voided'

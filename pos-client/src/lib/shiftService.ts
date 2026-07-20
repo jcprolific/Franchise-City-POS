@@ -3,6 +3,8 @@ import { logAuditEvent } from './auditLogService';
 import { getCurrentBranch } from './branchContext';
 import { getTerminalId } from './terminalContext';
 import { getManilaIsoDateKey } from './timezone';
+import { normalizeCupCounts, type CupInventoryCounts } from './cupInventory';
+import { isCountablePaidSale as isSale } from './saleEligibility';
 
 export interface PosShift {
   id: string;
@@ -20,6 +22,9 @@ export interface PosShift {
   cashSales: number;
   openedAt: string;
   closedAt: string | null;
+  beginningCups: CupInventoryCounts;
+  endingCups: CupInventoryCounts | null;
+  lastOrderNumber: number;
 }
 
 export interface ShiftReport {
@@ -53,6 +58,9 @@ function mapShift(row: Record<string, unknown>): PosShift {
     cashSales: toNum(row.cash_sales),
     openedAt: String(row.opened_at),
     closedAt: row.closed_at ? String(row.closed_at) : null,
+    beginningCups: normalizeCupCounts(row.beginning_cups as CupInventoryCounts | null),
+    endingCups: row.ending_cups ? normalizeCupCounts(row.ending_cups as CupInventoryCounts) : null,
+    lastOrderNumber: toNum(row.last_order_number),
   };
 }
 
@@ -61,7 +69,14 @@ export function getActiveShiftLocal(): PosShift | null {
     const raw = localStorage.getItem(ACTIVE_SHIFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PosShift;
-    if (parsed?.status === 'open') return parsed;
+    if (parsed?.status === 'open') {
+      return {
+        ...parsed,
+        beginningCups: normalizeCupCounts(parsed.beginningCups),
+        endingCups: parsed.endingCups ? normalizeCupCounts(parsed.endingCups) : null,
+        lastOrderNumber: parsed.lastOrderNumber ?? 0,
+      };
+    }
   } catch {
     /* ignore */
   }
@@ -74,6 +89,12 @@ function saveActiveShiftLocal(shift: PosShift | null) {
     return;
   }
   localStorage.setItem(ACTIVE_SHIFT_KEY, JSON.stringify(shift));
+}
+
+export function updateShiftOrderCounterLocal(lastOrderNumber: number) {
+  const active = getActiveShiftLocal();
+  if (!active) return;
+  saveActiveShiftLocal({ ...active, lastOrderNumber });
 }
 
 async function fetchShiftSalesTotals(
@@ -105,7 +126,7 @@ async function fetchShiftSalesTotals(
 
     const status = String(row.status ?? 'COMPLETED').toUpperCase();
     const payStatus = String(row.payment_status ?? 'PAID').toUpperCase();
-    if (status === 'VOIDED' || status === 'REFUNDED' || payStatus === 'VOIDED') continue;
+    if (!isSale(status, payStatus)) continue;
 
     const total = toNum(row.total_amount);
     totalSales += total;
@@ -122,6 +143,7 @@ export async function openShift(input: {
   cashierName: string;
   cashierId?: string;
   openingCash: number;
+  beginningCups: CupInventoryCounts;
 }): Promise<{ shift: PosShift | null; error: string | null }> {
   const branch = getCurrentBranch();
   const terminalId = getTerminalId();
@@ -137,6 +159,8 @@ export async function openShift(input: {
     cashier_name: input.cashierName,
     status: 'open',
     opening_cash: input.openingCash,
+    beginning_cups: normalizeCupCounts(input.beginningCups),
+    last_order_number: 0,
     total_sales: 0,
     total_orders: 0,
     cash_sales: 0,
@@ -166,6 +190,9 @@ export async function openShift(input: {
         cashSales: 0,
         openedAt: new Date().toISOString(),
         closedAt: null,
+        beginningCups: normalizeCupCounts(input.beginningCups),
+        endingCups: null,
+        lastOrderNumber: 0,
       };
       saveActiveShiftLocal(localShift);
       return { shift: localShift, error: error.message };
@@ -180,7 +207,7 @@ export async function openShift(input: {
       branchId: branch.id,
       userId: input.cashierId,
       userName: input.cashierName,
-      afterData: { openingCash: input.openingCash, terminalId },
+      afterData: { openingCash: input.openingCash, terminalId, beginningCups: input.beginningCups },
     });
     return { shift, error: null };
   }
@@ -201,6 +228,9 @@ export async function openShift(input: {
     cashSales: 0,
     openedAt: new Date().toISOString(),
     closedAt: null,
+    beginningCups: normalizeCupCounts(input.beginningCups),
+    endingCups: null,
+    lastOrderNumber: 0,
   };
   saveActiveShiftLocal(localShift);
   return { shift: localShift, error: null };
@@ -227,6 +257,7 @@ export async function buildShiftReport(reportType: 'X' | 'Z'): Promise<ShiftRepo
 
 export async function closeShift(input: {
   closingCash: number;
+  endingCups: CupInventoryCounts;
   cashierId?: string;
 }): Promise<{ shift: PosShift | null; error: string | null }> {
   const active = getActiveShiftLocal();
@@ -244,6 +275,7 @@ export async function closeShift(input: {
     closing_cash: input.closingCash,
     expected_cash: expectedCash,
     cash_variance: cashVariance,
+    ending_cups: normalizeCupCounts(input.endingCups),
     total_sales: totals.totalSales,
     total_orders: totals.totalOrders,
     cash_sales: totals.cashSales,
@@ -263,6 +295,7 @@ export async function closeShift(input: {
     closingCash: input.closingCash,
     expectedCash,
     cashVariance,
+    endingCups: normalizeCupCounts(input.endingCups),
     totalSales: totals.totalSales,
     totalOrders: totals.totalOrders,
     cashSales: totals.cashSales,
@@ -283,10 +316,19 @@ export async function closeShift(input: {
       cashVariance,
       totalSales: totals.totalSales,
       totalOrders: totals.totalOrders,
+      endingCups: input.endingCups,
     },
   });
 
   return { shift: closed, error: null };
+}
+
+function formatCupSummary(cups: CupInventoryCounts | null): string {
+  if (!cups) return '—';
+  return Object.entries(cups)
+    .filter(([, qty]) => qty > 0)
+    .map(([key, qty]) => `${key}: ${qty}`)
+    .join(', ') || '0';
 }
 
 export function printShiftReport(report: ShiftReport) {
@@ -295,10 +337,16 @@ export function printShiftReport(report: ShiftReport) {
   if (!w) return;
 
   const dateKey = getManilaIsoDateKey(new Date(shift.openedAt));
+  const reportHint =
+    reportType === 'X'
+      ? 'Mid-shift snapshot — shift stays open.'
+      : 'End-of-shift close — drawer reconciled.';
+
   w.document.write(`
     <html><head><title>${reportType}-Report</title></head>
     <body style="font-family:sans-serif;padding:24px;max-width:480px">
       <h1>${reportType}-Report — ${shift.terminalId}</h1>
+      <p style="color:#555">${reportHint}</p>
       <p>Date: ${dateKey}</p>
       <p>Cashier: ${shift.cashierName}</p>
       <p>Opened: ${new Date(shift.openedAt).toLocaleString('en-PH')}</p>
@@ -306,9 +354,11 @@ export function printShiftReport(report: ShiftReport) {
       <hr />
       <ul>
         <li>Opening Cash: ₱${shift.openingCash.toFixed(2)}</li>
+        <li>Beginning Cups: ${formatCupSummary(shift.beginningCups)}</li>
         <li>Total Sales: ₱${shift.totalSales.toFixed(2)}</li>
         <li>Cash Sales: ₱${shift.cashSales.toFixed(2)}</li>
         <li>Orders: ${shift.totalOrders}</li>
+        ${shift.endingCups ? `<li>Ending Cups: ${formatCupSummary(shift.endingCups)}</li>` : ''}
         ${shift.expectedCash != null ? `<li>Expected Cash: ₱${shift.expectedCash.toFixed(2)}</li>` : ''}
         ${shift.closingCash != null ? `<li>Actual Cash: ₱${shift.closingCash.toFixed(2)}</li>` : ''}
         ${shift.cashVariance != null ? `<li>Variance: ₱${shift.cashVariance.toFixed(2)}</li>` : ''}

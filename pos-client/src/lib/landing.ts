@@ -1,6 +1,6 @@
 // Back link from the POS login screen to the Franchise City landing site.
 // Override with VITE_LANDING_URL in .env.local / Vercel when using a custom domain.
-export const FALLBACK_LANDING_URL = 'https://franchise-city-landing.vercel.app'
+export const FALLBACK_LANDING_URL = 'https://www.franchisecity.ph'
 
 /** Resolve the landing base URL, applying the fallback and trimming trailing slashes. */
 export function resolveLandingUrl(raw?: string): string {

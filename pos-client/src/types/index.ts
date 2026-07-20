@@ -54,7 +54,7 @@ export interface RecipeLine {
 }
 
 export type IceLevel = 'NONE' | 'LESS' | 'NORMAL' | 'EXTRA';
-export type DiscountType = 'NONE' | 'PWD' | 'SENIOR' | 'PROMO';
+export type DiscountType = 'NONE' | 'PWD' | 'SENIOR' | 'PROMO' | 'FREE_DRINK';
 export type PaymentMethod = 'CASH' | 'GCASH' | 'CARD';
 export type OrderType = 'DINE_IN' | 'TAKE_OUT';
 
@@ -71,6 +71,8 @@ export interface CartItem {
   ice_level: IceLevel;
   addons: CartItemAddon[];
   line_total: number;
+  freeUpsize?: boolean;
+  freeAddons?: boolean;
 }
 
 export interface CartState {

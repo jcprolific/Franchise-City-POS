@@ -108,6 +108,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     if (enteredPin === '1234') {
+      if (targetArea === 'pos') {
+        setPinError('HQ PIN is not allowed on branch POS. Use Staff PIN or email login.');
+        return;
+      }
       onLogin('pin', 'Coftea HQ Demo', 'hq');
       return;
     }

@@ -16,6 +16,7 @@ import {
   getLatestAttendanceStatus,
   subscribeAttendance,
 } from './lib/attendanceStore';
+import { syncAttendanceEvent } from './lib/attendanceService';
 import LoginPage from './pages/LoginPage';
 import POSPage from './pages/POSPage';
 import InventoryPage from './pages/InventoryPage';
@@ -66,6 +67,9 @@ import {
   printShiftReport,
 } from './lib/shiftService';
 import { ShiftCloseModal, ShiftOpenModal } from './components/ShiftModal';
+import { startStaffPresenceHeartbeat } from './lib/staffPresenceService';
+import type { CupInventoryCounts } from './lib/cupInventory';
+import { normalizeCupCounts } from './lib/cupInventory';
 import './App.css';
 
 type LoginMode = 'guest' | 'pin' | 'email' | null;
@@ -165,6 +169,7 @@ function PosShell({ auth, onLogout }: PosShellProps) {
     () => (getActiveShiftLocal() ? 'IN' : getLatestAttendanceStatus(displayName) ?? 'OUT')
   );
   const [shiftModal, setShiftModal] = useState<'open' | 'close' | null>(null);
+  const [hasActiveShift, setHasActiveShift] = useState(() => !!getActiveShiftLocal());
   const [shiftClosePreview, setShiftClosePreview] = useState({
     expectedCash: 0,
     totalSales: 0,
@@ -211,28 +216,72 @@ function PosShell({ auth, onLogout }: PosShellProps) {
     });
   }, [attendanceStatus]);
 
-  const handleConfirmOpenShift = useCallback(async (openingCash: number) => {
+  const handleConfirmOpenShift = useCallback(async (openingCash: number, beginningCups: CupInventoryCounts) => {
+    const { data: userData } = await supabase.auth.getUser();
     const { shift, error } = await openShift({
       cashierName: displayName,
+      cashierId: userData.user?.id,
       openingCash,
+      beginningCups,
     });
     if (error && !shift) {
       window.alert(`Could not open shift: ${error}`);
       return;
     }
     addAttendanceEntry({ staffName: displayName, role: roleLabel, status: 'IN' });
+    void syncAttendanceEvent({
+      staffName: displayName,
+      role: roleLabel,
+      status: 'IN',
+      userId: userData.user?.id,
+    });
     setAttendanceStatus('IN');
+    setHasActiveShift(true);
     setShiftModal(null);
   }, [displayName, roleLabel]);
 
-  const handleConfirmCloseShift = useCallback(async (closingCash: number) => {
-    const { shift, error } = await closeShift({ closingCash });
+  const handlePosTimeIn = useCallback(async (openingCash: number, beginningCups: CupInventoryCounts) => {
+    const { data: userData } = await supabase.auth.getUser();
+    const { shift, error } = await openShift({
+      cashierName: displayName,
+      cashierId: userData.user?.id,
+      openingCash,
+      beginningCups: normalizeCupCounts(beginningCups),
+    });
+    if (error && !shift) {
+      throw new Error(error);
+    }
+    addAttendanceEntry({ staffName: displayName, role: roleLabel, status: 'IN' });
+    void syncAttendanceEvent({
+      staffName: displayName,
+      role: roleLabel,
+      status: 'IN',
+      userId: userData.user?.id,
+    });
+    setAttendanceStatus('IN');
+    setHasActiveShift(true);
+  }, [displayName, roleLabel]);
+
+  const handleConfirmCloseShift = useCallback(async (closingCash: number, endingCups: CupInventoryCounts) => {
+    const { data: userData } = await supabase.auth.getUser();
+    const { shift, error } = await closeShift({
+      closingCash,
+      endingCups,
+      cashierId: userData.user?.id,
+    });
     if (error || !shift) {
       window.alert(error ? `Could not close shift: ${error}` : 'No active shift found.');
       return;
     }
     addAttendanceEntry({ staffName: displayName, role: roleLabel, status: 'OUT' });
+    void syncAttendanceEvent({
+      staffName: displayName,
+      role: roleLabel,
+      status: 'OUT',
+      userId: userData.user?.id,
+    });
     setAttendanceStatus('OUT');
+    setHasActiveShift(false);
     setShiftModal(null);
     printShiftReport({
       shift,
@@ -251,6 +300,21 @@ function PosShell({ auth, onLogout }: PosShellProps) {
   const [headerTerminal, setHeaderTerminal] = useState(terminalLabel);
 
   useEffect(() => subscribeTerminal(() => setHeaderTerminal(getTerminalLabel())), []);
+
+  useEffect(() => {
+    if (!auth.isLoggedIn) return undefined;
+    return startStaffPresenceHeartbeat({
+      staffName: displayName,
+      role: roleLabel,
+    });
+  }, [auth.isLoggedIn, displayName, roleLabel]);
+
+  useEffect(() => {
+    const syncShift = () => setHasActiveShift(!!getActiveShiftLocal());
+    syncShift();
+    const interval = window.setInterval(syncShift, 1500);
+    return () => window.clearInterval(interval);
+  }, [attendanceStatus, shiftModal]);
 
   const { title, subtitle } = useMemo(
     () => getHeaderTitle(location.pathname, headerTerminal),
@@ -282,14 +346,22 @@ function PosShell({ auth, onLogout }: PosShellProps) {
         />
         <main className="app-main">
           {bannerMessage && <div className="access-banner">{bannerMessage}</div>}
-          <Outlet context={{ userName: auth.userName, userRole: roleLabel, role: auth.role }} />
+          <Outlet
+            context={{
+              userName: auth.userName,
+              userRole: roleLabel,
+              role: auth.role,
+              hasActiveShift,
+              onPosTimeIn: handlePosTimeIn,
+            }}
+          />
         </main>
       </div>
 
       {shiftModal === 'open' && (
         <ShiftOpenModal
           cashierName={displayName}
-          onConfirm={(cash) => void handleConfirmOpenShift(cash)}
+          onConfirm={(cash, cups) => void handleConfirmOpenShift(cash, cups)}
           onCancel={() => setShiftModal(null)}
         />
       )}
@@ -299,7 +371,7 @@ function PosShell({ auth, onLogout }: PosShellProps) {
           expectedCash={shiftClosePreview.expectedCash}
           totalSales={shiftClosePreview.totalSales}
           totalOrders={shiftClosePreview.totalOrders}
-          onConfirm={(cash) => void handleConfirmCloseShift(cash)}
+          onConfirm={(cash, cups) => void handleConfirmCloseShift(cash, cups)}
           onCancel={() => setShiftModal(null)}
           onXReport={() => void handleXReport()}
         />
@@ -312,6 +384,8 @@ export interface PosOutletContext {
   userName: string;
   userRole: string;
   role: UserRole;
+  hasActiveShift: boolean;
+  onPosTimeIn: (openingCash: number, beginningCups: CupInventoryCounts) => Promise<void>;
 }
 
 function HqShell({ userName, onLogout }: HqShellProps) {

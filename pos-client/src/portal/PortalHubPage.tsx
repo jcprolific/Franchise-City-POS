@@ -43,6 +43,7 @@ import {
 } from '../lib/franchiseeBranch';
 import { BRANCH_UPDATED_EVENT } from '../lib/branchContext';
 import PortalHealthWidget from './PortalHealthWidget';
+import BranchStaffPresence from './BranchStaffPresence';
 import './PortalHubPage.css';
 
 type TileAccent = 'news' | 'ops' | 'support' | 'sales';
@@ -277,6 +278,7 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
       </header>
 
       <PortalHealthWidget branchId={welcome?.branchId ?? null} />
+      <BranchStaffPresence branchId={welcome?.branchId ?? null} />
 
       <nav className="portal-hub-quick" aria-label="Quick actions">
         {quickActions.map(({ icon: Icon, label, desc, to }) => (

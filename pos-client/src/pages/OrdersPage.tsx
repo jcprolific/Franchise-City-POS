@@ -2,32 +2,31 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBrand } from '../context/BrandContext';
 import { supabase } from '../lib/supabase';
 import {
+  computeTodayRevenue,
   countOrdersByStatus,
+  fetchOrderItems,
   fetchTodayOrders,
-  nextOrderStatus,
-  orderActionLabels,
-  orderStatusLabels,
+  filterOrdersByTab,
   refundOrder,
-  updateOrderStatus,
+  toRecentTransactions,
   voidOrder,
   type OrderStatus,
+  type PosOrderItemDetail,
   type PosOrderRecord,
 } from '../lib/ordersService';
+import { isCountablePaidSale } from '../lib/saleEligibility';
 import { useOutletContext } from 'react-router-dom';
 import type { PosOutletContext } from '../App';
 import { getCurrentBranch, subscribeBranch, type BranchRef } from '../lib/branchContext';
 import './OrdersPage.css';
 
-type StatusFilter = 'ALL' | OrderStatus;
+type StatusFilter = 'ALL' | OrderStatus | 'REVENUE';
 
 const statusFilters: { id: StatusFilter; label: string }[] = [
-  { id: 'ALL', label: 'All Orders' },
   { id: 'NEW', label: 'New' },
-  { id: 'PREPARING', label: 'Preparing' },
-  { id: 'READY', label: 'Ready' },
   { id: 'COMPLETED', label: 'Completed' },
   { id: 'VOIDED', label: 'Voided' },
-  { id: 'REFUNDED', label: 'Refunded' },
+  { id: 'REVENUE', label: 'Revenue' },
 ];
 
 function formatPeso(value: number) {
@@ -39,11 +38,14 @@ export default function OrdersPage() {
   const { userName } = useOutletContext<PosOutletContext>();
   const [branch, setBranch] = useState<BranchRef>(() => getCurrentBranch());
   const [orders, setOrders] = useState<PosOrderRecord[]>([]);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('COMPLETED');
   const [search, setSearch] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [detailOrder, setDetailOrder] = useState<PosOrderRecord | null>(null);
+  const [detailItems, setDetailItems] = useState<PosOrderItemDetail[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const refreshOrders = useCallback(async () => {
     setSyncing(true);
@@ -94,8 +96,8 @@ export default function OrdersPage() {
 
   const filteredOrders = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return orders.filter((order) => {
-      const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+    const tabOrders = filterOrdersByTab(orders, statusFilter);
+    return tabOrders.filter((order) => {
       const matchesSearch =
         query.length === 0 ||
         order.orderNumber.toLowerCase().includes(query) ||
@@ -103,33 +105,28 @@ export default function OrdersPage() {
         order.orderType.toLowerCase().includes(query) ||
         order.paymentReference.toLowerCase().includes(query) ||
         order.terminalId.toLowerCase().includes(query) ||
+        order.customerName.toLowerCase().includes(query) ||
+        order.orderNote.toLowerCase().includes(query) ||
+        order.chargedByName.toLowerCase().includes(query) ||
         `${order.itemCount} items`.includes(query);
 
-      return matchesStatus && matchesSearch;
+      return matchesSearch;
     });
   }, [orders, search, statusFilter]);
 
-  const activeCount = orders.filter(
-    (order) => order.status !== 'COMPLETED' && order.status !== 'VOIDED' && order.status !== 'REFUNDED'
-  ).length;
+  const openCount = countOrdersByStatus(orders, 'NEW');
+  const todayRevenue = computeTodayRevenue(orders);
+  const recentTransactions = toRecentTransactions(orders);
 
-  const todayRevenue = orders
-    .filter((order) => order.status === 'COMPLETED')
-    .reduce((sum, order) => sum + order.total, 0);
-
-  const handleAdvanceStatus = async (order: PosOrderRecord) => {
-    const next = nextOrderStatus[order.status];
-    if (!next) return;
-
+  const openDetail = async (order: PosOrderRecord) => {
+    if (!isCountablePaidSale(order.status, order.paymentStatus)) return;
+    setDetailOrder(order);
+    setDetailLoading(true);
     try {
-      setUpdatingId(order.id);
-      await updateOrderStatus(order.id, next);
-      await refreshOrders();
-    } catch (error) {
-      console.error('Failed to update order status:', error);
-      window.alert('Could not update order status. Make sure Supabase update policy is enabled.');
+      const items = await fetchOrderItems(order.id);
+      setDetailItems(items);
     } finally {
-      setUpdatingId(null);
+      setDetailLoading(false);
     }
   };
 
@@ -146,6 +143,7 @@ export default function OrdersPage() {
       setUpdatingId(order.id);
       await voidOrder(order.id, reason.trim(), userName || 'Staff');
       await refreshOrders();
+      if (detailOrder?.id === order.id) setDetailOrder(null);
     } catch (error) {
       console.error('Failed to void order:', error);
       window.alert('Could not void order. Make sure Supabase update policy is enabled.');
@@ -173,6 +171,7 @@ export default function OrdersPage() {
       setUpdatingId(order.id);
       await refundOrder(order.id, amount, reason.trim());
       await refreshOrders();
+      if (detailOrder?.id === order.id) setDetailOrder(null);
     } catch (error) {
       console.error('Failed to refund order:', error);
       window.alert('Could not process refund.');
@@ -180,9 +179,6 @@ export default function OrdersPage() {
       setUpdatingId(null);
     }
   };
-
-  const canVoid = (status: OrderStatus) =>
-    status === 'NEW' || status === 'PREPARING' || status === 'READY' || status === 'COMPLETED';
 
   return (
     <div className="orders-page" id="orders-page">
@@ -193,7 +189,7 @@ export default function OrdersPage() {
             <span className="orders-branch-label">{branch.locationLabel || branch.name}</span>
           </div>
           <span className="orders-live-badge">
-            {syncing ? 'Syncing…' : loadError ? 'Offline' : `Live · ${activeCount} active`}
+            {syncing ? 'Syncing…' : loadError ? 'Offline' : `Live · ${openCount} open`}
           </span>
         </div>
         <button type="button" className="orders-refresh-btn" onClick={() => void refreshOrders()}>
@@ -210,18 +206,10 @@ export default function OrdersPage() {
       <section className="orders-summary-row">
         <article className="orders-summary-card">
           <span className="orders-summary-label">New</span>
-          <span className="orders-summary-value">{countOrdersByStatus(orders, 'NEW')}</span>
-        </article>
-        <article className="orders-summary-card">
-          <span className="orders-summary-label">Preparing</span>
-          <span className="orders-summary-value">{countOrdersByStatus(orders, 'PREPARING')}</span>
-        </article>
-        <article className="orders-summary-card">
-          <span className="orders-summary-label">Ready</span>
-          <span className="orders-summary-value">{countOrdersByStatus(orders, 'READY')}</span>
+          <span className="orders-summary-value">{openCount}</span>
         </article>
         <article className="orders-summary-card orders-summary-card--muted">
-          <span className="orders-summary-label">Completed Today</span>
+          <span className="orders-summary-label">Completed</span>
           <span className="orders-summary-value">{countOrdersByStatus(orders, 'COMPLETED')}</span>
         </article>
         <article className="orders-summary-card orders-summary-card--void">
@@ -232,6 +220,42 @@ export default function OrdersPage() {
           <span className="orders-summary-label">Revenue Today</span>
           <span className="orders-summary-value">{formatPeso(todayRevenue)}</span>
         </article>
+      </section>
+
+      <section className="orders-recent-panel">
+        <h3>Recent Transactions</h3>
+        {recentTransactions.length === 0 ? (
+          <p className="orders-recent-empty">Completed sales will appear here.</p>
+        ) : (
+          <div className="orders-recent-table-wrap">
+            <table className="orders-recent-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Time</th>
+                  <th>Customer</th>
+                  <th>Staff</th>
+                  <th>Items</th>
+                  <th>Total</th>
+                  <th>Payment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTransactions.map((tx) => (
+                  <tr key={tx.id}>
+                    <td>{tx.id}</td>
+                    <td>{tx.time}</td>
+                    <td>{tx.customerName || '—'}</td>
+                    <td>{tx.staffName || '—'}</td>
+                    <td>{tx.items}</td>
+                    <td>{formatPeso(tx.total)}</td>
+                    <td>{tx.payment}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <div className="orders-toolbar">
@@ -246,10 +270,15 @@ export default function OrdersPage() {
               onClick={() => setStatusFilter(filter.id)}
             >
               {filter.label}
-              {filter.id !== 'ALL' && (
-                <span className="orders-filter-count">
-                  {countOrdersByStatus(orders, filter.id as OrderStatus)}
-                </span>
+              {filter.id === 'NEW' && <span className="orders-filter-count">{openCount}</span>}
+              {filter.id === 'COMPLETED' && (
+                <span className="orders-filter-count">{countOrdersByStatus(orders, 'COMPLETED')}</span>
+              )}
+              {filter.id === 'VOIDED' && (
+                <span className="orders-filter-count">{countOrdersByStatus(orders, 'VOIDED')}</span>
+              )}
+              {filter.id === 'REVENUE' && (
+                <span className="orders-filter-count">{formatPeso(todayRevenue)}</span>
               )}
             </button>
           ))}
@@ -257,127 +286,177 @@ export default function OrdersPage() {
         <input
           className="orders-search"
           type="search"
-          placeholder="Search order #, payment, type..."
+          placeholder="Search order #, customer, staff..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
       </div>
 
       <div className="orders-list">
-        {syncing && filteredOrders.length === 0 && (
-          <div className="orders-empty">
-            <p>Syncing today&apos;s orders…</p>
+        {statusFilter === 'REVENUE' ? (
+          <div className="orders-revenue-panel">
+            <p>Revenue today from completed paid orders.</p>
+            <strong>{formatPeso(todayRevenue)}</strong>
+            <span>{countOrdersByStatus(orders, 'COMPLETED')} completed orders</span>
           </div>
+        ) : (
+          <>
+            {syncing && filteredOrders.length === 0 && (
+              <div className="orders-empty">
+                <p>Syncing today&apos;s orders…</p>
+              </div>
+            )}
+
+            {!syncing && filteredOrders.length === 0 && (
+              <div className="orders-empty">
+                <p>
+                  {orders.length === 0
+                    ? 'No orders yet today. Complete a sale on POS to see it here.'
+                    : 'No orders match your filter.'}
+                </p>
+              </div>
+            )}
+
+            {filteredOrders.map((order, index) => {
+              const isUpdating = updatingId === order.id;
+              const isCompleted = isCountablePaidSale(order.status, order.paymentStatus);
+
+              return (
+                <article
+                  key={order.id}
+                  className={`order-card order-card--${order.status.toLowerCase()}${isCompleted ? ' is-clickable' : ''}`}
+                  style={{ animationDelay: `${index * 40}ms` }}
+                  onClick={() => {
+                    if (isCompleted) void openDetail(order);
+                  }}
+                  onKeyDown={(event) => {
+                    if (isCompleted && (event.key === 'Enter' || event.key === ' ')) {
+                      event.preventDefault();
+                      void openDetail(order);
+                    }
+                  }}
+                  role={isCompleted ? 'button' : undefined}
+                  tabIndex={isCompleted ? 0 : undefined}
+                >
+                  <div className="order-card-top">
+                    <div className="order-card-id-group">
+                      <span className="order-card-number">{order.orderNumber}</span>
+                      {order.terminalId && (
+                        <span className="order-terminal-badge">{order.terminalId}</span>
+                      )}
+                      <span className={`order-status order-status--${order.status.toLowerCase()}`}>
+                        {order.paymentStatus === 'UNPAID' ? 'Open' : order.status}
+                      </span>
+                    </div>
+                    <div className="order-card-time-group">
+                      <span className="order-card-time">{order.relativeTime}</span>
+                      <span className="order-card-time-sub">{order.timeLabel}</span>
+                    </div>
+                  </div>
+
+                  <div className="order-card-meta">
+                    <span className="order-type">{order.orderType}</span>
+                    <span className="order-label">{order.itemCount} items</span>
+                    {order.customerName && <span className="order-label">{order.customerName}</span>}
+                    {order.discountAmount > 0 && (
+                      <span className="order-discount-tag">
+                        −{formatPeso(order.discountAmount)} discount
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="order-items">
+                    {order.payment}
+                    {order.paymentReference ? ` · Ref ${order.paymentReference}` : ''}
+                    {order.chargedByName ? ` · ${order.chargedByName}` : ''}
+                  </p>
+
+                  <div className="order-card-bottom">
+                    <div className="order-payment-group">
+                      <span className="order-total">{formatPeso(order.total)}</span>
+                      <span className="order-payment">{order.paymentStatus}</span>
+                    </div>
+
+                    <div className="order-card-actions" onClick={(e) => e.stopPropagation()}>
+                      {isCompleted && (
+                        <>
+                          <button
+                            type="button"
+                            className="order-action-btn order-action-btn--ghost"
+                            disabled={isUpdating}
+                            onClick={() => void handleVoidOrder(order)}
+                          >
+                            Void
+                          </button>
+                          <button
+                            type="button"
+                            className="order-action-btn order-action-btn--ghost"
+                            disabled={isUpdating}
+                            onClick={() => void handleRefundOrder(order)}
+                          >
+                            Refund
+                          </button>
+                        </>
+                      )}
+
+                      {order.status === 'VOIDED' && (
+                        <span className="order-void-note">
+                          {order.voidReason ? order.voidReason : 'Removed from sales'}
+                        </span>
+                      )}
+
+                      {order.status === 'REFUNDED' && (
+                        <span className="order-void-note">
+                          Refunded {formatPeso(order.refundAmount || order.total)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </>
         )}
-
-        {!syncing && filteredOrders.length === 0 && (
-          <div className="orders-empty">
-            <p>
-              {orders.length === 0
-                ? 'No orders yet today. Complete a sale on POS to see it here.'
-                : 'No orders match your filter.'}
-            </p>
-          </div>
-        )}
-
-        {filteredOrders.map((order, index) => {
-          const nextStatus = nextOrderStatus[order.status];
-          const isUpdating = updatingId === order.id;
-
-          return (
-            <article
-              key={order.id}
-              className={`order-card order-card--${order.status.toLowerCase()}`}
-              style={{ animationDelay: `${index * 40}ms` }}
-            >
-              <div className="order-card-top">
-                <div className="order-card-id-group">
-                  <span className="order-card-number">{order.orderNumber}</span>
-                  {order.terminalId && (
-                    <span className="order-terminal-badge">{order.terminalId}</span>
-                  )}
-                  <span className={`order-status order-status--${order.status.toLowerCase()}`}>
-                    {orderStatusLabels[order.status]}
-                  </span>
-                </div>
-                <div className="order-card-time-group">
-                  <span className="order-card-time">{order.relativeTime}</span>
-                  <span className="order-card-time-sub">{order.timeLabel}</span>
-                </div>
-              </div>
-
-              <div className="order-card-meta">
-                <span className="order-type">{order.orderType}</span>
-                <span className="order-label">{order.itemCount} items</span>
-                {order.discountAmount > 0 && (
-                  <span className="order-discount-tag">
-                    −{formatPeso(order.discountAmount)} discount
-                  </span>
-                )}
-              </div>
-
-              <p className="order-items">
-                {order.payment}
-                {order.paymentReference ? ` · Ref ${order.paymentReference}` : ''}
-              </p>
-
-              <div className="order-card-bottom">
-                <div className="order-payment-group">
-                  <span className="order-total">{formatPeso(order.total)}</span>
-                  <span className="order-payment">{order.paymentStatus}</span>
-                </div>
-
-                <div className="order-card-actions">
-                  {nextStatus && (
-                    <button
-                      type="button"
-                      className="order-action-btn"
-                      disabled={isUpdating}
-                      onClick={() => void handleAdvanceStatus(order)}
-                    >
-                      {isUpdating ? 'Saving…' : orderActionLabels[order.status]}
-                    </button>
-                  )}
-
-                  {canVoid(order.status) && (
-                    <button
-                      type="button"
-                      className="order-action-btn order-action-btn--ghost"
-                      disabled={isUpdating}
-                      onClick={() => void handleVoidOrder(order)}
-                    >
-                      Void
-                    </button>
-                  )}
-
-                  {order.status === 'COMPLETED' && (
-                    <button
-                      type="button"
-                      className="order-action-btn order-action-btn--ghost"
-                      disabled={isUpdating}
-                      onClick={() => void handleRefundOrder(order)}
-                    >
-                      Refund
-                    </button>
-                  )}
-
-                  {order.status === 'VOIDED' && (
-                    <span className="order-void-note">
-                      {order.voidReason ? order.voidReason : 'Removed from sales'}
-                    </span>
-                  )}
-
-                  {order.status === 'REFUNDED' && (
-                    <span className="order-void-note">
-                      Refunded {formatPeso(order.refundAmount || order.total)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </article>
-          );
-        })}
       </div>
+
+      {detailOrder && (
+        <div className="orders-detail-backdrop" onClick={() => setDetailOrder(null)}>
+          <div className="orders-detail-drawer" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <header>
+              <h3>{detailOrder.orderNumber}</h3>
+              <button type="button" onClick={() => setDetailOrder(null)} aria-label="Close">
+                ×
+              </button>
+            </header>
+            <div className="orders-detail-meta">
+              <p><strong>Charged:</strong> {detailOrder.timeLabel}</p>
+              <p><strong>Staff:</strong> {detailOrder.chargedByName || '—'}</p>
+              <p><strong>Customer:</strong> {detailOrder.customerName || '—'}</p>
+              <p><strong>Notes:</strong> {detailOrder.orderNote || '—'}</p>
+              <p><strong>Payment:</strong> {detailOrder.payment} ({detailOrder.paymentStatus})</p>
+              <p><strong>Total:</strong> {formatPeso(detailOrder.total)}</p>
+            </div>
+            <div className="orders-detail-items">
+              <h4>Line items</h4>
+              {detailLoading ? (
+                <p>Loading items…</p>
+              ) : detailItems.length === 0 ? (
+                <p>No line items recorded.</p>
+              ) : (
+                <ul>
+                  {detailItems.map((item) => (
+                    <li key={item.id}>
+                      <span>{item.productName}{item.variantName ? ` · ${item.variantName}` : ''}</span>
+                      <span>x{item.quantity}</span>
+                      <span>{formatPeso(item.lineTotal)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

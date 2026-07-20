@@ -735,3 +735,12 @@
 .admin-table tr:last-child td {
   border-bottom: none;
 }
+
+.shift-gate-banner {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(234, 88, 12, 0.12);
+  color: #9a3412;
+  font-size: 0.9rem;
+}

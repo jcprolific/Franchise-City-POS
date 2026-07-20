@@ -511,3 +511,33 @@
     font-size: 0.95rem;
   }
 }
+
+.order-customer-fields {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 10px;
+}
+
+.order-customer-input {
+  width: 100%;
+  border: 1px solid var(--order-border, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.order-start-inline,
+.order-promo-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-promo-field input {
+  width: 64px;
+}
+
+.order-item-flag {
+  font-size: 0.72rem;
+  color: var(--success, #15803d);
+}

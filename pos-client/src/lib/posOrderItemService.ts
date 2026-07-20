@@ -53,6 +53,23 @@ export async function insertPosOrderItems(
   return { error: error?.message ?? null };
 }
 
+export async function replacePosOrderItems(
+  orderId: string,
+  cartItems: CartItem[]
+): Promise<{ error: string | null }> {
+  if (!isSupabaseConfigured()) return { error: null };
+
+  const { error: deleteError } = await supabase
+    .from('pos_order_item')
+    .delete()
+    .eq('pos_order_id', orderId);
+
+  if (deleteError) return { error: deleteError.message };
+  if (cartItems.length === 0) return { error: null };
+
+  return insertPosOrderItems(orderId, cartItems);
+}
+
 interface InsertOrderOptions {
   clientOrderId?: string;
 }

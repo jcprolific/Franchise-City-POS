@@ -94,3 +94,33 @@
   border-color: var(--accent);
   color: #fff;
 }
+
+.shift-modal--wide {
+  width: min(560px, 100%);
+}
+
+.shift-cups-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: var(--space-md);
+}
+
+.shift-cups-title {
+  grid-column: 1 / -1;
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.shift-cup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--font-xs);
+}
+
+.shift-cup-field input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}

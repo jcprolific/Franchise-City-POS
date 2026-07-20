@@ -259,13 +259,19 @@ export function getInsertPayloadForPosOrder(
     subtotal: number;
     discountAmount: number;
     discountType?: string;
+    promoPercent?: number;
     total: number;
     itemCount: number;
     branchValue?: string;
     brandId?: string;
     brandName?: string;
     cashierId?: string;
+    cashierName?: string;
+    customerName?: string;
+    orderNote?: string;
+    shiftId?: string;
     status?: string;
+    paymentStatus?: string;
     orderType?: string;
   }
 ) {
@@ -282,7 +288,9 @@ export function getInsertPayloadForPosOrder(
   if (columns.discountAmount) data[columns.discountAmount] = payload.discountAmount;
   if (columns.discountType && payload.discountType) data[columns.discountType] = payload.discountType;
   if (columns.status) data[columns.status] = payload.status ?? 'NEW';
-  if (columns.paymentStatus) data[columns.paymentStatus] = 'PAID';
+  if (columns.paymentStatus) {
+    data[columns.paymentStatus] = payload.paymentStatus ?? 'UNPAID';
+  }
   if (columns.cashierId && payload.cashierId) data[columns.cashierId] = payload.cashierId;
   if (columns.paymentReference && payload.paymentReference) {
     data[columns.paymentReference] = payload.paymentReference;
@@ -290,7 +298,15 @@ export function getInsertPayloadForPosOrder(
   if (columns.orderType && payload.orderType) {
     data[columns.orderType] = payload.orderType;
   }
-
+  if (payload.customerName) data.customer_name = payload.customerName;
+  if (payload.orderNote) data.order_note = payload.orderNote;
+  if (payload.shiftId) data.shift_id = payload.shiftId;
+  if (payload.cashierName) data.charged_by_name = payload.cashierName;
+  if (payload.cashierId) data.charged_by = payload.cashierId;
+  if (payload.promoPercent != null) data.promo_percent = payload.promoPercent;
+  if (payload.status === 'COMPLETED') {
+    data.completed_at = new Date().toISOString();
+  }
   return data;
 }
 

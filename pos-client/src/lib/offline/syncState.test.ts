@@ -15,19 +15,19 @@ const baseState: SyncState = {
 
 describe('syncState labels', () => {
   it('shows synced when online with no queue', () => {
-    expect(getSyncBadgeLabel(baseState)).toBe('Online · Synced');
+    expect(getSyncBadgeLabel(baseState)).toBe('Mobile Sync · Online');
     expect(getSyncDotClass(baseState)).toBe('sync-dot');
   });
 
   it('shows offline with queued count', () => {
     const state: SyncState = { ...baseState, connection: 'offline', pendingCount: 2 };
-    expect(getSyncBadgeLabel(state)).toBe('Offline · 2 queued');
+    expect(getSyncBadgeLabel(state)).toBe('Mobile Sync · Offline · 2 queued');
     expect(getSyncDotClass(state)).toBe('sync-dot sync-dot--offline');
   });
 
   it('shows failed count when online', () => {
     const state: SyncState = { ...baseState, failedCount: 1 };
-    expect(getSyncBadgeLabel(state)).toBe('Online · 1 failed');
+    expect(getSyncBadgeLabel(state)).toBe('Mobile Sync · 1 failed');
     expect(getSyncDotClass(state)).toBe('sync-dot sync-dot--failed');
   });
 });

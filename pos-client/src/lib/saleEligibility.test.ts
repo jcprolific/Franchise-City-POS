@@ -1,30 +1,32 @@
 import { describe, it, expect } from 'vitest';
-import { isCountablePaidSale } from './saleEligibility';
+import { isCountablePaidSale, isOpenUnpaidOrder } from './saleEligibility';
 
-describe('isCountablePaidSale (Option A)', () => {
-  it('counts NEW + PAID immediately for franchisee sales', () => {
-    expect(isCountablePaidSale('NEW', 'PAID')).toBe(true);
-  });
-
-  it('counts PREPARING / READY / COMPLETED when PAID', () => {
-    expect(isCountablePaidSale('PREPARING', 'PAID')).toBe(true);
-    expect(isCountablePaidSale('READY', 'PAID')).toBe(true);
+describe('isCountablePaidSale', () => {
+  it('counts only COMPLETED + PAID', () => {
     expect(isCountablePaidSale('COMPLETED', 'PAID')).toBe(true);
   });
 
-  it('excludes VOIDED and REFUNDED kitchen statuses', () => {
+  it('excludes open unpaid NEW tickets', () => {
+    expect(isCountablePaidSale('NEW', 'UNPAID')).toBe(false);
+    expect(isCountablePaidSale('NEW', 'PAID')).toBe(false);
+  });
+
+  it('excludes kitchen prep statuses even when paid', () => {
+    expect(isCountablePaidSale('PREPARING', 'PAID')).toBe(false);
+    expect(isCountablePaidSale('READY', 'PAID')).toBe(false);
+  });
+
+  it('excludes VOIDED and REFUNDED', () => {
     expect(isCountablePaidSale('VOIDED', 'PAID')).toBe(false);
     expect(isCountablePaidSale('REFUNDED', 'PAID')).toBe(false);
-  });
-
-  it('excludes non-PAID payment statuses', () => {
-    expect(isCountablePaidSale('NEW', 'PENDING')).toBe(false);
     expect(isCountablePaidSale('COMPLETED', 'VOIDED')).toBe(false);
-    expect(isCountablePaidSale('NEW', 'REFUNDED')).toBe(false);
   });
+});
 
-  it('treats missing status as countable when payment is PAID', () => {
-    expect(isCountablePaidSale(null, 'PAID')).toBe(true);
-    expect(isCountablePaidSale(undefined, null)).toBe(true);
+describe('isOpenUnpaidOrder', () => {
+  it('detects NEW + UNPAID open tickets', () => {
+    expect(isOpenUnpaidOrder('NEW', 'UNPAID')).toBe(true);
+    expect(isOpenUnpaidOrder('NEW', 'PAID')).toBe(false);
+    expect(isOpenUnpaidOrder('COMPLETED', 'PAID')).toBe(false);
   });
 });

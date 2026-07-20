@@ -10,7 +10,8 @@ interface CustomizationModalProps {
     product: Product,
     variant: ProductVariant | null,
     ice: IceLevel,
-    addons: CartItemAddon[]
+    addons: CartItemAddon[],
+    options?: { freeUpsize?: boolean; freeAddons?: boolean }
   ) => void;
   onClose: () => void;
 }
@@ -29,6 +30,8 @@ export default function CustomizationModal({
   );
   const [iceLevel, setIceLevel] = useState<IceLevel>('NORMAL');
   const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
+  const [freeUpsize, setFreeUpsize] = useState(false);
+  const [freeAddons, setFreeAddons] = useState(false);
 
   const toggleAddon = (addonId: string) => {
     setSelectedAddons((prev) => {
@@ -44,13 +47,15 @@ export default function CustomizationModal({
 
   const itemTotal = useMemo(() => {
     let total = product.base_price;
-    if (selectedVariant) total += selectedVariant.additional_price;
-    selectedAddons.forEach((id) => {
-      const addon = addons.find((a) => a.id === id);
-      if (addon) total += addon.price;
-    });
+    if (selectedVariant && !freeUpsize) total += selectedVariant.additional_price;
+    if (!freeAddons) {
+      selectedAddons.forEach((id) => {
+        const addon = addons.find((a) => a.id === id);
+        if (addon) total += addon.price;
+      });
+    }
     return total;
-  }, [product, selectedVariant, selectedAddons, addons]);
+  }, [product, selectedVariant, selectedAddons, addons, freeUpsize, freeAddons]);
 
   const handleAdd = () => {
     const cartAddons: CartItemAddon[] = Array.from(selectedAddons)
@@ -60,7 +65,7 @@ export default function CustomizationModal({
       })
       .filter(Boolean) as CartItemAddon[];
 
-    onAddToCart(product, selectedVariant, iceLevel, cartAddons);
+    onAddToCart(product, selectedVariant, iceLevel, cartAddons, { freeUpsize, freeAddons });
   };
 
   return (
@@ -133,6 +138,26 @@ export default function CustomizationModal({
               </div>
             </div>
           )}
+
+          <div className="option-group">
+            <span className="option-group-label">Complimentary</span>
+            <div className="option-buttons">
+              <button
+                type="button"
+                className={`option-btn ${freeUpsize ? 'selected' : ''}`}
+                onClick={() => setFreeUpsize((v) => !v)}
+              >
+                Free Upsize
+              </button>
+              <button
+                type="button"
+                className={`option-btn ${freeAddons ? 'selected' : ''}`}
+                onClick={() => setFreeAddons((v) => !v)}
+              >
+                Free Add-ons
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="modal-footer">

@@ -62,7 +62,7 @@ export default function CheckoutModal({
           <div className="checkout-success">
             <div className="success-icon">✅</div>
             <div className="success-title">Order Complete!</div>
-            <div className="success-order-id">Order #{completedOrderNumber ?? orderNumber}</div>
+            <div className="success-order-id">Order #{String(completedOrderNumber ?? orderNumber).padStart(4, '0')}</div>
             {!isCash && (
               <div className="success-payment-method">Paid via {paymentMethod}</div>
             )}

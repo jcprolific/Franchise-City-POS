@@ -1,16 +1,25 @@
 /**
- * Option A: franchisee/HQ sales count paid punches immediately.
- * Kitchen workflow status is independent of revenue recognition.
+ * Revenue recognition: only completed, paid sales count.
+ * Open tickets stay NEW + UNPAID until Charge.
  */
 export function isCountablePaidSale(
   status: string | null | undefined,
   paymentStatus: string | null | undefined
 ): boolean {
-  const pay = String(paymentStatus ?? 'PAID').toUpperCase();
+  const pay = String(paymentStatus ?? '').toUpperCase();
   if (pay !== 'PAID') return false;
 
-  const kitchen = String(status ?? 'NEW').toUpperCase();
-  if (kitchen === 'VOIDED' || kitchen === 'REFUNDED') return false;
+  const orderStatus = String(status ?? '').toUpperCase();
+  if (orderStatus === 'VOIDED' || orderStatus === 'REFUNDED') return false;
 
-  return true;
+  return orderStatus === 'COMPLETED';
+}
+
+export function isOpenUnpaidOrder(
+  status: string | null | undefined,
+  paymentStatus: string | null | undefined
+): boolean {
+  const orderStatus = String(status ?? 'NEW').toUpperCase();
+  const pay = String(paymentStatus ?? 'UNPAID').toUpperCase();
+  return orderStatus === 'NEW' && pay === 'UNPAID';
 }

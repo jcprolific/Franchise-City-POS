@@ -96,7 +96,7 @@ export default function SupplyOrdersPage() {
     const next = nextSupplyStatus(order.status);
     if (!next) return;
     setUpdatingId(order.id);
-    const { error } = await updateSupplyOrderStatus(order.id, next);
+    const { error } = await updateSupplyOrderStatus(order.id, next, brand.dbBrandId);
     if (!error) {
       setOrders((prev) =>
         prev.map((o) => (o.id === order.id ? { ...o, status: next } : o))

@@ -4,20 +4,28 @@ import './Cart.css';
 
 interface CartProps {
   items: CartItem[];
-  orderNumber: number;
+  orderNumberLabel: string;
+  orderStarted: boolean;
   orderType: OrderType;
   discountType: DiscountType;
+  promoPercent: number;
   paymentMethod: PaymentMethod;
   subtotal: number;
   discountAmount: number;
   total: number;
   itemCount: number;
+  customerName: string;
+  orderNote: string;
+  onCustomerNameChange: (value: string) => void;
+  onOrderNoteChange: (value: string) => void;
+  onPromoPercentChange: (value: number) => void;
   onChangeQuantity: (itemId: string, delta: number) => void;
   onRemoveItem: (itemId: string) => void;
   onSetDiscount: (type: DiscountType) => void;
   onSetPayment: (method: PaymentMethod) => void;
   onSetOrderType: (type: OrderType) => void;
   onCheckout: () => void;
+  onStartOrder: () => void;
 }
 
 interface PaymentOption {
@@ -31,6 +39,7 @@ const discountOptions: { value: DiscountType; label: string }[] = [
   { value: 'SENIOR', label: 'Senior' },
   { value: 'PWD', label: 'PWD' },
   { value: 'PROMO', label: 'Promo' },
+  { value: 'FREE_DRINK', label: 'Free Drink' },
 ];
 
 const paymentOptions: PaymentOption[] = [
@@ -73,20 +82,28 @@ function formatPrice(value: number) {
 
 export default function Cart({
   items,
-  orderNumber,
+  orderNumberLabel,
+  orderStarted,
   orderType,
   discountType,
+  promoPercent,
   paymentMethod,
   subtotal,
   discountAmount,
   total,
   itemCount,
+  customerName,
+  orderNote,
+  onCustomerNameChange,
+  onOrderNoteChange,
+  onPromoPercentChange,
   onChangeQuantity,
   onRemoveItem,
   onSetDiscount,
   onSetPayment,
   onSetOrderType,
   onCheckout,
+  onStartOrder,
 }: CartProps) {
   const hasItems = items.length > 0;
 
@@ -96,27 +113,57 @@ export default function Cart({
         <header className="order-header">
           <div>
             <div className="order-eyebrow">Current Order</div>
-            <div className="order-number">#{orderNumber}</div>
+            <div className="order-number">#{orderNumberLabel}</div>
           </div>
-          <button
-            type="button"
-            className={`order-type-toggle ${orderType === 'DINE_IN' ? 'is-dine-in' : 'is-take-out'}`}
-            onClick={() => onSetOrderType(orderType === 'DINE_IN' ? 'TAKE_OUT' : 'DINE_IN')}
-          >
-            {orderType === 'DINE_IN' ? 'Dine-in' : 'Take-out'}
-          </button>
+          {orderStarted ? (
+            <button
+              type="button"
+              className={`order-type-toggle ${orderType === 'DINE_IN' ? 'is-dine-in' : 'is-take-out'}`}
+              onClick={() => onSetOrderType(orderType === 'DINE_IN' ? 'TAKE_OUT' : 'DINE_IN')}
+            >
+              {orderType === 'DINE_IN' ? 'Dine-in' : 'Take-out'}
+            </button>
+          ) : (
+            <button type="button" className="order-start-inline" onClick={onStartOrder}>
+              Start Order
+            </button>
+          )}
         </header>
 
+        {orderStarted && (
+          <div className="order-customer-fields">
+            <input
+              type="text"
+              className="order-customer-input"
+              placeholder="Customer name (optional)"
+              value={customerName}
+              onChange={(e) => onCustomerNameChange(e.target.value)}
+              aria-label="Customer name"
+            />
+            <input
+              type="text"
+              className="order-customer-input"
+              placeholder="Description / notes"
+              value={orderNote}
+              onChange={(e) => onOrderNoteChange(e.target.value)}
+              aria-label="Order description"
+            />
+          </div>
+        )}
+
         <div className="order-items" id="cart-items-list">
-          {!hasItems ? (
+          {!orderStarted ? (
+            <div className="order-empty">
+              <div className="order-empty-title">No active order</div>
+              <div className="order-empty-subtitle">Start order 0001 to begin taking items</div>
+            </div>
+          ) : !hasItems ? (
             <div className="order-empty">
               <div className="order-empty-icon" aria-hidden="true">
                 <span>🍟</span>
               </div>
               <div className="order-empty-title">No items yet</div>
-              <div className="order-empty-subtitle">
-                Tap menu items to add them here
-              </div>
+              <div className="order-empty-subtitle">Tap menu items to add them here</div>
             </div>
           ) : (
             <ul className="order-item-list">
@@ -126,6 +173,8 @@ export default function Cart({
                     <div className="order-item-name">{item.product.name}</div>
                     <div className="order-item-meta">
                       {item.variant && <span>{item.variant.name}</span>}
+                      {item.freeUpsize && <span className="order-item-flag">Free Upsize</span>}
+                      {item.freeAddons && <span className="order-item-flag">Free Add-ons</span>}
                     </div>
                     {item.addons.length > 0 && (
                       <div className="order-item-addons">
@@ -179,11 +228,24 @@ export default function Cart({
                   aria-checked={discountType === d.value}
                   className={`order-discount-pill ${discountType === d.value ? 'active' : ''}`}
                   onClick={() => onSetDiscount(d.value)}
+                  disabled={!orderStarted}
                 >
                   {d.label}
                 </button>
               ))}
             </div>
+            {discountType === 'PROMO' && orderStarted && (
+              <label className="order-promo-field">
+                <span>Promo %</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={promoPercent}
+                  onChange={(e) => onPromoPercentChange(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                />
+              </label>
+            )}
           </div>
 
           <div className="order-totals">
@@ -212,6 +274,7 @@ export default function Cart({
                 aria-checked={paymentMethod === p.value}
                 className={`order-payment-option ${paymentMethod === p.value ? 'active' : ''}`}
                 onClick={() => onSetPayment(p.value)}
+                disabled={!orderStarted}
               >
                 <span className="order-payment-icon">{p.icon}</span>
                 <span className="order-payment-label">{p.label}</span>
@@ -224,7 +287,7 @@ export default function Cart({
             className="order-charge"
             id="checkout-btn"
             onClick={onCheckout}
-            disabled={!hasItems}
+            disabled={!hasItems || !orderStarted}
           >
             Charge {formatPrice(total)}
           </button>

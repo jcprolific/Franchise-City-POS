@@ -1,3 +1,4 @@
+import { receiveSupplyOrderToInventory } from './supplyReceiveService';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 export type SupplyOrderStatus =
@@ -138,7 +139,6 @@ export async function placeSupplyOrder(
 
   const { error: itemsError } = await supabase.from('supply_order_item').insert(itemRows);
   if (itemsError) {
-    // Roll back the header so we don't leave an empty order behind.
     await supabase.from('supply_order').delete().eq('id', orderId);
     return { referenceNo: null, error: itemsError.message };
   }
@@ -228,12 +228,21 @@ export async function fetchSupplyOrders(
 
 export async function updateSupplyOrderStatus(
   orderId: string,
-  status: SupplyOrderStatus
+  status: SupplyOrderStatus,
+  brandId?: string
 ): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured()) return { error: 'not-configured' };
   const { error } = await supabase
     .from('supply_order')
     .update({ status })
     .eq('id', orderId);
-  return { error: error ? error.message : null };
+
+  if (error) return { error: error.message };
+
+  if (status === 'delivered') {
+    const receive = await receiveSupplyOrderToInventory(orderId, brandId);
+    if (receive.error) return { error: receive.error };
+  }
+
+  return { error: null };
 }

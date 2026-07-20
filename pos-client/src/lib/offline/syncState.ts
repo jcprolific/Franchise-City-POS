@@ -40,20 +40,20 @@ export function subscribeSyncState(listener: SyncListener): () => void {
 export function getSyncBadgeLabel(state: SyncState): string {
   if (state.connection === 'offline') {
     if (state.pendingCount > 0) {
-      return `Offline · ${state.pendingCount} queued`;
+      return `Mobile Sync · Offline · ${state.pendingCount} queued`;
     }
-    return 'Offline';
+    return 'Mobile Sync · Offline';
   }
   if (state.connection === 'syncing') {
-    return 'Syncing…';
+    return 'Mobile Sync · Syncing…';
   }
   if (state.failedCount > 0) {
-    return `Online · ${state.failedCount} failed`;
+    return `Mobile Sync · ${state.failedCount} failed`;
   }
   if (state.pendingCount > 0) {
-    return `Online · ${state.pendingCount} pending`;
+    return `Mobile Sync · ${state.pendingCount} pending`;
   }
-  return 'Online · Synced';
+  return 'Mobile Sync · Online';
 }
 
 export function getSyncDotClass(state: SyncState): string {

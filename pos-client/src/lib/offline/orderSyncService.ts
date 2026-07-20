@@ -2,6 +2,7 @@ import { isSupabaseConfigured } from '../supabase';
 import { logAuditEvent } from '../auditLogService';
 import { deductInventoryForOrder } from '../recipeDeductionService';
 import { insertPosOrderWithItems } from '../posOrderItemService';
+import { completeOpenPosOrderFromQueue } from '../openOrderService';
 import {
   enqueueOrder,
   listPendingOrders,
@@ -40,11 +41,46 @@ async function syncSingleOrder(order: QueuedOrder): Promise<boolean> {
 
   await updateQueuedOrder(order.localId, { status: 'syncing' });
 
-  const header = {
+  const header: Record<string, unknown> = {
     ...order.payload.header,
     client_order_id: order.clientOrderId,
     synced_at: new Date().toISOString(),
   };
+
+  const openOrderId = header.open_order_id ? String(header.open_order_id) : null;
+
+  if (openOrderId) {
+    const { error } = await completeOpenPosOrderFromQueue(
+      openOrderId,
+      header,
+      order.payload.cartItems
+    );
+    if (error) {
+      const retryCount = order.retryCount + 1;
+      await updateQueuedOrder(order.localId, {
+        status: retryCount >= MAX_RETRIES ? 'failed' : 'pending',
+        retryCount,
+        lastError: error,
+      });
+      return false;
+    }
+
+    await updateQueuedOrder(order.localId, {
+      status: 'synced',
+      remoteOrderId: openOrderId,
+      lastError: undefined,
+    });
+
+    void logAuditEvent({
+      action: 'order_synced',
+      entityType: 'pos_order',
+      entityId: openOrderId,
+      afterData: { clientOrderId: order.clientOrderId, localId: order.localId, mode: 'complete_open' },
+      metadata: { source: 'offline_queue' },
+    });
+
+    return true;
+  }
 
   const { orderId, error } = await insertPosOrderWithItems(header, order.payload.cartItems, {
     clientOrderId: order.clientOrderId,
