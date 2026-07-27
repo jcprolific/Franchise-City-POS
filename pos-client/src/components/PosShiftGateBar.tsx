@@ -41,7 +41,7 @@ export default function PosShiftGateBar({ cashierName, onTimeIn }: PosShiftGateB
       <div className="pos-shift-gate-main">
         <div className="pos-shift-gate-copy">
           <strong>Time in</strong>
-          <span>Welcome, {cashierName}. Set petty cash and beginning cups to start selling.</span>
+          <span>Welcome, {cashierName}. Set petty cash and beginning cups, then Time In — after that, tap + to add drinks.</span>
         </div>
         <label className="pos-shift-gate-field">
           <span>Petty cash (₱)</span>

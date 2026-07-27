@@ -155,7 +155,9 @@ export default function Cart({
           {!orderStarted ? (
             <div className="order-empty">
               <div className="order-empty-title">No active order</div>
-              <div className="order-empty-subtitle">Start order 0001 to begin taking items</div>
+              <div className="order-empty-subtitle">
+                Tap Start Order, or tap + on a drink — order starts automatically after Time In
+              </div>
             </div>
           ) : !hasItems ? (
             <div className="order-empty">
