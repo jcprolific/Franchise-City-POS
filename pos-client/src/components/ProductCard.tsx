@@ -5,7 +5,7 @@ interface ProductCardProps {
   product: Product;
   variants: ProductVariant[];
   index?: number;
-  onAdd: (product: Product, variant: ProductVariant | null) => void;
+  onAdd: (product: Product, variant: ProductVariant | null) => void | Promise<void>;
 }
 
 function formatPrice(value: number) {
@@ -78,7 +78,11 @@ export default function ProductCard({ product, variants, index = 0, onAdd }: Pro
           <button
             type="button"
             className="product-card-add"
-            onClick={() => onAdd(product, selectedVariant)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              void onAdd(product, selectedVariant);
+            }}
             aria-label={`Add ${product.name} to order`}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">

@@ -8,7 +8,7 @@ interface ProductGridProps {
   categoryName: string;
   isSearching?: boolean;
   emptyIcon?: string;
-  onAddProduct: (product: Product, variant: ProductVariant | null) => void;
+  onAddProduct: (product: Product, variant: ProductVariant | null) => void | Promise<void>;
 }
 
 export default function ProductGrid({

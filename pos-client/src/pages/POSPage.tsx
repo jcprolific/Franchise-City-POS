@@ -106,10 +106,16 @@ export default function POSPage() {
   const [orderNote, setOrderNote] = useState('');
   const [openOrderSession, setOpenOrderSession] = useState<OpenOrderSession | null>(null);
   const openOrderSessionRef = useRef<OpenOrderSession | null>(null);
+  const orderStartedRef = useRef(false);
+  const startingOrderRef = useRef(false);
 
   useEffect(() => {
     openOrderSessionRef.current = openOrderSession;
   }, [openOrderSession]);
+
+  useEffect(() => {
+    orderStartedRef.current = orderStarted;
+  }, [orderStarted]);
 
   useEffect(() => {
     preloadPosOrderColumns();
@@ -189,59 +195,92 @@ export default function POSPage() {
     });
   }, []);
 
-  const handleStartOrder = useCallback(async () => {
-    if (!hasActiveShift) return;
-    try {
-      const [next, userResult] = await Promise.all([
-        getNextShiftOrderNumber(),
-        supabase.auth.getUser(),
-      ]);
-      setOrderNumber(next);
-      setOrderStarted(true);
-      setCartItems([]);
-      setCustomerName('');
-      setOrderNote('');
-      setDiscountType('NONE');
-      setPromoPercent(10);
-      setPaymentMethod('CASH');
-      setOrderType('DINE_IN');
-
-      const { session, error } = await createOpenPosOrder({
-        brandId: brand.dbBrandId,
-        brandName: brand.name,
-        cashierId: userResult.data.user?.id,
-        cashierName,
-        orderNumber: next,
-        orderType: 'DINE_IN',
-      });
-
-      if (error) {
-        console.warn('Open ticket sync failed:', error);
+  const beginOrder = useCallback(
+    async (resetCart: boolean): Promise<boolean> => {
+      if (!hasActiveShift) {
+        window.alert(
+          'Time in muna before adding drinks.\n\nFill petty cash + beginning cups below, then tap Time In.'
+        );
+        document
+          .querySelector('.pos-shift-gate')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
       }
-      setOpenOrderSession(session);
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Could not start order.');
-    }
-  }, [brand.dbBrandId, brand.name, cashierName, hasActiveShift]);
 
-  const handleAddProduct = useCallback((product: Product, variant: ProductVariant | null) => {
-    if (!hasActiveShift || !orderStarted) return;
-    if (product.customizable) {
-      setCustomizingProduct(product);
-      return;
-    }
+      if (orderStartedRef.current && !resetCart) return true;
+      if (startingOrderRef.current) return false;
 
-    const lineTotal = product.base_price + (variant?.additional_price ?? 0);
-    addCartItem({
-      id: `cart-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      product,
-      variant,
-      quantity: 1,
-      ice_level: 'NONE',
-      addons: [],
-      line_total: lineTotal,
-    });
-  }, [addCartItem, hasActiveShift, orderStarted]);
+      startingOrderRef.current = true;
+      try {
+        const [next, userResult] = await Promise.all([
+          getNextShiftOrderNumber(),
+          supabase.auth.getUser(),
+        ]);
+        setOrderNumber(next);
+        setOrderStarted(true);
+        orderStartedRef.current = true;
+        if (resetCart) {
+          setCartItems([]);
+          setCustomerName('');
+          setOrderNote('');
+          setDiscountType('NONE');
+          setPromoPercent(10);
+          setPaymentMethod('CASH');
+          setOrderType('DINE_IN');
+        }
+
+        const { session, error } = await createOpenPosOrder({
+          brandId: brand.dbBrandId,
+          brandName: brand.name,
+          cashierId: userResult.data.user?.id,
+          cashierName,
+          orderNumber: next,
+          orderType: 'DINE_IN',
+        });
+
+        if (error) {
+          console.warn('Open ticket sync failed:', error);
+        }
+        setOpenOrderSession(session);
+        return true;
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : 'Could not start order.');
+        return false;
+      } finally {
+        startingOrderRef.current = false;
+      }
+    },
+    [brand.dbBrandId, brand.name, cashierName, hasActiveShift]
+  );
+
+  const handleStartOrder = useCallback(() => {
+    void beginOrder(true);
+  }, [beginOrder]);
+
+  const handleAddProduct = useCallback(
+    async (product: Product, variant: ProductVariant | null) => {
+      // Auto-start order on + tap so the button never feels "dead".
+      const ready = await beginOrder(false);
+      if (!ready) return;
+
+      if (product.customizable) {
+        setCustomizingProduct(product);
+        return;
+      }
+
+      const lineTotal = product.base_price + (variant?.additional_price ?? 0);
+      addCartItem({
+        id: `cart-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        product,
+        variant,
+        quantity: 1,
+        ice_level: 'NONE',
+        addons: [],
+        line_total: lineTotal,
+      });
+    },
+    [addCartItem, beginOrder]
+  );
 
   const handleAddCustomized = useCallback((
     product: Product,
@@ -305,6 +344,7 @@ export default function POSPage() {
     setCustomerName('');
     setOrderNote('');
     setOrderStarted(false);
+    orderStartedRef.current = false;
     setOrderNumber(null);
     setOpenOrderSession(null);
   }, []);
@@ -631,7 +671,7 @@ export default function POSPage() {
           onSetPayment={setPaymentMethod}
           onSetOrderType={setOrderType}
           onCheckout={handleCheckout}
-          onStartOrder={() => void handleStartOrder()}
+          onStartOrder={handleStartOrder}
         />
       </div>
 
