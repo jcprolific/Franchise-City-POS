@@ -136,7 +136,7 @@
   .pos-search {
     position: sticky;
     top: var(--pos-sticky-offset, 90px);
-    z-index: 40;
+    z-index: 5;
     background: var(--pos-bg);
     padding: 4px 0 8px;
     margin: 0 -14px;
@@ -147,7 +147,7 @@
   .category-bar {
     position: sticky;
     top: calc(var(--pos-sticky-offset, 90px) + 56px);
-    z-index: 39;
+    z-index: 4;
     background: var(--pos-bg);
     padding-bottom: 8px;
     margin: 0 -14px 4px;

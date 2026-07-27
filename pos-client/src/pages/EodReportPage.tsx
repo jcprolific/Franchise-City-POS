@@ -26,6 +26,7 @@ import {
   type EodLineRow,
   type EodReport,
 } from '../lib/eodReportService';
+import { isBarista } from '../lib/permissions';
 import type { PosOutletContext } from '../App';
 import './EodReportPage.css';
 
@@ -143,7 +144,7 @@ function LineSection({
 
 export default function EodReportPage() {
   const { brand } = useBrand();
-  const { userName } = useOutletContext<PosOutletContext>();
+  const { userName, role } = useOutletContext<PosOutletContext>();
   const [branch, setBranch] = useState<BranchRef>(() => getCurrentBranch());
   const [report, setReport] = useState<EodReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,12 +158,22 @@ export default function EodReportPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await loadEodReport({
+      let data = await loadEodReport({
         brandId: brand.dbBrandId,
         branchId: branch.id,
         branchName: branch.name,
         brand,
       });
+      // Drafts always pull latest POS cup counts on open.
+      if (data.status === 'draft') {
+        data = await refreshEodFromPos({
+          brandId: brand.dbBrandId,
+          branchId: branch.id,
+          brand,
+          reportDate: data.reportDate,
+          existing: data,
+        });
+      }
       setReport(data);
     } catch {
       setError('Could not load EOD report.');
@@ -183,10 +194,13 @@ export default function EodReportPage() {
 
   const totals = useMemo(() => {
     if (!report) return null;
-    return computeEodTotals(report.reportData, report.yesterdayBalance, report.gcashPayment);
+    return computeEodTotals(report.reportData, 0, report.gcashPayment);
   }, [report]);
 
-  const readOnly = report?.status === 'submitted';
+  // Drink/addon qty always locked from POS. After submit, barista is view-only;
+  // franchisee/HQ (and other non-barista roles) may correct.
+  const posQtyLocked = true;
+  const readOnly = report?.status === 'submitted' && isBarista(role);
 
   const updateReportData = (updater: (prev: EodReport) => EodReport) => {
     setReport((prev) => (prev ? updater(prev) : prev));
@@ -264,7 +278,7 @@ export default function EodReportPage() {
         existing: report,
       });
       setReport(refreshed);
-      setMessage('Auto-filled from POS orders.');
+      setMessage('Refreshed cup counts from POS orders.');
     } catch {
       setError('Could not refresh from POS.');
     } finally {
@@ -353,7 +367,7 @@ export default function EodReportPage() {
                 disabled={saving}
               >
                 <RefreshCw size={14} className={saving ? 'eod-spin' : ''} />
-                <span className="eod-btn-label">Auto-fill from POS</span>
+                <span className="eod-btn-label">Refresh from POS</span>
               </button>
             )}
             <button type="button" className="eod-btn eod-btn--ghost" onClick={handlePrint}>
@@ -373,10 +387,18 @@ export default function EodReportPage() {
             {error}
           </div>
         )}
-        {readOnly && (
+        {report?.status === 'submitted' && readOnly && (
           <div className="eod-alert eod-alert--info no-print">
             Submitted na ang report para sa araw na ito
             {report.submittedBy ? ` (ni ${report.submittedBy})` : ''}. View-only na ito.
+            Nakapasok na sa HQ inbox.
+          </div>
+        )}
+        {report?.status === 'submitted' && !readOnly && (
+          <div className="eod-alert eod-alert--info no-print">
+            Submitted na ito sa HQ
+            {report.submittedBy ? ` (ni ${report.submittedBy})` : ''}. Pwede mong i-correct ang
+            cash / expenses — drink counts galing pa rin sa POS.
           </div>
         )}
 
@@ -395,9 +417,9 @@ export default function EodReportPage() {
               step="1"
               icon={<CupSoda size={16} />}
               title="Main Sizes"
-              subtitle="Regular drinks per cup size"
+              subtitle="Auto from POS orders (locked)"
               rows={report.reportData.mainSizes}
-              readOnly={readOnly}
+              readOnly={posQtyLocked || readOnly}
               onQtyChange={(key, qty) => handleLineQty('mainSizes', key, qty)}
             />
 
@@ -405,9 +427,9 @@ export default function EodReportPage() {
               step="2"
               icon={<Coffee size={16} />}
               title="Special Flavors"
-              subtitle="Premium and special series"
+              subtitle="Auto from POS orders (locked)"
               rows={report.reportData.specialFlavors}
-              readOnly={readOnly}
+              readOnly={posQtyLocked || readOnly}
               onQtyChange={(key, qty) => handleLineQty('specialFlavors', key, qty)}
             />
 
@@ -415,9 +437,9 @@ export default function EodReportPage() {
               step="3"
               icon={<IceCream size={16} />}
               title="Frappe"
-              subtitle="Blended frappe series"
+              subtitle="Auto from POS orders (locked)"
               rows={report.reportData.frappe}
-              readOnly={readOnly}
+              readOnly={posQtyLocked || readOnly}
               onQtyChange={(key, qty) => handleLineQty('frappe', key, qty)}
             />
 
@@ -452,9 +474,9 @@ export default function EodReportPage() {
               step="5"
               icon={<Plus size={16} />}
               title="Add-Ons"
-              subtitle="Pearls, cream cheese, espresso shots…"
+              subtitle="Auto from POS orders (locked)"
               rows={report.reportData.addons}
-              readOnly={readOnly}
+              readOnly={posQtyLocked || readOnly}
               onQtyChange={(key, qty) => handleLineQty('addons', key, qty)}
             />
 
@@ -596,26 +618,6 @@ export default function EodReportPage() {
                   <span>Cash on hand (today)</span>
                   <strong>{peso(totals.cashOnHand)}</strong>
                 </div>
-                <label className="eod-summary-input">
-                  <span>+ Yesterday&apos;s balance</span>
-                  <div className="eod-peso-input">
-                    <span>₱</span>
-                    <input
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      placeholder="0"
-                      readOnly={readOnly}
-                      value={report.yesterdayBalance || ''}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) =>
-                        setReport((prev) =>
-                          prev ? { ...prev, yesterdayBalance: Number(e.target.value) || 0 } : prev
-                        )
-                      }
-                    />
-                  </div>
-                </label>
               </div>
 
               <div className="eod-grand-total">
@@ -625,14 +627,16 @@ export default function EodReportPage() {
 
               {!readOnly && (
                 <div className="eod-summary-actions no-print">
-                  <button
-                    type="button"
-                    className="eod-btn eod-btn--ghost eod-btn--block"
-                    onClick={() => void persist('draft')}
-                    disabled={saving}
-                  >
-                    Save Draft
-                  </button>
+                  {report.status !== 'submitted' && (
+                    <button
+                      type="button"
+                      className="eod-btn eod-btn--ghost eod-btn--block"
+                      onClick={() => void persist('draft')}
+                      disabled={saving}
+                    >
+                      Save Draft
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="eod-btn eod-btn--primary eod-btn--block"
@@ -640,7 +644,11 @@ export default function EodReportPage() {
                     disabled={saving}
                   >
                     <Send size={14} />
-                    {saving ? 'Saving…' : 'Submit EOD Report'}
+                    {saving
+                      ? 'Saving…'
+                      : report.status === 'submitted'
+                        ? 'Save Corrections'
+                        : 'Submit EOD Report'}
                   </button>
                 </div>
               )}
@@ -669,7 +677,7 @@ export default function EodReportPage() {
               disabled={saving}
             >
               <Send size={14} />
-              Submit
+              {report.status === 'submitted' ? 'Save' : 'Submit'}
             </button>
           </div>
         )}

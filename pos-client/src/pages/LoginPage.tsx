@@ -137,10 +137,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setPinError('');
   };
 
-  const handleGuestEntry = () => {
-    onLogin('guest', 'Guest', 'pos');
-  };
-
   const handleHqAccessClick = () => {
     setTargetArea('hq');
     setActiveTab('pin');
@@ -309,21 +305,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </div>
         )}
 
-        <div className="login-divider">
-          <div className="login-divider-line" />
-          <span className="login-divider-text">or</span>
-          <div className="login-divider-line" />
-        </div>
-
-        <div className="login-guest-section">
-          <button
-            className="login-guest-btn"
-            onClick={handleGuestEntry}
-            id="guest-login-btn"
-          >
-            <span className="login-guest-icon">👤</span>
-            Enter as Guest
-          </button>
+        <div className="login-hq-section">
           <button
             className="login-hq-link"
             type="button"

@@ -1,6 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import {
-  portalAnnouncements,
   portalDownloadForms,
   portalManualSections,
   portalTrainingVideos,
@@ -70,19 +69,6 @@ function mapDocument(row: Record<string, unknown>): PortalDocument {
   };
 }
 
-function fallbackAnnouncements(): PortalAnnouncement[] {
-  return portalAnnouncements.map((a) => ({
-    id: a.id,
-    title: a.title,
-    body: a.body,
-    tag: a.tag.toLowerCase() as AnnouncementTag,
-    pinned: Boolean(a.pinned),
-    requiresAck: a.tag.toLowerCase() === 'campaign' || a.tag.toLowerCase() === 'promo',
-    publishedAt: `${a.date}T00:00:00Z`,
-    source: 'fallback' as const,
-  }));
-}
-
 function fallbackDocuments(type: PortalDocType): PortalDocument[] {
   if (type === 'manual') {
     return portalManualSections.flatMap((sec) =>
@@ -135,7 +121,7 @@ export async function fetchAnnouncements(
   brandId: string,
   tag?: AnnouncementTag
 ): Promise<PortalAnnouncement[]> {
-  if (!isSupabaseConfigured()) return filterByTag(fallbackAnnouncements(), tag);
+  if (!isSupabaseConfigured()) return [];
 
   let query = supabase
     .from('portal_announcement')
@@ -147,8 +133,14 @@ export async function fetchAnnouncements(
   if (tag) query = query.eq('tag', tag);
 
   const { data, error } = await query;
-  if (error || !data?.length) return filterByTag(fallbackAnnouncements(), tag);
-  return filterByTag((data as Record<string, unknown>[]).map(mapAnnouncement), tag);
+  if (error || !data?.length) return [];
+
+  const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000; // 60 days
+  const live = (data as Record<string, unknown>[])
+    .map(mapAnnouncement)
+    .filter((a) => a.pinned || new Date(a.publishedAt).getTime() >= cutoff);
+
+  return filterByTag(live, tag);
 }
 
 function filterByTag(items: PortalAnnouncement[], tag?: AnnouncementTag) {

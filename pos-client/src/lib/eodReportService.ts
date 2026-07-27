@@ -244,7 +244,7 @@ function mapDbRow(row: Record<string, unknown>): EodReport {
   };
 }
 
-export function computeEodTotals(data: EodReportData, yesterdayBalance = 0, gcashPayment = 0) {
+export function computeEodTotals(data: EodReportData, _yesterdayBalance = 0, gcashPayment = 0) {
   const drinkRows = [...data.mainSizes, ...data.specialFlavors, ...data.frappe];
   const drinksSubtotal = drinkRows.reduce((sum, r) => sum + r.qty * r.price, 0);
   const addonsTotal = data.addons.reduce((sum, r) => sum + r.qty * r.price, 0);
@@ -252,7 +252,8 @@ export function computeEodTotals(data: EodReportData, yesterdayBalance = 0, gcas
   const expensesTotal = data.expenses.reduce((sum, e) => sum + e.amount, 0);
   const totalNetSales = totalSales - expensesTotal;
   const cashOnHand = totalNetSales - gcashPayment;
-  const totalCashOnHand = cashOnHand + yesterdayBalance;
+  // Yesterday's balance removed from partner EOD flow — total cash = today's cash on hand.
+  const totalCashOnHand = cashOnHand;
   const totalCupsSold =
     drinkRows.reduce((sum, r) => sum + r.qty, 0) +
     data.freeUpsize +
@@ -366,26 +367,6 @@ async function fetchPosDayData(
   return { reportData, posTotalSales, gcashPayment };
 }
 
-async function fetchYesterdayBalance(
-  branchId: string,
-  reportDate: string
-): Promise<number> {
-  if (!isSupabaseConfigured()) return 0;
-
-  const d = new Date(`${reportDate}T12:00:00`);
-  d.setDate(d.getDate() - 1);
-  const prevDate = getManilaIsoDateKey(d);
-
-  const { data } = await supabase
-    .from('branch_daily_report')
-    .select('total_cash_on_hand')
-    .eq('branch_id', branchId)
-    .eq('report_date', prevDate)
-    .maybeSingle();
-
-  return data ? toNum((data as { total_cash_on_hand: number }).total_cash_on_hand) : 0;
-}
-
 export async function loadEodReport(input: {
   brandId: string;
   branchId: string;
@@ -409,12 +390,14 @@ export async function loadEodReport(input: {
     }
   }
 
-  const [{ reportData, posTotalSales, gcashPayment }, yesterdayBalance] = await Promise.all([
-    fetchPosDayData(input.brandId, input.branchId, reportDate, input.brand),
-    fetchYesterdayBalance(input.branchId, reportDate),
-  ]);
+  const { reportData, posTotalSales, gcashPayment } = await fetchPosDayData(
+    input.brandId,
+    input.branchId,
+    reportDate,
+    input.brand
+  );
 
-  const totals = computeEodTotals(reportData, yesterdayBalance, gcashPayment);
+  const totals = computeEodTotals(reportData, 0, gcashPayment);
 
   return {
     id: '',
@@ -430,7 +413,7 @@ export async function loadEodReport(input: {
     totalNetSales: totals.totalNetSales,
     gcashPayment,
     cashOnHand: totals.cashOnHand,
-    yesterdayBalance,
+    yesterdayBalance: 0,
     totalCashOnHand: totals.totalCashOnHand,
     totalCupsSold: totals.totalCupsSold,
     posTotalSales,
@@ -451,7 +434,7 @@ export async function saveEodReport(input: {
 
   const totals = computeEodTotals(
     input.report.reportData,
-    input.report.yesterdayBalance,
+    0,
     input.report.gcashPayment
   );
 
@@ -468,7 +451,7 @@ export async function saveEodReport(input: {
     total_net_sales: totals.totalNetSales,
     gcash_payment: input.report.gcashPayment,
     cash_on_hand: totals.cashOnHand,
-    yesterday_balance: input.report.yesterdayBalance,
+    yesterday_balance: 0,
     total_cash_on_hand: totals.totalCashOnHand,
     total_cups_sold: totals.totalCupsSold,
     pos_total_sales: input.report.posTotalSales,
@@ -553,12 +536,12 @@ export async function refreshEodFromPos(input: {
   reportDate: string;
   existing: EodReport;
 }): Promise<EodReport> {
-  const [{ reportData, posTotalSales, gcashPayment }, yesterdayBalance] = await Promise.all([
-    fetchPosDayData(input.brandId, input.branchId, input.reportDate, input.brand),
-    input.existing.yesterdayBalance > 0
-      ? Promise.resolve(input.existing.yesterdayBalance)
-      : fetchYesterdayBalance(input.branchId, input.reportDate),
-  ]);
+  const { reportData, posTotalSales, gcashPayment } = await fetchPosDayData(
+    input.brandId,
+    input.branchId,
+    input.reportDate,
+    input.brand
+  );
 
   const merged: EodReport = {
     ...input.existing,
@@ -573,10 +556,10 @@ export async function refreshEodFromPos(input: {
     },
     gcashPayment,
     posTotalSales,
-    yesterdayBalance,
+    yesterdayBalance: 0,
   };
 
-  const totals = computeEodTotals(merged.reportData, merged.yesterdayBalance, merged.gcashPayment);
+  const totals = computeEodTotals(merged.reportData, 0, merged.gcashPayment);
   return {
     ...merged,
     drinksSubtotal: totals.drinksSubtotal,

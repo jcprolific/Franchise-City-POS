@@ -272,9 +272,61 @@
 
 /* ---------- Quick actions ---------- */
 
+.portal-hub-stock-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  text-decoration: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  color: inherit;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.portal-hub-stock-summary:hover {
+  border-color: var(--portal-accent-sales);
+  box-shadow: 0 8px 20px rgba(42, 171, 111, 0.14);
+}
+
+.portal-hub-stock-summary-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--portal-accent-sales-bg);
+  color: var(--portal-accent-sales);
+}
+
+.portal-hub-stock-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.portal-hub-stock-summary-text strong {
+  font-family: var(--portal-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.portal-hub-stock-summary-text span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .portal-hub-quick {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: clamp(22px, 3.5vw, 32px);
 }

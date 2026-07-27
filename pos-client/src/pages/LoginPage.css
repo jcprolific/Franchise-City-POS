@@ -10,14 +10,19 @@
   --login-font-display: 'Plus Jakarta Sans', var(--font-family);
 
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 16px;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(24px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
   background: var(--login-bg);
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .login-page::before,
@@ -362,46 +367,11 @@
   white-space: nowrap;
 }
 
-/* ---- Guest Section ---- */
-.login-guest-section {
-  padding: var(--space-lg) var(--space-2xl) var(--space-2xl);
-}
-
-.login-guest-btn {
-  width: 100%;
-  padding: var(--space-lg);
-  background: var(--login-surface-muted);
-  border: 1.5px solid var(--login-border);
-  border-radius: 12px;
-  color: var(--login-text-soft);
-  font-size: var(--font-base);
-  font-weight: 600;
-  font-family: var(--font-family);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-}
-
-.login-guest-btn:hover {
-  background: var(--login-surface);
-  border-color: var(--pc-green);
-  color: var(--pc-green-deep);
-  box-shadow: 0 0 0 3px rgba(0, 141, 54, 0.08);
-}
-
-.login-guest-btn:active {
-  transform: scale(0.98);
-}
-
-.login-guest-icon {
-  font-size: 18px;
+.login-hq-section {
+  padding: var(--space-md) var(--space-2xl) var(--space-lg);
 }
 
 .login-hq-link {
-  margin-top: var(--space-md);
   width: 100%;
   background: none;
   border: none;
@@ -539,23 +509,43 @@
   animation: fadeIn var(--transition-fast);
 }
 
-@media (max-width: 480px) {
+/* Tablet portrait + phones: keep Login CTA visible (scroll instead of clip) */
+@media (max-width: 900px), (max-height: 900px) {
+  .login-page {
+    justify-content: flex-start;
+    padding-top: max(20px, env(safe-area-inset-top, 0px));
+  }
+
+  .login-card {
+    width: min(420px, 100%);
+    max-width: 100%;
+    flex-shrink: 0;
+  }
+
   .login-brand {
     padding: var(--space-2xl) var(--space-lg) var(--space-lg);
   }
 
   .login-logo-image {
-    width: min(210px, 72vw);
+    width: min(200px, 70vw);
   }
 
   .login-form,
   .login-pin-section,
-  .login-guest-section {
+  .login-hq-section {
     padding-left: var(--space-lg);
     padding-right: var(--space-lg);
   }
 
   .login-tabs {
     padding: 0 var(--space-lg);
+  }
+
+  .login-btn {
+    min-height: 48px;
+  }
+
+  .pin-key {
+    height: 52px;
   }
 }

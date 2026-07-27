@@ -27,6 +27,7 @@ export type Capability =
   | 'inventory'
   | 'inventory_view'
   | 'dashboard'
+  | 'eod'
   | 'promotions'
   | 'hq';
 
@@ -41,6 +42,7 @@ const ALL_CAPABILITIES: Capability[] = [
   'orders',
   'inventory',
   'dashboard',
+  'eod',
   'promotions',
   'hq',
 ];
@@ -49,8 +51,8 @@ const ROLE_CAPABILITIES: Record<UserRole, Capability[] | '*'> = {
   hq_admin: '*',
   /** Franchisee (owner) — full franchisee portal + branch operations. */
   franchise_owner: '*',
-  /** Barista — POS, Orders, and view-only Inventory. No portal, dashboard, or stock edits. */
-  barista: ['pos', 'orders', 'inventory_view'],
+  /** Barista — POS, Orders, view-only Inventory, and EOD submit to HQ. */
+  barista: ['pos', 'orders', 'inventory_view', 'eod'],
   manager: [
     'portal',
     'portal_reports',
@@ -60,6 +62,7 @@ const ROLE_CAPABILITIES: Record<UserRole, Capability[] | '*'> = {
     'orders',
     'inventory',
     'dashboard',
+    'eod',
     'promotions',
   ],
   supervisor: [
@@ -70,15 +73,17 @@ const ROLE_CAPABILITIES: Record<UserRole, Capability[] | '*'> = {
     'orders',
     'inventory',
     'dashboard',
+    'eod',
     'promotions',
   ],
-  cashier: ['pos', 'orders', 'inventory_view'],
+  cashier: ['pos', 'orders', 'inventory_view', 'eod'],
   inventory_staff: [
     'portal',
     'portal_manual',
     'portal_orders',
     'portal_reports',
     'dashboard',
+    'eod',
     'inventory',
   ],
 };
@@ -150,7 +155,7 @@ export const ROUTE_CAPABILITY: Record<string, Capability> = {
   '/orders': 'orders',
   '/inventory': 'inventory',
   '/dashboard': 'dashboard',
-  '/eod-report': 'dashboard',
+  '/eod-report': 'eod',
   '/promotions': 'promotions',
 };
 

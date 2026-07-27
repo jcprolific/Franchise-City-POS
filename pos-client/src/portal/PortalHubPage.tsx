@@ -42,6 +42,7 @@ import {
   type FranchiseeWelcome,
 } from '../lib/franchiseeBranch';
 import { BRANCH_UPDATED_EVENT } from '../lib/branchContext';
+import { fetchBranchInventory } from '../lib/inventoryService';
 import PortalHealthWidget from './PortalHealthWidget';
 import BranchStaffPresence from './BranchStaffPresence';
 import './PortalHubPage.css';
@@ -66,9 +67,7 @@ interface PortalSection {
 const QUICK_ACTIONS = [
   { icon: FileText, label: 'EOD Report', desc: 'Submit daily sales', to: '/eod-report' },
   { icon: Monitor, label: 'Open POS', desc: 'Ring up sales', to: '/pos' },
-  { icon: Package, label: 'Inventory', desc: 'Stock & reorder', to: '/inventory' },
   { icon: TrendingUp, label: 'Reports', desc: 'Branch analytics', to: '/portal/reports' },
-  { icon: Ticket, label: 'Get Help', desc: 'Submit a ticket', to: '/portal/support' },
 ] as const;
 
 const SECTIONS: PortalSection[] = [
@@ -86,7 +85,7 @@ const SECTIONS: PortalSection[] = [
       { icon: Video, label: 'Training Materials', desc: 'Staff training library', to: '/portal/training', accent: 'ops' },
       { icon: ShoppingCart, label: 'Product Ordering', desc: 'Order supplies from HQ', to: '/inventory', accent: 'support' },
       { icon: History, label: 'Order History', desc: 'Past supply orders', to: '/portal/orders', accent: 'support' },
-      { icon: Ticket, label: 'Technical Support', desc: 'Help & troubleshooting', to: '/portal/support', accent: 'support' },
+      { icon: Ticket, label: 'Get Help', desc: 'Help & troubleshooting', to: '/portal/support', accent: 'support' },
     ],
   },
   {
@@ -131,6 +130,7 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
   const [notices, setNotices] = useState<SystemNotice[]>([]);
   const [spotlight, setSpotlight] = useState<PortalAnnouncement | null>(null);
   const [announcementCount, setAnnouncementCount] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const loadWelcome = useCallback(async () => {
@@ -147,7 +147,14 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
     setWelcome(resolved);
     setNotices(systemNotices);
     setAnnouncementCount(announcements.length);
-    setSpotlight(announcements.find((a) => a.pinned) ?? announcements[0] ?? null);
+    setSpotlight(announcements.find((a) => a.pinned) ?? null);
+
+    if (resolved.branchId) {
+      const items = await fetchBranchInventory(brand.dbBrandId, resolved.branchId);
+      setLowStockCount(items ? items.filter((i) => i.onHandQty <= i.lowStockQty).length : 0);
+    } else {
+      setLowStockCount(0);
+    }
     setLoading(false);
   }, [brand.dbBrandId]);
 
@@ -192,7 +199,8 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
       if (tile.to === '/portal/orders') return hasPermission(userRole, 'portal_orders');
       if (tile.to === '/pos') return hasPermission(userRole, 'pos');
       if (tile.to === '/inventory') return hasPermission(userRole, 'inventory') || hasPermission(userRole, 'inventory_view');
-      if (tile.to === '/dashboard' || tile.to === '/eod-report') return hasPermission(userRole, 'dashboard');
+      if (tile.to === '/dashboard') return hasPermission(userRole, 'dashboard');
+      if (tile.to === '/eod-report') return hasPermission(userRole, 'eod');
       return hasPermission(userRole, 'portal');
     }),
   }));
@@ -202,9 +210,8 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
   );
 
   const quickActions = QUICK_ACTIONS.filter((action) => {
-    if (action.to === '/eod-report') return hasPermission(userRole, 'dashboard');
+    if (action.to === '/eod-report') return hasPermission(userRole, 'eod');
     if (action.to === '/pos') return hasPermission(userRole, 'pos');
-    if (action.to === '/inventory') return hasPermission(userRole, 'inventory') || hasPermission(userRole, 'inventory_view');
     if (action.to === '/portal/reports') return hasPermission(userRole, 'portal_reports');
     return hasPermission(userRole, 'portal');
   });
@@ -279,6 +286,25 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
 
       <PortalHealthWidget branchId={welcome?.branchId ?? null} />
       <BranchStaffPresence branchId={welcome?.branchId ?? null} />
+
+      {(hasPermission(userRole, 'inventory') || hasPermission(userRole, 'inventory_view')) && (
+        <Link to="/inventory" className="portal-hub-stock-summary">
+          <span className="portal-hub-stock-summary-icon">
+            <Package size={18} aria-hidden="true" />
+          </span>
+          <span className="portal-hub-stock-summary-text">
+            <strong>Current Stocks</strong>
+            <span>
+              {loading
+                ? 'Checking inventory…'
+                : lowStockCount > 0
+                  ? `${lowStockCount} item${lowStockCount === 1 ? '' : 's'} low — tap to review`
+                  : 'All items above low-stock threshold'}
+            </span>
+          </span>
+          <ArrowRight size={16} aria-hidden="true" />
+        </Link>
+      )}
 
       <nav className="portal-hub-quick" aria-label="Quick actions">
         {quickActions.map(({ icon: Icon, label, desc, to }) => (

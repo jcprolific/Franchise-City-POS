@@ -1,5 +1,4 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { portalSampleTickets } from '../data/portalContent';
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved';
 
@@ -35,22 +34,6 @@ function mapRow(row: Record<string, unknown>): SupportTicket {
   };
 }
 
-function fallbackTickets(): SupportTicket[] {
-  return portalSampleTickets.map((t) => ({
-    id: t.id,
-    branchId: null,
-    topic: 'Equipment / POS',
-    subject: t.subject,
-    message: '',
-    status: t.status === 'open' ? 'open' : 'resolved',
-    createdBy: 'Guest',
-    hqNotes: '',
-    createdAt: `${t.created}T00:00:00Z`,
-    updatedAt: `${t.lastUpdate}T00:00:00Z`,
-    source: 'fallback',
-  }));
-}
-
 function readLocalTickets(): SupportTicket[] {
   try {
     const raw = localStorage.getItem(LOCAL_KEY);
@@ -69,12 +52,14 @@ export async function fetchSupportTickets(
   brandId: string,
   branchId?: string
 ): Promise<SupportTicket[]> {
+  const filterForBranch = (tickets: SupportTicket[]) => {
+    if (!branchId) return tickets;
+    // Strict: franchisee portal only sees tickets for their branch (no null/other).
+    return tickets.filter((t) => t.branchId === branchId);
+  };
+
   if (!isSupabaseConfigured()) {
-    const local = readLocalTickets();
-    const fb = fallbackTickets();
-    const merged = [...local, ...fb];
-    if (branchId) return merged.filter((t) => !t.branchId || t.branchId === branchId);
-    return merged;
+    return filterForBranch(readLocalTickets());
   }
 
   let query = supabase
@@ -86,10 +71,12 @@ export async function fetchSupportTickets(
   if (branchId) query = query.eq('branch_id', branchId);
 
   const { data, error } = await query;
-  if (error || !data?.length) {
-    const local = readLocalTickets();
-    if (local.length) return local;
-    return fallbackTickets();
+  if (error) {
+    return filterForBranch(readLocalTickets());
+  }
+  if (!data?.length) {
+    // Empty live result — do not leak sample/fallback tickets across branches.
+    return filterForBranch(readLocalTickets());
   }
   return (data as Record<string, unknown>[]).map(mapRow);
 }

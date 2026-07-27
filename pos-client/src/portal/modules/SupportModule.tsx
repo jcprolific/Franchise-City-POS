@@ -57,7 +57,7 @@ export default function SupportModule() {
   };
 
   return (
-    <PortalLayout icon={Ticket} title="Technical Support" subtitle="Remote support, updates, and troubleshooting">
+    <PortalLayout icon={Ticket} title="Get Help" subtitle="Submit tickets and track HQ responses">
       {notices.length > 0 && (
         <PortalCard>
           <h2 className="portal-announcement-title">System Notices</h2>

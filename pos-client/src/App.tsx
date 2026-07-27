@@ -522,6 +522,8 @@ export default function App() {
 
   const handleLogin = useCallback(
     async (mode: 'guest' | 'pin' | 'email', name?: string, targetArea: 'pos' | 'hq' = 'pos') => {
+      // Guest entry removed from Login UI — reject any leftover guest calls.
+      if (mode === 'guest') return;
       setPreferredArea(targetArea);
       if (mode === 'email') {
         const {
@@ -537,7 +539,7 @@ export default function App() {
       }
       const role = mode === 'pin' && targetArea === 'hq' ? 'hq_admin' : 'barista';
       const userName = name || 'User';
-      if (mode === 'pin' || mode === 'guest') {
+      if (mode === 'pin') {
         writeStoredAuthSession({ userName, loginMode: mode, role });
       }
       setAuth({

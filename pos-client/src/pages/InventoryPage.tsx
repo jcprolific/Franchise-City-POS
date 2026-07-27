@@ -372,7 +372,7 @@ export default function InventoryPage() {
             className={`inventory-filter ${pageTab === 'stock' ? 'active' : ''}`}
             onClick={() => setPageTab('stock')}
           >
-            Stock
+            Current Stocks
           </button>
           <button
             type="button"
