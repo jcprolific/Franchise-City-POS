@@ -127,10 +127,18 @@
 }
 
 .portal-hub-branch {
+  color: var(--portal-orange);
   background: linear-gradient(90deg, #f0a060, var(--portal-orange));
   -webkit-background-clip: text;
   background-clip: text;
-  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .portal-hub-branch {
+    -webkit-text-fill-color: currentColor;
+    background: none;
+  }
 }
 
 .portal-hub-period {

@@ -6,6 +6,7 @@ import {
   createStaffUser,
   fetchActiveBranches,
   fetchStaff,
+  provisionStaffLogin,
   setStaffStatus,
   type StaffBranchOption,
   type StaffMember,
@@ -94,6 +95,9 @@ export default function StaffDirectoryPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [provisionTarget, setProvisionTarget] = useState<StaffMember | null>(null);
+  const [provisionPassword, setProvisionPassword] = useState('');
+  const [provisioning, setProvisioning] = useState(false);
   const [presenceByStaff, setPresenceByStaff] = useState<
     Map<string, { status: PresenceStatus; branchName: string; lastSeen: string }>
   >(new Map());
@@ -198,6 +202,31 @@ export default function StaffDirectoryPage() {
       return;
     }
     setNotice(`${member.full_name} is now ${next === 'active' ? 'Active' : 'Inactive'}.`);
+    await load();
+  };
+
+  const handleProvisionLogin = async () => {
+    if (!provisionTarget || provisionPassword.length < 6) {
+      setNotice('Set a password of at least 6 characters.');
+      return;
+    }
+    setProvisioning(true);
+    setNotice('');
+    const result = await provisionStaffLogin(provisionTarget.id, provisionPassword);
+    setProvisioning(false);
+
+    if (!result.ok) {
+      setNotice(result.error ?? 'Failed to set up login.');
+      return;
+    }
+
+    setNotice(
+      result.linked
+        ? `Login created for ${provisionTarget.full_name}. They can now sign in with ${provisionTarget.email}.`
+        : `Password updated for ${provisionTarget.full_name}.`
+    );
+    setProvisionTarget(null);
+    setProvisionPassword('');
     await load();
   };
 
@@ -337,6 +366,7 @@ export default function StaffDirectoryPage() {
               <th>Email</th>
               <th>Branch</th>
               <th>Role</th>
+              <th>Login</th>
               <th>Presence</th>
               <th>Created By</th>
               <th>Status</th>
@@ -353,6 +383,25 @@ export default function StaffDirectoryPage() {
                 <td>{member.email}</td>
                 <td>{member.branch_name || 'Unassigned'}</td>
                 <td>{ROLE_LABELS[member.role]}</td>
+                <td>
+                  {member.auth_user_id ? (
+                    <span className="staff-login-badge staff-login-badge--ready">Ready</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="staff-login-badge staff-login-badge--missing"
+                      onClick={() => {
+                        setProvisionTarget(member);
+                        setProvisionPassword('');
+                        setNotice('');
+                      }}
+                      disabled={usingSample}
+                      title="This staff member cannot sign in yet"
+                    >
+                      No Login — Set Up
+                    </button>
+                  )}
+                </td>
                 <td>
                   {presence ? (
                     <span
@@ -389,7 +438,7 @@ export default function StaffDirectoryPage() {
 
             {displayStaff.length === 0 && (
               <tr>
-                <td colSpan={9} className="staff-muted">
+                <td colSpan={10} className="staff-muted">
                   {tableReady
                     ? 'No staff yet. Use "Add Staff" to create POS access.'
                     : 'Staff table not detected. Run the setup SQL to start managing access.'}
@@ -399,6 +448,48 @@ export default function StaffDirectoryPage() {
           </tbody>
         </table>
       </div>
+
+      {provisionTarget && (
+        <div className="staff-form-card">
+          <h3 className="staff-form-title">Set Up Login — {provisionTarget.full_name}</h3>
+          <p className="staff-form-hint">
+            {provisionTarget.email} has no sign-in account yet. Set a temporary password so they can log in
+            (they can use Forgot Password later to change it).
+          </p>
+          <div className="staff-form-grid">
+            <label>
+              Temporary Password
+              <input
+                type="text"
+                value={provisionPassword}
+                onChange={(e) => setProvisionPassword(e.target.value)}
+                placeholder="At least 6 characters"
+                autoComplete="off"
+              />
+            </label>
+          </div>
+          <div className="staff-form-actions">
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => {
+                setProvisionTarget(null);
+                setProvisionPassword('');
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => void handleProvisionLogin()}
+              disabled={provisioning}
+            >
+              {provisioning ? 'Creating login...' : 'Create Login'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

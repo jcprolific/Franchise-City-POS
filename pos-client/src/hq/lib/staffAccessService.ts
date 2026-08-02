@@ -63,6 +63,12 @@ export interface CreateStaffResult {
   staff?: StaffMember;
 }
 
+export interface ProvisionStaffLoginResult {
+  ok: boolean;
+  error?: string;
+  linked?: boolean;
+}
+
 function resolveBranchName(branch: StaffRow['branch']): string | null {
   if (!branch) return null;
   if (Array.isArray(branch)) return branch[0]?.name ?? null;
@@ -124,9 +130,9 @@ export async function createStaffUser(input: CreateStaffInput): Promise<CreateSt
   try {
     const { data, error } = await supabase.functions.invoke('create-staff-user', {
       body: {
-        email: input.email,
+        email: input.email.trim().toLowerCase(),
         password: input.password,
-        fullName: input.fullName,
+        fullName: input.fullName.trim(),
         brandId: input.brandId,
         branchId: input.branchId,
         role: input.role,
@@ -160,6 +166,43 @@ export async function createStaffUser(input: CreateStaffInput): Promise<CreateSt
         ? err.message
         : 'Could not reach the staff creation service.';
     return { ok: false, error: message };
+  }
+}
+
+/** Create or repair login for a staff_access row missing auth_user_id. */
+export async function provisionStaffLogin(
+  staffAccessId: string,
+  password: string
+): Promise<ProvisionStaffLoginResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('provision-staff-login', {
+      body: { staffAccessId, password },
+    });
+
+    if (error) {
+      let message = error.message;
+      try {
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === 'function') {
+          const body = await ctx.json();
+          if (body?.error) message = body.error;
+        }
+      } catch {
+        /* keep default message */
+      }
+      return { ok: false, error: message };
+    }
+
+    if (data?.error) {
+      return { ok: false, error: data.error as string };
+    }
+
+    return { ok: true, linked: Boolean(data?.staff?.linked) };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Could not reach login provisioning service.',
+    };
   }
 }
 

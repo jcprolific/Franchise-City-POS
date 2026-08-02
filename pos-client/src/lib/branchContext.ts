@@ -87,9 +87,20 @@ export function getCurrentBranch(): BranchRef {
   return DEFAULT_COFTEA_BRANCH;
 }
 
+function branchRefsEqual(a: BranchRef, b: BranchRef): boolean {
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    (a.city ?? null) === (b.city ?? null) &&
+    (a.address ?? null) === (b.address ?? null)
+  );
+}
+
 export function setCurrentBranch(branch: BranchRef): void {
   const normalized = buildBranchRef(branch);
+  const previous = getCurrentBranch();
   localStorage.setItem(BRANCH_STORAGE_KEY, JSON.stringify(normalized));
+  if (branchRefsEqual(previous, normalized)) return;
   notifyBranchListeners();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(BRANCH_UPDATED_EVENT, { detail: normalized }));

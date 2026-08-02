@@ -37,6 +37,12 @@ export interface CreateBranchStaffResult {
   staff?: BranchStaffMember;
 }
 
+export interface ProvisionStaffLoginResult {
+  ok: boolean;
+  error?: string;
+  linked?: boolean;
+}
+
 interface StaffRow {
   id: string;
   auth_user_id: string | null;
@@ -77,9 +83,9 @@ export async function createBranchStaff(
     const { data, error } = await withTimeout(
       supabase.functions.invoke('create-branch-staff', {
         body: {
-          email: input.email,
+          email: input.email.trim().toLowerCase(),
           password: input.password,
-          fullName: input.fullName,
+          fullName: input.fullName.trim(),
           role: input.role,
           phone: input.phone,
         },
@@ -111,6 +117,42 @@ export async function createBranchStaff(
     return {
       ok: false,
       error: err instanceof Error ? err.message : 'Could not reach staff creation service.',
+    };
+  }
+}
+
+export async function provisionBranchStaffLogin(
+  staffAccessId: string,
+  password: string
+): Promise<ProvisionStaffLoginResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('provision-staff-login', {
+      body: { staffAccessId, password },
+    });
+
+    if (error) {
+      let message = error.message;
+      try {
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === 'function') {
+          const body = await ctx.json();
+          if (body?.error) message = body.error;
+        }
+      } catch {
+        /* keep default */
+      }
+      return { ok: false, error: message };
+    }
+
+    if (data?.error) {
+      return { ok: false, error: data.error as string };
+    }
+
+    return { ok: true, linked: Boolean(data?.staff?.linked) };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Could not reach login provisioning service.',
     };
   }
 }

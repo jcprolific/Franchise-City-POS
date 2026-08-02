@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { friendlyAuthError, normalizeAuthEmail } from '../lib/authErrors';
 import { LOGIN_BRAND_LIST } from '../brands';
 import { useBrand } from '../context/BrandContext';
 import { landingPageUrl } from '../lib/landing';
@@ -13,6 +15,7 @@ interface LoginPageProps {
 type LoginTab = 'email' | 'pin';
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  const location = useLocation();
   const { brand, brandSlug, setBrandSlug } = useBrand();
   const showBrandSwitcher = LOGIN_BRAND_LIST.length > 1;
 
@@ -23,39 +26,51 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
   const [hqHint, setHqHint] = useState('');
 
   // Deep link from the Franchise City landing "HQ Login" button: ?area=hq
-  // sends HQ users straight to the Staff PIN entry, mirroring handleHqAccessClick().
+  // opens email login so provisioned HQ/franchisee accounts can sign in directly.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('area') === 'hq') {
       setTargetArea('hq');
-      setActiveTab('pin');
-      setHqHint('Sign in with HQ email (hq@coftea.com) to register franchisees. Staff PIN 1234 is demo view-only.');
+      setActiveTab('email');
+      setHqHint('Sign in with your HQ email and password. Staff PIN 1234 is demo view-only.');
     }
   }, []);
 
+  useEffect(() => {
+    const state = location.state as { passwordReset?: boolean } | null;
+    if (state?.passwordReset) {
+      setEmailSuccess('Password updated. Sign in with your new password.');
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    const normalizedEmail = normalizeAuthEmail(email);
+    if (!normalizedEmail || !password) {
       setEmailError('Please enter email and password');
       return;
     }
     setEmailLoading(true);
     setEmailError('');
+    setEmailSuccess('');
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
     setEmailLoading(false);
 
     if (error) {
-      setEmailError(error.message);
+      setEmailError(friendlyAuthError(error.message));
       return;
     }
 
@@ -63,8 +78,35 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     await onLogin('email', userName, targetArea);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const normalizedEmail = normalizeAuthEmail(email);
+    if (!normalizedEmail) {
+      setEmailError('Enter the email address for your account');
+      return;
+    }
+    setEmailLoading(true);
+    setEmailError('');
+    setEmailSuccess('');
+
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    setEmailLoading(false);
+
+    if (error) {
+      setEmailError(friendlyAuthError(error.message));
+      return;
+    }
+
+    setEmailSuccess(`Password reset link sent to ${normalizedEmail}. Check your inbox (and spam folder).`);
+    setShowForgotPassword(false);
+  };
+
   const handleSignUp = async () => {
-    if (!email || !password) {
+    const normalizedEmail = normalizeAuthEmail(email);
+    if (!normalizedEmail || !password) {
       setEmailError('Please enter email and password');
       return;
     }
@@ -74,21 +116,22 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
     setEmailLoading(true);
     setEmailError('');
+    setEmailSuccess('');
 
     const { error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
     });
 
     setEmailLoading(false);
 
     if (error) {
-      setEmailError(error.message);
+      setEmailError(friendlyAuthError(error.message));
       return;
     }
 
     const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -135,12 +178,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const handleBackspace = () => {
     setPin((prev) => prev.slice(0, -1));
     setPinError('');
-  };
-
-  const handleHqAccessClick = () => {
-    setTargetArea('hq');
-    setActiveTab('pin');
-    setEmailError('');
   };
 
   return (
@@ -198,54 +235,100 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         {activeTab === 'email' && (
-          <form className="login-form" onSubmit={handleEmailLogin}>
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-email">Email</label>
-              <input
-                className="login-input"
-                id="login-email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
-                autoComplete="email"
-                autoFocus
-              />
-            </div>
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-password">Password</label>
-              <input
-                className="login-input"
-                id="login-password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setEmailError(''); }}
-                autoComplete="current-password"
-              />
-            </div>
-
-            {emailError && (
-              <div className="login-error">{emailError}</div>
+          <>
+            {hqHint && activeTab === 'email' && (
+              <div className="login-hq-hint login-hq-hint--form">{hqHint}</div>
             )}
 
-            <button
-              className="login-btn"
-              type="submit"
-              disabled={emailLoading}
-            >
-              {emailLoading ? 'Signing in...' : 'Sign In'}
-            </button>
+            {showForgotPassword ? (
+              <form className="login-form" onSubmit={handleForgotPassword}>
+                <p className="login-pin-hint">
+                  Enter your account email and we&apos;ll send a link to reset your password.
+                </p>
+                <div className="login-field">
+                  <label className="login-label" htmlFor="login-email">Email</label>
+                  <input
+                    className="login-input"
+                    id="login-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setEmailError(''); setEmailSuccess(''); }}
+                    autoComplete="email"
+                    autoFocus
+                  />
+                </div>
 
-            <button
-              className="login-signup-btn"
-              type="button"
-              onClick={handleSignUp}
-              disabled={emailLoading}
-            >
-              Don't have an account? <span>Sign Up</span>
-            </button>
-          </form>
+                {emailError && <div className="login-error">{emailError}</div>}
+                {emailSuccess && <div className="login-success">{emailSuccess}</div>}
+
+                <button className="login-btn" type="submit" disabled={emailLoading}>
+                  {emailLoading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+
+                <button
+                  className="login-forgot-link"
+                  type="button"
+                  onClick={() => { setShowForgotPassword(false); setEmailError(''); }}
+                >
+                  Back to Sign In
+                </button>
+              </form>
+            ) : (
+              <form className="login-form" onSubmit={handleEmailLogin}>
+                <div className="login-field">
+                  <label className="login-label" htmlFor="login-email">Email</label>
+                  <input
+                    className="login-input"
+                    id="login-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setEmailError(''); setEmailSuccess(''); }}
+                    autoComplete="email"
+                    autoFocus
+                  />
+                </div>
+                <div className="login-field">
+                  <div className="login-field-header">
+                    <label className="login-label" htmlFor="login-password">Password</label>
+                    <button
+                      className="login-forgot-link login-forgot-link--inline"
+                      type="button"
+                      onClick={() => { setShowForgotPassword(true); setEmailError(''); setEmailSuccess(''); }}
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                  <input
+                    className="login-input"
+                    id="login-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setEmailError(''); setEmailSuccess(''); }}
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                {emailError && <div className="login-error">{emailError}</div>}
+                {emailSuccess && <div className="login-success">{emailSuccess}</div>}
+
+                <button className="login-btn" type="submit" disabled={emailLoading}>
+                  {emailLoading ? 'Signing in...' : 'Sign In'}
+                </button>
+
+                <button
+                  className="login-signup-btn"
+                  type="button"
+                  onClick={handleSignUp}
+                  disabled={emailLoading}
+                >
+                  Don&apos;t have an account? <span>Sign Up</span>
+                </button>
+              </form>
+            )}
+          </>
         )}
 
         {activeTab === 'pin' && (
@@ -304,16 +387,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <div className="pin-error">{pinError}</div>
           </div>
         )}
-
-        <div className="login-hq-section">
-          <button
-            className="login-hq-link"
-            type="button"
-            onClick={handleHqAccessClick}
-          >
-            HQ access? <span>Click here</span>
-          </button>
-        </div>
 
         <div className="login-footer">
           <a href={landingPageUrl()} className="login-footer-landing-link">

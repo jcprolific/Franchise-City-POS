@@ -101,16 +101,43 @@ Deno.serve(async (req: Request) => {
     user_metadata: { full_name: fullName },
   });
 
+  let authUserId: string;
+  let createdNewAuthUser = false;
+
   if (createError || !created?.user) {
     const message = createError?.message ?? 'Failed to create auth user.';
     const isDuplicate = message.toLowerCase().includes('already');
-    return jsonResponse(
-      { error: isDuplicate ? 'A user with this email already exists.' : message },
-      isDuplicate ? 409 : 400
-    );
-  }
 
-  const authUserId = created.user.id;
+    if (!isDuplicate) {
+      return jsonResponse({ error: message }, 400);
+    }
+
+    // Staff directory row may exist without auth — link an existing auth user instead.
+    let page = 1;
+    let existingUser: { id: string } | null = null;
+    while (page <= 10 && !existingUser) {
+      const { data: userPage } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+      existingUser = userPage?.users?.find((u) => u.email?.toLowerCase() === email) ?? null;
+      if (!userPage?.users?.length || userPage.users.length < 200) break;
+      page += 1;
+    }
+
+    if (!existingUser) {
+      return jsonResponse({ error: 'A user with this email already exists.' }, 409);
+    }
+
+    authUserId = existingUser.id;
+    const { error: updateError } = await admin.auth.admin.updateUserById(authUserId, {
+      password,
+      email_confirm: true,
+    });
+    if (updateError) {
+      return jsonResponse({ error: updateError.message }, 400);
+    }
+  } else {
+    authUserId = created.user.id;
+    createdNewAuthUser = true;
+  }
 
   // 2. Upsert the profile that drives role/brand/branch access on login.
   const { error: profileError } = await admin.from('profiles').upsert(
@@ -125,8 +152,9 @@ Deno.serve(async (req: Request) => {
   );
 
   if (profileError) {
-    // Roll back the auth user so we don't leave an orphaned login.
-    await admin.auth.admin.deleteUser(authUserId);
+    if (createdNewAuthUser) {
+      await admin.auth.admin.deleteUser(authUserId);
+    }
     return jsonResponse({ error: `Profile sync failed: ${profileError.message}` }, 400);
   }
 

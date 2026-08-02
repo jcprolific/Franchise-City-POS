@@ -140,6 +140,8 @@
   font-weight: 700;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
 }
 
 .login-brand-option.active {
@@ -201,6 +203,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
 }
 
 .login-tab:hover {
@@ -223,6 +227,21 @@
   font-size: var(--font-xs);
   text-align: center;
   animation: fadeIn var(--transition-fast);
+}
+
+.login-success {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--pc-green-soft);
+  border: 1px solid #b8e4c4;
+  border-radius: var(--radius-sm);
+  color: var(--pc-green-deep);
+  font-size: var(--font-xs);
+  text-align: center;
+  animation: fadeIn var(--transition-fast);
+}
+
+.login-hq-hint--form {
+  margin: var(--space-md) var(--space-2xl) 0;
 }
 
 .login-hq-hint {
@@ -253,6 +272,8 @@
   text-align: center;
   padding: var(--space-xs);
   transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
 }
 
 .login-signup-btn span {
@@ -265,6 +286,37 @@
 }
 
 .login-signup-btn:hover span {
+  text-decoration: underline;
+}
+
+.login-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.login-forgot-link {
+  background: none;
+  border: none;
+  color: var(--pc-orange);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  font-family: var(--font-family);
+  cursor: pointer;
+  text-align: center;
+  padding: var(--space-xs);
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+}
+
+.login-forgot-link--inline {
+  padding: 0;
+  text-align: right;
+}
+
+.login-forgot-link:hover {
   text-decoration: underline;
 }
 
@@ -332,6 +384,8 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   letter-spacing: 0.01em;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
 }
 
 .login-btn:hover {
@@ -365,30 +419,6 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   white-space: nowrap;
-}
-
-.login-hq-section {
-  padding: var(--space-md) var(--space-2xl) var(--space-lg);
-}
-
-.login-hq-link {
-  width: 100%;
-  background: none;
-  border: none;
-  color: var(--login-text-muted);
-  font-size: var(--font-xs);
-  font-family: var(--font-family);
-  text-align: center;
-  cursor: pointer;
-}
-
-.login-hq-link span {
-  color: var(--pc-orange);
-  font-weight: 600;
-}
-
-.login-hq-link:hover span {
-  text-decoration: underline;
 }
 
 /* ---- Footer ---- */
@@ -473,6 +503,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
 }
 
 .pin-key:hover {
@@ -509,6 +541,60 @@
   animation: fadeIn var(--transition-fast);
 }
 
+/* ---- Focus states — replace default black browser outline ---- */
+.login-page :focus {
+  outline: none;
+}
+
+.login-page :focus-visible {
+  outline: 2px solid var(--pc-green);
+  outline-offset: 2px;
+}
+
+.login-page .login-input:focus-visible {
+  outline: none;
+  border-color: var(--pc-green);
+  box-shadow: 0 0 0 3px rgba(0, 141, 54, 0.12);
+}
+
+.login-page .login-btn:focus-visible,
+.login-page .pin-key.enter:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 141, 54, 0.35);
+}
+
+.login-page .login-forgot-link:focus-visible,
+.login-page .login-signup-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(226, 105, 30, 0.35);
+  border-radius: 6px;
+}
+
+.login-page .login-tab:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -3px 0 var(--pc-green);
+}
+
+.login-page .login-back-landing:focus-visible,
+.login-page .login-footer-landing-link:focus-visible {
+  outline: 2px solid var(--pc-green);
+  outline-offset: 3px;
+  border-radius: 14px;
+}
+
+.login-page .pin-key:focus-visible {
+  outline: none;
+  border-color: var(--pc-green);
+  box-shadow: 0 0 0 3px rgba(0, 141, 54, 0.15);
+}
+
+.login-page .login-brand-option:focus-visible {
+  outline: none;
+  border-color: var(--pc-green);
+  box-shadow: 0 0 0 3px rgba(0, 141, 54, 0.12);
+}
+
 /* Tablet portrait + phones: keep Login CTA visible (scroll instead of clip) */
 @media (max-width: 900px), (max-height: 900px) {
   .login-page {
@@ -531,8 +617,7 @@
   }
 
   .login-form,
-  .login-pin-section,
-  .login-hq-section {
+  .login-pin-section {
     padding-left: var(--space-lg);
     padding-right: var(--space-lg);
   }

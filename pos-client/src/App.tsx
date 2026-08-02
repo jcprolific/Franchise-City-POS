@@ -18,6 +18,7 @@ import {
 } from './lib/attendanceStore';
 import { syncAttendanceEvent } from './lib/attendanceService';
 import LoginPage from './pages/LoginPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import POSPage from './pages/POSPage';
 import InventoryPage from './pages/InventoryPage';
 import DashboardPage from './pages/DashboardPage';
@@ -500,6 +501,10 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/reset-password', { replace: true });
+        return;
+      }
       if (session?.user) {
         void syncSessionUser(session.user);
         return;
@@ -518,7 +523,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, [syncSessionUser]);
+  }, [navigate, syncSessionUser]);
 
   const handleLogin = useCallback(
     async (mode: 'guest' | 'pin' | 'email', name?: string, targetArea: 'pos' | 'hq' = 'pos') => {
@@ -624,6 +629,10 @@ export default function App() {
             ? <Navigate to={homePathForRole(auth.role)} replace />
             : <LoginPage onLogin={handleLogin} />
         }
+      />
+      <Route
+        path="/reset-password"
+        element={<ResetPasswordPage />}
       />
       <Route element={<RequireAuth isLoggedIn={auth.isLoggedIn} />}>
         <Route element={<RequirePermission role={auth.role} />}>

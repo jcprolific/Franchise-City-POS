@@ -41,7 +41,11 @@ import {
   resolveFranchiseeBranch,
   type FranchiseeWelcome,
 } from '../lib/franchiseeBranch';
-import { BRANCH_UPDATED_EVENT } from '../lib/branchContext';
+import {
+  BRANCH_UPDATED_EVENT,
+  getCurrentBranch,
+  isSeedBranchId,
+} from '../lib/branchContext';
 import { fetchBranchInventory } from '../lib/inventoryService';
 import PortalHealthWidget from './PortalHealthWidget';
 import BranchStaffPresence from './BranchStaffPresence';
@@ -133,8 +137,8 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
   const [lowStockCount, setLowStockCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const loadWelcome = useCallback(async () => {
-    setLoading(true);
+  const loadWelcome = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoading(true);
     const [{ data: { session } }, systemNotices, announcements] = await Promise.all([
       supabase.auth.getSession(),
       fetchActiveSystemNotices(brand.dbBrandId),
@@ -164,21 +168,31 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
 
   useEffect(() => {
     const onBranchUpdated = () => {
-      void loadWelcome();
+      void loadWelcome({ silent: true });
     };
     window.addEventListener(BRANCH_UPDATED_EVENT, onBranchUpdated);
     return () => window.removeEventListener(BRANCH_UPDATED_EVENT, onBranchUpdated);
   }, [loadWelcome]);
 
+  const cachedBranch = useMemo(() => {
+    const branch = getCurrentBranch();
+    if (isSeedBranchId(branch.id)) return null;
+    return branch;
+  }, [welcome, loading]);
+
   const displayName = useMemo(() => {
     if (welcome?.isLinked) return welcome.welcomeName;
+    if (cachedBranch?.name) return cachedBranch.name;
     return brand.franchiseName;
-  }, [welcome, brand.franchiseName]);
+  }, [welcome, cachedBranch, brand.franchiseName]);
 
   const locationLabel = useMemo(() => {
     if (welcome?.isLinked && welcome.locationLabel) return welcome.locationLabel;
+    if (cachedBranch?.locationLabel) return cachedBranch.locationLabel;
     return brand.franchiseName;
-  }, [welcome, brand.franchiseName]);
+  }, [welcome, cachedBranch, brand.franchiseName]);
+
+  const showWelcomeSkeleton = loading && !welcome && !cachedBranch;
 
   const showLinkWarning = Boolean(welcome && !welcome.isLinked && userEmail);
 
@@ -234,7 +248,7 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
           </span>
           <h1 className="portal-hub-welcome">
             Welcome,{' '}
-            {loading ? (
+            {showWelcomeSkeleton ? (
               <span className="portal-hub-name-skeleton" aria-hidden="true" />
             ) : (
               <span className="portal-hub-branch">{displayName}</span>
@@ -242,13 +256,13 @@ export default function PortalHubPage({ userRole }: PortalHubPageProps) {
             <span className="portal-hub-period">.</span>
           </h1>
           <p className="portal-hub-sub">
-            {loading ? 'What would you like to do today?' : locationLabel}
+            {showWelcomeSkeleton ? 'What would you like to do today?' : locationLabel}
           </p>
 
           <div className="portal-hub-meta">
             <span className="portal-hub-chip">
               <MapPin size={13} aria-hidden="true" />
-              {loading ? brand.franchiseName : locationLabel}
+              {locationLabel}
             </span>
             <span className="portal-hub-chip">
               <CalendarDays size={13} aria-hidden="true" />
