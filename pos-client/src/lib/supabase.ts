@@ -11,11 +11,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  // Prefer the caller's signal when present. Otherwise apply our own timeout so
+  // hung Auth/API calls fail with a clear message instead of hanging forever.
+  if (init?.signal) {
+    return fetch(input, init);
+  }
+
   const signal =
-    init?.signal ??
-    (typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal
+    typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal
       ? AbortSignal.timeout(SUPABASE_TIMEOUT_MS)
-      : undefined);
+      : undefined;
 
   return fetch(input, signal ? { ...init, signal } : init);
 }

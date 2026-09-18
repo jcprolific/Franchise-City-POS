@@ -179,6 +179,36 @@
   text-transform: uppercase;
 }
 
+/* ---- POS / HQ destination ---- */
+.login-area-toggle {
+  display: flex;
+  gap: var(--space-sm);
+  padding: 0 var(--space-2xl);
+  margin-bottom: var(--space-md);
+}
+
+.login-area-option {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--login-bg-soft, #f4f7f5);
+  border: 1px solid var(--login-border);
+  border-radius: var(--radius-sm);
+  color: var(--login-text-muted);
+  font-size: var(--font-xs);
+  font-weight: 700;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+}
+
+.login-area-option.active {
+  background: var(--pc-green-soft);
+  border-color: var(--pc-green);
+  color: var(--pc-green-deep);
+}
+
 /* ---- Tab Switcher ---- */
 .login-tabs {
   display: flex;

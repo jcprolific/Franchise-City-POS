@@ -219,6 +219,32 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <p className="login-subtitle">Point of Sale System</p>
         </div>
 
+        <div className="login-area-toggle" role="group" aria-label="Login destination">
+          <button
+            type="button"
+            className={`login-area-option ${targetArea === 'pos' ? 'active' : ''}`}
+            onClick={() => {
+              setTargetArea('pos');
+              setHqHint('');
+              setPinError('');
+            }}
+          >
+            Branch POS
+          </button>
+          <button
+            type="button"
+            className={`login-area-option ${targetArea === 'hq' ? 'active' : ''}`}
+            onClick={() => {
+              setTargetArea('hq');
+              setActiveTab('email');
+              setHqHint('HQ email: hq@coftea.com. Demo view: Staff PIN 1234.');
+              setPinError('');
+            }}
+          >
+            HQ Access
+          </button>
+        </div>
+
         <div className="login-tabs">
           <button
             className={`login-tab ${activeTab === 'email' ? 'active' : ''}`}
