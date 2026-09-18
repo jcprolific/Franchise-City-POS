@@ -19,6 +19,15 @@ export function friendlyAuthError(message: string): string {
   if (lower.includes('rate limit') || lower.includes('too many requests')) {
     return 'Too many attempts. Please wait a few minutes and try again.';
   }
+  if (
+    lower.includes('fetch is aborted') ||
+    lower.includes('aborted without reason') ||
+    lower.includes('signal is aborted') ||
+    lower.includes('timed out') ||
+    lower.includes('timeout')
+  ) {
+    return 'Sign-in timed out. Check your connection and try again. For demo HQ access use Staff PIN 1234 on /login?area=hq.';
+  }
 
   return message;
 }

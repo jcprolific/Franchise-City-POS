@@ -18,4 +18,5 @@ export function withTimeout<T>(
   });
 }
 
-export const SUPABASE_TIMEOUT_MS = 8_000;
+/** Mobile networks and cold Auth starts often need more than 8s. */
+export const SUPABASE_TIMEOUT_MS = 30_000;
