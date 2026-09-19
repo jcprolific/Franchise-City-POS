@@ -6,6 +6,7 @@ import {
   nextSupplyStatus,
   updateSupplyOrderStatus,
   SUPPLY_ORDER_STATUS_LABELS,
+  SUPPLY_PAYMENT_METHOD_LABELS,
   type SupplyOrder,
   type SupplyOrderStatus,
 } from '../../lib/supplyOrderService';
@@ -29,11 +30,6 @@ const peso = new Intl.NumberFormat('en-PH', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-
-const PAYMENT_LABELS: Record<SupplyOrder['paymentMethod'], string> = {
-  gcash: 'GCash',
-  bank_transfer: 'Bank Transfer',
-};
 
 function formatDateTime(value: string): string {
   const d = new Date(value);
@@ -179,7 +175,10 @@ export default function SupplyOrdersPage() {
                   </div>
                   <div className="so-card-meta">
                     <span className="so-date">{formatDateTime(order.createdAt)}</span>
-                    <span className="so-payment">{PAYMENT_LABELS[order.paymentMethod]}</span>
+                    <span className="so-payment">
+                      {order.paymentStatus === 'paid' ? 'Paid · ' : ''}
+                      {SUPPLY_PAYMENT_METHOD_LABELS[order.paymentMethod]}
+                    </span>
                     <span className="so-items">{order.itemCount} units</span>
                     <span className="so-total">{peso.format(order.totalAmount)}</span>
                     <span className={`so-status so-status--${order.status}`}>
@@ -213,7 +212,14 @@ export default function SupplyOrdersPage() {
                       <div className="so-placed-by">Placed by {order.placedBy}</div>
                     )}
                     <div className="so-payment-detail">
-                      Payment method: <strong>{PAYMENT_LABELS[order.paymentMethod]}</strong>
+                      Payment:{' '}
+                      <strong>
+                        {order.paymentStatus === 'paid' ? 'Paid via ' : ''}
+                        {SUPPLY_PAYMENT_METHOD_LABELS[order.paymentMethod]}
+                      </strong>
+                      {order.paidAt
+                        ? ` · ${new Date(order.paidAt).toLocaleString('en-PH')}`
+                        : null}
                     </div>
                     {order.notes && (
                       <div className="so-notes">“{order.notes}”</div>

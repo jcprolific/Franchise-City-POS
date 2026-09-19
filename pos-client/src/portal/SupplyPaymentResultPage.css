@@ -1,0 +1,52 @@
+.supply-pay-result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 520px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-surface, var(--bg-card));
+}
+
+.supply-pay-result p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.supply-pay-result dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.supply-pay-result dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.supply-pay-result dt {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.supply-pay-result dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.supply-pay-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.supply-pay-result.is-paid {
+  border-color: rgba(46, 204, 113, 0.35);
+}
+
+.supply-pay-result.is-failed {
+  border-color: rgba(231, 76, 60, 0.35);
+}

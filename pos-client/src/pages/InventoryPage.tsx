@@ -10,7 +10,7 @@ import {
   updateBranchStock,
   type BranchInventoryItem,
 } from '../lib/inventoryService';
-import { placeSupplyOrder } from '../lib/supplyOrderService';
+import { startSupplyOrderPayment } from '../lib/hitpaySupplyPayment';
 import { fetchStockMovements, downloadMovementsCsv, logStockMovement, type StockMovement } from '../lib/stockMovementService';
 import {
   cofteaRawMaterials,
@@ -19,7 +19,6 @@ import {
 import './InventoryPage.css';
 
 type StockSource = 'live' | 'local';
-type PaymentMethod = 'gcash' | 'bank_transfer';
 
 interface CartLine {
   item: BranchInventoryItem;
@@ -87,7 +86,6 @@ export default function InventoryPage() {
   const [placing, setPlacing] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
   const [pageTab, setPageTab] = useState<'stock' | 'history'>('stock');
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [pendingAdjust, setPendingAdjust] = useState<{
@@ -272,13 +270,11 @@ export default function InventoryPage() {
     setPlacing(true);
     setOrderError(null);
     const session = readStoredAuthSession();
-    const { referenceNo, error } = await placeSupplyOrder({
+    const { checkoutUrl, error } = await startSupplyOrderPayment({
       brandId: brand.dbBrandId,
       branchId: branch.id,
-      branchName: branch.name,
       placedBy: session?.userName ?? 'Franchisee',
       notes,
-      paymentMethod,
       lines: cartLines.map((l) => ({
         rawMaterialId: l.item.rawMaterialId,
         name: l.item.name,
@@ -290,20 +286,16 @@ export default function InventoryPage() {
     });
     setPlacing(false);
 
-    if (error) {
+    if (error || !checkoutUrl) {
       setOrderError(
         error === 'not-configured'
           ? 'This branch isn’t connected yet, so the order can’t be sent to HQ.'
-          : 'Something went wrong placing the order. Please try again.'
+          : error ?? 'Could not open HitPay checkout. Please try again.'
       );
       return;
     }
 
-    setConfirmation(referenceNo);
-    clearCart();
-    setNotes('');
-    setPaymentMethod('gcash');
-    setCheckoutOpen(false);
+    window.location.href = checkoutUrl;
   };
 
   return (
@@ -609,32 +601,12 @@ export default function InventoryPage() {
             </div>
 
             <div className="checkout-notes">
-              <div className="checkout-payment">
-                <span className="checkout-payment-label">Payment method</span>
-                <div className="checkout-payment-options">
-                  <button
-                    className={`checkout-payment-option ${paymentMethod === 'gcash' ? 'active' : ''}`}
-                    onClick={() => setPaymentMethod('gcash')}
-                    type="button"
-                  >
-                    <span className="checkout-payment-icon">G</span>
-                    <span>
-                      <strong>GCash</strong>
-                      <small>Pay via mobile wallet</small>
-                    </span>
-                  </button>
-                  <button
-                    className={`checkout-payment-option ${paymentMethod === 'bank_transfer' ? 'active' : ''}`}
-                    onClick={() => setPaymentMethod('bank_transfer')}
-                    type="button"
-                  >
-                    <span className="checkout-payment-icon">🏦</span>
-                    <span>
-                      <strong>Bank Transfer</strong>
-                      <small>Manual bank deposit</small>
-                    </span>
-                  </button>
-                </div>
+              <div className="checkout-hitpay-note">
+                <span className="checkout-payment-label">Payment</span>
+                <p>
+                  You’ll pay securely via HitPay. HQ receives this order only after
+                  payment is confirmed.
+                </p>
               </div>
 
               <label htmlFor="checkout-notes-input">Notes for HQ (optional)</label>
@@ -659,7 +631,7 @@ export default function InventoryPage() {
                 onClick={handlePlaceOrder}
                 disabled={placing || cartLines.length === 0}
               >
-                {placing ? 'Placing order…' : `Place Order · ${pesoExact.format(cartTotal)}`}
+                {placing ? 'Opening HitPay…' : `Pay & place order · ${pesoExact.format(cartTotal)}`}
               </button>
             </div>
           </aside>

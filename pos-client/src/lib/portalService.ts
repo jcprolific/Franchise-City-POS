@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import {
+  portalAnnouncements,
   portalDownloadForms,
   portalManualSections,
   portalTrainingVideos,
@@ -117,11 +118,25 @@ function fallbackDocuments(type: PortalDocType): PortalDocument[] {
   return [];
 }
 
+function fallbackAnnouncements(tag?: AnnouncementTag): PortalAnnouncement[] {
+  const mapped = portalAnnouncements.map((a) => ({
+    id: a.id,
+    title: a.title,
+    body: a.body,
+    tag: a.tag.toLowerCase() as AnnouncementTag,
+    pinned: Boolean(a.pinned),
+    requiresAck: false,
+    publishedAt: new Date(a.date).toISOString(),
+    source: 'fallback' as const,
+  }));
+  return filterByTag(mapped, tag);
+}
+
 export async function fetchAnnouncements(
   brandId: string,
   tag?: AnnouncementTag
 ): Promise<PortalAnnouncement[]> {
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) return fallbackAnnouncements(tag);
 
   let query = supabase
     .from('portal_announcement')
@@ -133,7 +148,7 @@ export async function fetchAnnouncements(
   if (tag) query = query.eq('tag', tag);
 
   const { data, error } = await query;
-  if (error || !data?.length) return [];
+  if (error || !data?.length) return fallbackAnnouncements(tag);
 
   const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000; // 60 days
   const live = (data as Record<string, unknown>[])

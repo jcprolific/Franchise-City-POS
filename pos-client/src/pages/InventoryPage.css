@@ -737,11 +737,23 @@
   gap: var(--space-sm);
 }
 
-.checkout-payment {
+.checkout-payment,
+.checkout-hitpay-note {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   margin-bottom: var(--space-sm);
+}
+
+.checkout-hitpay-note p {
+  margin: 0;
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.45;
 }
 
 .checkout-payment-label {

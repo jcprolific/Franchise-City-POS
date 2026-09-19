@@ -36,6 +36,7 @@ import BranchHealthPage from './hq/pages/BranchHealthPage';
 import HqEodReportsPage from './hq/pages/HqEodReportsPage';
 import PortalHubPage from './portal/PortalHubPage';
 import PortalModulePage from './portal/PortalModulePage';
+import SupplyPaymentResultPage from './portal/SupplyPaymentResultPage';
 import SupplyOrdersPage from './hq/pages/SupplyOrdersPage';
 import PortalContentPage from './hq/pages/PortalContentPage';
 import DocumentLibraryPage from './hq/pages/DocumentLibraryPage';
@@ -650,6 +651,8 @@ export default function App() {
             <Route path="/portal" element={<PortalHubPage userRole={auth.role} />} />
             <Route path="/portal/staff" element={<StaffManagementPage />} />
             <Route path="/portal/business" element={<BusinessInfoPage />} />
+            <Route path="/portal/orders/payment-success" element={<SupplyPaymentResultPage />} />
+            <Route path="/portal/orders/payment-failed" element={<SupplyPaymentResultPage />} />
             <Route path="/portal/:module" element={<PortalModulePage />} />
           </Route>
         </Route>

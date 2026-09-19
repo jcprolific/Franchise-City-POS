@@ -2,12 +2,16 @@ import { receiveSupplyOrderToInventory } from './supplyReceiveService';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 export type SupplyOrderStatus =
+  | 'pending_payment'
   | 'pending'
   | 'approved'
   | 'preparing'
   | 'out_for_delivery'
   | 'delivered'
   | 'cancelled';
+
+export type SupplyPaymentStatus = 'unpaid' | 'paid' | 'failed' | 'expired';
+export type SupplyPaymentMethod = 'gcash' | 'bank_transfer' | 'hitpay';
 
 export const SUPPLY_ORDER_FLOW: SupplyOrderStatus[] = [
   'pending',
@@ -18,6 +22,7 @@ export const SUPPLY_ORDER_FLOW: SupplyOrderStatus[] = [
 ];
 
 export const SUPPLY_ORDER_STATUS_LABELS: Record<SupplyOrderStatus, string> = {
+  pending_payment: 'Awaiting payment',
   pending: 'Pending',
   approved: 'Approved',
   preparing: 'Preparing',
@@ -25,6 +30,33 @@ export const SUPPLY_ORDER_STATUS_LABELS: Record<SupplyOrderStatus, string> = {
   delivered: 'Delivered',
   cancelled: 'Cancelled',
 };
+
+export const SUPPLY_PAYMENT_STATUS_LABELS: Record<SupplyPaymentStatus, string> = {
+  unpaid: 'Awaiting payment',
+  paid: 'Paid',
+  failed: 'Payment failed',
+  expired: 'Payment expired',
+};
+
+export const SUPPLY_PAYMENT_METHOD_LABELS: Record<SupplyPaymentMethod, string> = {
+  gcash: 'GCash',
+  bank_transfer: 'Bank Transfer',
+  hitpay: 'HitPay',
+};
+
+export function isAwaitingSupplyPayment(order: {
+  status: SupplyOrderStatus;
+  paymentStatus: SupplyPaymentStatus;
+}): boolean {
+  return order.status === 'pending_payment' || order.paymentStatus === 'unpaid';
+}
+
+export function isHqFulfillableSupplyOrder(order: {
+  status: SupplyOrderStatus;
+  paymentStatus: SupplyPaymentStatus;
+}): boolean {
+  return order.status !== 'pending_payment' && order.paymentStatus === 'paid';
+}
 
 /** Next status in the fulfillment flow, or null if terminal. */
 export function nextSupplyStatus(status: SupplyOrderStatus): SupplyOrderStatus | null {
@@ -48,7 +80,7 @@ export interface PlaceSupplyOrderInput {
   branchName: string;
   placedBy: string;
   notes: string;
-  paymentMethod: 'gcash' | 'bank_transfer';
+  paymentMethod: SupplyPaymentMethod;
   lines: SupplyOrderLineInput[];
 }
 
@@ -73,7 +105,9 @@ export interface SupplyOrder {
   totalAmount: number;
   notes: string;
   placedBy: string;
-  paymentMethod: 'gcash' | 'bank_transfer';
+  paymentMethod: SupplyPaymentMethod;
+  paymentStatus: SupplyPaymentStatus;
+  paidAt: string | null;
   createdAt: string;
   items: SupplyOrderItem[];
 }
@@ -155,7 +189,9 @@ interface SupplyOrderRow {
   total_amount: number | string | null;
   notes: string | null;
   placed_by: string | null;
-  payment_method: 'gcash' | 'bank_transfer' | null;
+  payment_method: SupplyPaymentMethod | null;
+  payment_status: SupplyPaymentStatus | null;
+  paid_at: string | null;
   created_at: string;
   branch: { name?: string } | { name?: string }[] | null;
   supply_order_item: SupplyOrderItemRow[] | null;
@@ -189,7 +225,9 @@ function mapOrder(row: SupplyOrderRow): SupplyOrder {
     totalAmount: toNum(row.total_amount),
     notes: row.notes ?? '',
     placedBy: row.placed_by ?? '',
-    paymentMethod: row.payment_method ?? 'gcash',
+    paymentMethod: row.payment_method ?? 'hitpay',
+    paymentStatus: row.payment_status ?? (row.status === 'pending_payment' ? 'unpaid' : 'paid'),
+    paidAt: row.paid_at,
     createdAt: row.created_at,
     items: (row.supply_order_item ?? []).map((i) => ({
       id: i.id,
@@ -204,22 +242,26 @@ function mapOrder(row: SupplyOrderRow): SupplyOrder {
   };
 }
 
-/** Fetch supply orders for a brand (HQ view). Optionally scope to one branch. */
+/** Fetch supply orders for a brand. HQ should omit unpaid pending_payment rows. */
 export async function fetchSupplyOrders(
   brandId: string,
-  branchId?: string
+  branchId?: string,
+  options?: { includePendingPayment?: boolean }
 ): Promise<SupplyOrder[]> {
   if (!isSupabaseConfigured()) return [];
 
   let query = supabase
     .from('supply_order')
     .select(
-      'id,reference_no,branch_id,status,item_count,total_amount,notes,placed_by,payment_method,created_at,branch(name),supply_order_item(id,raw_material_id,name,packaging,unit,unit_price,quantity,line_total)'
+      'id,reference_no,branch_id,status,item_count,total_amount,notes,placed_by,payment_method,payment_status,paid_at,created_at,branch(name),supply_order_item(id,raw_material_id,name,packaging,unit,unit_price,quantity,line_total)'
     )
     .eq('brand_id', brandId)
     .order('created_at', { ascending: false });
 
   if (branchId) query = query.eq('branch_id', branchId);
+  if (!options?.includePendingPayment) {
+    query = query.neq('status', 'pending_payment');
+  }
 
   const { data, error } = await query;
   if (error) return [];

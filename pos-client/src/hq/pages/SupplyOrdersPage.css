@@ -148,6 +148,11 @@
   white-space: nowrap;
 }
 
+.so-status--pending_payment {
+  background: rgba(108, 122, 137, 0.14);
+  color: #5d6d7e;
+}
+
 .so-status--pending {
   background: rgba(217, 135, 36, 0.15);
   color: #b86f16;
