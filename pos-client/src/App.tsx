@@ -8,6 +8,7 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import { supabase } from './lib/supabase';
+import { SUPABASE_TIMEOUT_MS, withTimeout } from './lib/withTimeout';
 import { useBrand } from './context/BrandContext';
 import Sidebar from './components/Sidebar';
 import TopHeader from './components/TopHeader';
@@ -403,6 +404,44 @@ function HqShell({ userName, onLogout }: HqShellProps) {
   );
 }
 
+const BOOT_STALL_MS = 3_500;
+const BOOT_RELEASE_MS = SUPABASE_TIMEOUT_MS;
+
+function BootScreen({
+  emoji,
+  stalled,
+  onContinue,
+}: {
+  emoji: string;
+  stalled: boolean;
+  onContinue: () => void;
+}) {
+  return (
+    <div className="boot-screen" role="status" aria-live="polite" aria-busy={!stalled}>
+      <div className="boot-card">
+        <div className="boot-mark" aria-hidden="true">{emoji}</div>
+        <p className="boot-title">Opening your portal</p>
+        <p className="boot-sub">
+          {stalled
+            ? 'The connection is taking longer than usual.'
+            : 'Checking your sign-in…'}
+        </p>
+        {stalled ? (
+          <button type="button" className="boot-continue" onClick={onContinue}>
+            Continue to sign in
+          </button>
+        ) : (
+          <div className="boot-dots" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function HqPlaceholder({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="page-container">
@@ -424,6 +463,7 @@ export default function App() {
   const location = useLocation();
   const { brand, resolveBrandFromProfile, setBrandSlug } = useBrand();
   const [preferredArea, setPreferredArea] = useState<'pos' | 'hq'>('pos');
+  const [bootStalled, setBootStalled] = useState(false);
   const [auth, setAuth] = useState<AuthState>({
     isLoggedIn: false,
     userName: '',
@@ -471,30 +511,60 @@ export default function App() {
     [resolveUserRole, resolveBrandFromProfile, syncBranchFromProfile]
   );
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        await syncSessionUser(session.user);
-        return;
-      }
-
+  const releaseBoot = useCallback(() => {
+    setBootStalled(false);
+    setAuth((prev) => {
+      if (!prev.isLoading) return prev;
       const stored = readStoredAuthSession();
       if (stored) {
-        setAuth({
+        return {
           isLoggedIn: true,
           userName: stored.userName,
           loginMode: stored.loginMode,
           role: normalizeRole(stored.role),
           isLoading: false,
-        });
-        return;
+        };
       }
+      return { ...prev, isLoggedIn: false, isLoading: false };
+    });
+  }, []);
 
-      setAuth((prev) => ({ ...prev, isLoading: false }));
+  useEffect(() => {
+    if (!auth.isLoading) return;
+    const stallTimer = window.setTimeout(() => setBootStalled(true), BOOT_STALL_MS);
+    const releaseTimer = window.setTimeout(() => releaseBoot(), BOOT_RELEASE_MS);
+    return () => {
+      window.clearTimeout(stallTimer);
+      window.clearTimeout(releaseTimer);
+    };
+  }, [auth.isLoading, releaseBoot]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkSession = async () => {
+      try {
+        const {
+          data: { session },
+        } = await withTimeout(
+          supabase.auth.getSession(),
+          SUPABASE_TIMEOUT_MS,
+          'Session check timed out'
+        );
+        if (cancelled) return;
+        if (session?.user) {
+          await withTimeout(
+            syncSessionUser(session.user),
+            SUPABASE_TIMEOUT_MS,
+            'Profile sync timed out'
+          );
+          return;
+        }
+        releaseBoot();
+      } catch (error) {
+        console.error('Session check failed', error);
+        if (!cancelled) releaseBoot();
+      }
     };
 
     void checkSession();
@@ -506,25 +576,35 @@ export default function App() {
         navigate('/reset-password', { replace: true });
         return;
       }
-      if (session?.user) {
-        void syncSessionUser(session.user);
-        return;
-      }
-      // Only clear auth on explicit sign-out — not during initial hydration.
-      if (event === 'SIGNED_OUT') {
-        clearStoredAuthSession();
-        setAuth({
-          isLoggedIn: false,
-          userName: '',
-          loginMode: null,
-          role: 'barista',
-          isLoading: false,
-        });
-      }
+      // Defer profile reads so they don't run while the auth client still holds its lock.
+      window.setTimeout(() => {
+        if (cancelled) return;
+        if (session?.user) {
+          void syncSessionUser(session.user).catch((error) => {
+            console.error('Session sync failed', error);
+            releaseBoot();
+          });
+          return;
+        }
+        // Only clear auth on explicit sign-out — not during initial hydration.
+        if (event === 'SIGNED_OUT') {
+          clearStoredAuthSession();
+          setAuth({
+            isLoggedIn: false,
+            userName: '',
+            loginMode: null,
+            role: 'barista',
+            isLoading: false,
+          });
+        }
+      }, 0);
     });
 
-    return () => subscription.unsubscribe();
-  }, [navigate, syncSessionUser]);
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [navigate, releaseBoot, syncSessionUser]);
 
   const handleLogin = useCallback(
     async (mode: 'guest' | 'pin' | 'email', name?: string, targetArea: 'pos' | 'hq' = 'pos') => {
@@ -601,23 +681,13 @@ export default function App() {
     navigate('/login', { replace: true });
   }, [auth.loginMode, navigate]);
 
-  // Show loading while checking session
   if (auth.isLoading) {
     return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg-app)',
-        color: 'var(--text-muted)',
-        fontFamily: 'var(--font-family)',
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>{brand.menu.loadingEmoji}</div>
-          <div>Loading...</div>
-        </div>
-      </div>
+      <BootScreen
+        emoji={brand.menu.loadingEmoji}
+        stalled={bootStalled}
+        onContinue={releaseBoot}
+      />
     );
   }
 
