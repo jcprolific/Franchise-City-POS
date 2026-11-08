@@ -41,7 +41,7 @@ export interface DemoSupplierSeed {
 }
 
 const SELECT =
-  'id,name,contact_person,phone,email,address,category,is_active,created_at,outstanding_balance,credit_terms';
+  'id,name,contact_person,phone,email,address,category,tin,tax_type,is_active,created_at,outstanding_balance,credit_terms';
 
 function localStorageKey(brandId: string) {
   return `coftea-suppliers:v2:${brandId}`;
@@ -209,8 +209,11 @@ export async function fetchSuppliers(
     }
 
     const remoteRows = (data as HqSupplierRow[]) ?? [];
+    if (remoteRows.length > 0) {
+      return { rows: remoteRows };
+    }
     if (localRows.length === 0) {
-      return { rows: remoteRows.length > 0 ? remoteRows : null };
+      return { rows: null };
     }
 
     const remoteIds = new Set(remoteRows.map((row) => row.id));

@@ -221,6 +221,16 @@ export default function SupplyOrdersPage() {
                         ? ` · ${new Date(order.paidAt).toLocaleString('en-PH')}`
                         : null}
                     </div>
+                    {order.contactName && (
+                      <div className="so-payment-detail">
+                        Deliver to: <strong>{order.contactName}</strong> · {order.contactMobile} · {order.contactEmail}
+                        <br />
+                        {order.deliveryAddress}, {order.deliveryCity}
+                        {order.preferredDeliveryDate
+                          ? ` · Preferred: ${new Date(`${order.preferredDeliveryDate}T00:00:00`).toLocaleDateString('en-PH')}`
+                          : null}
+                      </div>
+                    )}
                     {order.notes && (
                       <div className="so-notes">“{order.notes}”</div>
                     )}

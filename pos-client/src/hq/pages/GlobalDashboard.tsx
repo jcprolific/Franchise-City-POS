@@ -12,12 +12,16 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useBrand } from '../../context/BrandContext';
-import type { HqKpiSnapshot, HqWeeklyRevenueItem } from '../lib/hqKpiService';
-import { fetchHqKpiData } from '../lib/hqKpiService';
-import { getHqDemoData, type HqBranchAlert } from '../data/getHqDemoData';
+import {
+  EMPTY_HQ_SNAPSHOT,
+  emptyWeeklyRevenue,
+  type HqKpiSnapshot,
+  type HqWeeklyRevenueItem,
+} from '../lib/hqKpiService';
+import { fetchHqDashboardFeed } from '../lib/hqDashboardFeed';
+import { getHqDemoData, type HqBranchAlert, type HqInventoryAlert, type HqLiveOrder } from '../data/getHqDemoData';
 import ActionPlanModal from '../components/ActionPlanModal';
 import {
-  alertToWatchInput,
   createWatchItem,
   deleteWatchItem,
   ensureLocalWatchItems,
@@ -58,22 +62,20 @@ export default function GlobalDashboard() {
   const { brand } = useBrand();
   const demo = useMemo(() => getHqDemoData(brand.slug), [brand.slug]);
 
-  const [snapshot, setSnapshot] = useState<HqKpiSnapshot>(() => demo.sampleSnapshot);
-  const [chartData, setChartData] = useState<HqWeeklyRevenueItem[]>(() => demo.sampleRevenue);
+  const [snapshot, setSnapshot] = useState<HqKpiSnapshot>(EMPTY_HQ_SNAPSHOT);
+  const [chartData, setChartData] = useState<HqWeeklyRevenueItem[]>(() => emptyWeeklyRevenue());
+  const [totalBranches, setTotalBranches] = useState(0);
+  const [branchNames, setBranchNames] = useState<string[]>([]);
+  const [inventoryAlerts, setInventoryAlerts] = useState<HqInventoryAlert[]>([]);
+  const [liveOrders, setLiveOrders] = useState<HqLiveOrder[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [errorText, setErrorText] = useState('');
-  const [usingDemoData, setUsingDemoData] = useState(true);
   const [range, setRange] = useState<'daily' | 'weekly'>('weekly');
   const [search, setSearch] = useState('');
   const [activeAlert, setActiveAlert] = useState<HqBranchAlert | null>(null);
 
-  const watchSeeds = useMemo(
-    () => demo.branchesToCheck.map((alert) => alertToWatchInput(alert, brand.dbBrandId)),
-    [demo.branchesToCheck, brand.dbBrandId]
-  );
-
   const [watchItems, setWatchItems] = useState<BranchWatchItem[]>(() =>
-    ensureLocalWatchItems(brand.dbBrandId, watchSeeds)
+    ensureLocalWatchItems(brand.dbBrandId).filter((item) => item.created_by !== 'HQ Demo Seed')
   );
   const [watchSyncing, setWatchSyncing] = useState(false);
   const [watchError, setWatchError] = useState('');
@@ -87,27 +89,26 @@ export default function GlobalDashboard() {
     setSyncing(true);
     try {
       setErrorText('');
-      const result = await fetchHqKpiData(brand.dbBrandId);
-      const hasLiveData = result.snapshot.todayOrders > 0;
-      if (hasLiveData) {
-        setSnapshot(result.snapshot);
-        setChartData(result.weeklyRevenue);
-        setUsingDemoData(false);
-        if (result.source === 'fallback') {
-          setErrorText('Using direct order aggregation. Run HQ KPI SQL functions for optimized metrics.');
-        }
-      } else {
-        setUsingDemoData(true);
-        setErrorText(demo.demoDataMessage);
-      }
+      const result = await fetchHqDashboardFeed(brand.dbBrandId);
+      setSnapshot(result.snapshot);
+      setChartData(result.weeklyRevenue.length > 0 ? result.weeklyRevenue : emptyWeeklyRevenue());
+      setTotalBranches(result.totalBranches);
+      setBranchNames(result.branches.map((branch) => branch.name));
+      setInventoryAlerts(result.inventoryAlerts);
+      setLiveOrders(result.liveOrders);
     } catch (error) {
       console.error('HQ KPI sync failed', error);
-      setUsingDemoData(true);
-      setErrorText(demo.demoDataMessage);
+      setSnapshot(EMPTY_HQ_SNAPSHOT);
+      setChartData(emptyWeeklyRevenue());
+      setTotalBranches(0);
+      setBranchNames([]);
+      setInventoryAlerts([]);
+      setLiveOrders([]);
+      setErrorText('Could not load live HQ data. Check your connection and try again.');
     } finally {
       setSyncing(false);
     }
-  }, [brand.dbBrandId, demo.demoDataMessage]);
+  }, [brand.dbBrandId]);
 
   useEffect(() => {
     void refresh();
@@ -122,10 +123,9 @@ export default function GlobalDashboard() {
     };
   }, [refresh, brand.slug]);
 
-  const displaySnapshot = usingDemoData ? demo.sampleSnapshot : snapshot;
-  const displayChartData = usingDemoData || chartData.length === 0 ? demo.sampleRevenue : chartData;
-  const revenueChange = computePercentChange(displaySnapshot.todayRevenue, displaySnapshot.yesterdayRevenue);
-  const orderChange = computePercentChange(displaySnapshot.todayOrders, displaySnapshot.yesterdayOrders);
+  const displayChartData = chartData.length > 0 ? chartData : emptyWeeklyRevenue();
+  const revenueChange = computePercentChange(snapshot.todayRevenue, snapshot.yesterdayRevenue);
+  const orderChange = computePercentChange(snapshot.todayOrders, snapshot.yesterdayOrders);
 
   const chartPoints = useMemo(() => {
     if (displayChartData.length === 0) return [] as { x: number; y: number; day: string; revenue: number }[];
@@ -168,11 +168,11 @@ export default function GlobalDashboard() {
 
   const loadWatchItems = useCallback(async () => {
     setWatchError('');
-    setWatchItems(ensureLocalWatchItems(brand.dbBrandId, watchSeeds));
+    setWatchItems(ensureLocalWatchItems(brand.dbBrandId).filter((item) => item.created_by !== 'HQ Demo Seed'));
     setWatchSyncing(true);
     try {
-      const result = await fetchWatchItems(brand.dbBrandId, watchSeeds);
-      setWatchItems(result.items);
+      const result = await fetchWatchItems(brand.dbBrandId);
+      setWatchItems(result.items.filter((item) => item.created_by !== 'HQ Demo Seed'));
       if (result.error) setWatchError(result.error);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load watch list.';
@@ -180,7 +180,7 @@ export default function GlobalDashboard() {
     } finally {
       setWatchSyncing(false);
     }
-  }, [brand.dbBrandId, watchSeeds]);
+  }, [brand.dbBrandId]);
 
   useEffect(() => {
     void loadWatchItems();
@@ -260,14 +260,14 @@ export default function GlobalDashboard() {
 
   const filteredLiveOrders = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return demo.liveOrders;
-    return demo.liveOrders.filter(
+    if (!q) return liveOrders;
+    return liveOrders.filter(
       (o) =>
         o.branch.toLowerCase().includes(q) ||
         o.items.toLowerCase().includes(q) ||
         o.id.includes(q)
     );
-  }, [demo.liveOrders, search]);
+  }, [liveOrders, search]);
 
   return (
     <div className="hq-home" id="hq-home">
@@ -304,7 +304,7 @@ export default function GlobalDashboard() {
             <span>Total Sales Today</span>
             <span className="hq-stat-icon"><Wallet size={16} /></span>
           </div>
-          <div className="hq-stat-value">{formatPeso(displaySnapshot.todayRevenue)}</div>
+          <div className="hq-stat-value">{formatPeso(snapshot.todayRevenue)}</div>
           <div className="hq-stat-trend hq-stat-trend--up">
             {revenueChange >= 0 ? '↑' : '↓'} {Math.abs(revenueChange).toFixed(1)}% vs yesterday
           </div>
@@ -315,7 +315,7 @@ export default function GlobalDashboard() {
             <span>Total Orders</span>
             <span className="hq-stat-icon"><ShoppingBag size={16} /></span>
           </div>
-          <div className="hq-stat-value">{displaySnapshot.todayOrders.toLocaleString()}</div>
+          <div className="hq-stat-value">{snapshot.todayOrders.toLocaleString()}</div>
           <div className="hq-stat-trend hq-stat-trend--up">
             {orderChange >= 0 ? '↑' : '↓'} {Math.abs(orderChange).toFixed(1)}% vs yesterday
           </div>
@@ -326,7 +326,7 @@ export default function GlobalDashboard() {
             <span>Avg Order Value</span>
             <span className="hq-stat-icon"><CreditCard size={16} /></span>
           </div>
-          <div className="hq-stat-value">₱{displaySnapshot.avgOrderValue.toFixed(2)}</div>
+          <div className="hq-stat-value">₱{snapshot.avgOrderValue.toFixed(2)}</div>
           <div className="hq-stat-trend hq-stat-trend--muted">Today network AOV</div>
         </article>
 
@@ -336,8 +336,8 @@ export default function GlobalDashboard() {
             <span className="hq-stat-icon"><Store size={16} /></span>
           </div>
           <div className="hq-stat-value hq-stat-value--split">
-            {displaySnapshot.activeBranches}
-            <span>/{demo.totalBranches}</span>
+            {snapshot.activeBranches}
+            <span>/{totalBranches}</span>
           </div>
           <div className="hq-stat-trend hq-stat-trend--muted">Online now</div>
         </article>
@@ -449,8 +449,8 @@ export default function GlobalDashboard() {
                     placeholder="e.g. Coftea Makati"
                   />
                   <datalist id="hq-watch-branch-options">
-                    {demo.sampleBranches.map((b) => (
-                      <option key={b.id} value={b.name} />
+                    {branchNames.map((name) => (
+                      <option key={name} value={name} />
                     ))}
                   </datalist>
                 </label>
@@ -585,7 +585,7 @@ export default function GlobalDashboard() {
           </div>
 
           <ul className="hq-alert-list">
-            {demo.inventoryAlerts.map((alert) => (
+            {inventoryAlerts.map((alert) => (
               <li key={alert.id} className={`hq-alert hq-alert--${alert.level}`}>
                 <span className="hq-alert-icon">
                   <AlertTriangle size={14} />
@@ -597,6 +597,13 @@ export default function GlobalDashboard() {
                 <div className="hq-alert-qty">{alert.qty}</div>
               </li>
             ))}
+            {inventoryAlerts.length === 0 && (
+              <li className="hq-alert">
+                <div className="hq-alert-body">
+                  <div className="hq-alert-sub">No low-stock items right now.</div>
+                </div>
+              </li>
+            )}
           </ul>
         </section>
       </section>
@@ -627,7 +634,7 @@ export default function GlobalDashboard() {
             <tbody>
               {filteredLiveOrders.map((order) => (
                 <tr key={order.id}>
-                  <td className="hq-orders-id">#{order.id}</td>
+                  <td className="hq-orders-id">#{order.id.length > 8 ? order.id.slice(0, 8) : order.id}</td>
                   <td>{order.branch}</td>
                   <td className="hq-orders-items">{order.items}</td>
                   <td className="hq-orders-total">{formatPeso(order.total)}</td>
@@ -642,7 +649,7 @@ export default function GlobalDashboard() {
               {filteredLiveOrders.length === 0 && (
                 <tr>
                   <td colSpan={6} className="hq-orders-time">
-                    No orders match your search.
+                    {liveOrders.length === 0 ? 'No recent orders yet.' : 'No orders match your search.'}
                   </td>
                 </tr>
               )}

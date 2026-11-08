@@ -110,6 +110,12 @@ export interface SupplyOrder {
   paidAt: string | null;
   createdAt: string;
   items: SupplyOrderItem[];
+  contactName: string;
+  contactMobile: string;
+  contactEmail: string;
+  deliveryAddress: string;
+  deliveryCity: string;
+  preferredDeliveryDate: string | null;
 }
 
 function toNum(value: number | string | null | undefined): number {
@@ -193,6 +199,12 @@ interface SupplyOrderRow {
   payment_status: SupplyPaymentStatus | null;
   paid_at: string | null;
   created_at: string;
+  contact_name: string | null;
+  contact_mobile: string | null;
+  contact_email: string | null;
+  delivery_address: string | null;
+  delivery_city: string | null;
+  preferred_delivery_date: string | null;
   branch: { name?: string } | { name?: string }[] | null;
   supply_order_item: SupplyOrderItemRow[] | null;
 }
@@ -229,6 +241,12 @@ function mapOrder(row: SupplyOrderRow): SupplyOrder {
     paymentStatus: row.payment_status ?? (row.status === 'pending_payment' ? 'unpaid' : 'paid'),
     paidAt: row.paid_at,
     createdAt: row.created_at,
+    contactName: row.contact_name ?? '',
+    contactMobile: row.contact_mobile ?? '',
+    contactEmail: row.contact_email ?? '',
+    deliveryAddress: row.delivery_address ?? '',
+    deliveryCity: row.delivery_city ?? '',
+    preferredDeliveryDate: row.preferred_delivery_date,
     items: (row.supply_order_item ?? []).map((i) => ({
       id: i.id,
       rawMaterialId: i.raw_material_id,
@@ -253,7 +271,7 @@ export async function fetchSupplyOrders(
   let query = supabase
     .from('supply_order')
     .select(
-      'id,reference_no,branch_id,status,item_count,total_amount,notes,placed_by,payment_method,payment_status,paid_at,created_at,branch(name),supply_order_item(id,raw_material_id,name,packaging,unit,unit_price,quantity,line_total)'
+      'id,reference_no,branch_id,status,item_count,total_amount,notes,placed_by,payment_method,payment_status,paid_at,created_at,contact_name,contact_mobile,contact_email,delivery_address,delivery_city,preferred_delivery_date,branch(name),supply_order_item(id,raw_material_id,name,packaging,unit,unit_price,quantity,line_total)'
     )
     .eq('brand_id', brandId)
     .order('created_at', { ascending: false });

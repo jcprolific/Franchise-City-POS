@@ -25,6 +25,7 @@ interface HitPayPayload {
   id?: string;
   status?: string;
   reference_number?: string;
+  amount?: string | number;
   payments?: HitPayPayment[];
 }
 
@@ -118,7 +119,7 @@ Deno.serve(async (req: Request) => {
 
   let query = admin
     .from('supply_order')
-    .select('id, status, payment_status, reference_no, hitpay_payment_request_id');
+    .select('id, status, payment_status, reference_no, hitpay_payment_request_id, total_amount');
 
   if (referenceNo) {
     query = query.eq('reference_no', referenceNo);
@@ -136,6 +137,18 @@ Deno.serve(async (req: Request) => {
 
   if (order.payment_status === 'paid') {
     return jsonResponse({ ok: true, idempotent: true, orderId: order.id });
+  }
+
+  const paidAmount = Number(payload.amount);
+  if (
+    payload.amount !== undefined &&
+    Number.isFinite(paidAmount) &&
+    Math.abs(paidAmount - Number(order.total_amount)) > 0.009
+  ) {
+    console.error(
+      `Amount mismatch on ${order.reference_no}: paid ${paidAmount}, expected ${order.total_amount}`
+    );
+    return jsonResponse({ skipped: true, reason: 'amount_mismatch', orderId: order.id });
   }
 
   const paymentId =

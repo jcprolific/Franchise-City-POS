@@ -18,4 +18,4 @@ export function withTimeout<T>(
   });
 }
 
-export const SUPABASE_TIMEOUT_MS = 8_000;
+export const SUPABASE_TIMEOUT_MS = 15_000;

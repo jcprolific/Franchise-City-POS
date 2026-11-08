@@ -28,4 +28,5 @@ export const DEFAULT_BRAND_SLUG: BrandSlug = 'coftea';
 export const BRAND_STORAGE_KEY = 'coftea.pos.selectedBrand';
 
 export * from './types';
+export * from './rosterBrands';
 export { potatoCornerBrand, cofteaBrand };

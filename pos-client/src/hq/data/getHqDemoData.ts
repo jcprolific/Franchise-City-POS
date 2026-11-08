@@ -87,4 +87,10 @@ export function getHqDemoData(slug: BrandSlug): HqDemoDataBundle {
   };
 }
 
-export type { HqBranchAlert, HqDisplayBranch, HqSupplierRow } from './cofteaHqDemoData';
+export type {
+  HqBranchAlert,
+  HqDisplayBranch,
+  HqInventoryAlert,
+  HqLiveOrder,
+  HqSupplierRow,
+} from './cofteaHqDemoData';

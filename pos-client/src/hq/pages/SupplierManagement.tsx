@@ -579,6 +579,7 @@ export default function SupplierManagement() {
               <th>Contact Person</th>
               <th>Contact Details</th>
               <th>Address</th>
+              <th>TIN / Tax</th>
               <th className="supplier-payable-th">Payables</th>
               <th>Status</th>
               <th>Actions</th>
@@ -607,6 +608,18 @@ export default function SupplierManagement() {
                     <MapPin size={12} />
                     {supplier.address || 'No address'}
                   </span>
+                </td>
+                <td>
+                  {supplier.tin ? (
+                    <>
+                      <div>{supplier.tin}</div>
+                      {supplier.tax_type && (
+                        <span className="supplier-payable-terms">{supplier.tax_type}</span>
+                      )}
+                    </>
+                  ) : (
+                    '—'
+                  )}
                 </td>
                 <td className="supplier-payable-cell">
                   <span

@@ -4,6 +4,7 @@ import { CircleAlert, CircleCheck, LoaderCircle } from 'lucide-react';
 import { useBrand } from '../context/BrandContext';
 import { getCurrentBranch } from '../lib/branchContext';
 import { fetchSupplyOrders, type SupplyOrder } from '../lib/supplyOrderService';
+import { clearCartDraft } from '../lib/supplyCheckout';
 import PortalLayout from './PortalLayout';
 import './SupplyPaymentResultPage.css';
 
@@ -67,6 +68,10 @@ export default function SupplyPaymentResultPage() {
 
   const paid = order?.paymentStatus === 'paid';
   const failed = failedRoute || hitpayStatus === 'failed' || hitpayStatus === 'canceled';
+
+  useEffect(() => {
+    if (paid) clearCartDraft(branch.id);
+  }, [paid, branch.id]);
 
   const title = failed ? 'Payment not completed' : paid ? 'Payment received' : 'Confirming payment';
   const Icon = failed ? CircleAlert : paid ? CircleCheck : LoaderCircle;

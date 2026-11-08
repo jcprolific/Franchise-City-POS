@@ -28,7 +28,9 @@ import OrdersPage from './pages/OrdersPage';
 import AdminSidebar from './hq/components/AdminSidebar';
 import GlobalDashboard from './hq/pages/GlobalDashboard';
 import BranchManagement from './hq/pages/BranchManagement';
+import BrandRosterPage from './hq/pages/BrandRosterPage';
 import WarehouseManagement from './hq/pages/WarehouseManagement';
+import HqInventoryPage from './hq/pages/HqInventoryPage';
 import SupplierManagement from './hq/pages/SupplierManagement';
 import MenuCatalogPage from './hq/pages/MenuCatalogPage';
 import StaffDirectoryPage from './hq/pages/StaffDirectoryPage';
@@ -405,7 +407,22 @@ function HqShell({ userName, onLogout }: HqShellProps) {
 }
 
 const BOOT_STALL_MS = 3_500;
-const BOOT_RELEASE_MS = SUPABASE_TIMEOUT_MS;
+const BOOT_RELEASE_MS = 8_000;
+
+function hasPendingLocalSession(): boolean {
+  try {
+    if (readStoredAuthSession()) return true;
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('sb-') && key.endsWith('-auth-token') && localStorage.getItem(key)) {
+        return true;
+      }
+    }
+  } catch {
+    return true;
+  }
+  return false;
+}
 
 function BootScreen({
   emoji,
@@ -469,13 +486,14 @@ export default function App() {
     userName: '',
     loginMode: null,
     role: 'barista',
-    isLoading: true,
+    isLoading: hasPendingLocalSession(),
   });
 
   useEffect(() => {
+    if (!auth.isLoggedIn) return;
     preloadPosOrderColumns();
     return startOrderSyncWorker();
-  }, []);
+  }, [auth.isLoggedIn]);
 
   const resolveUserRole = useCallback(async (userId: string): Promise<UserRole> => {
     const { data, error } = await supabase
@@ -496,9 +514,11 @@ export default function App() {
   const syncSessionUser = useCallback(
     async (user: { id: string; email?: string | null }) => {
       clearStoredAuthSession();
-      const role = await resolveUserRole(user.id);
-      await resolveBrandFromProfile(user.id);
-      await syncBranchFromProfile(user.id);
+      const [role] = await Promise.all([
+        resolveUserRole(user.id),
+        resolveBrandFromProfile(user.id),
+        syncBranchFromProfile(user.id),
+      ]);
       setAuth({
         isLoggedIn: true,
         userName: user.email?.split('@')[0] || 'User',
@@ -730,9 +750,11 @@ export default function App() {
           <Route element={<HqShell userName={auth.userName} onLogout={handleLogout} />}>
             <Route path="/hq" element={<GlobalDashboard />} />
             <Route path="/hq/branches" element={<BranchManagement />} />
+            <Route path="/hq/roster" element={<BrandRosterPage />} />
             <Route path="/hq/branch-health" element={<BranchHealthPage />} />
             <Route path="/hq/eod-reports" element={<HqEodReportsPage />} />
             <Route path="/hq/warehouse" element={<WarehouseManagement />} />
+            <Route path="/hq/inventory" element={<HqInventoryPage />} />
             <Route path="/hq/supply-orders" element={<SupplyOrdersPage />} />
             <Route path="/hq/suppliers" element={<SupplierManagement />} />
             <Route path="/hq/catalog" element={<MenuCatalogPage />} />

@@ -1,0 +1,13 @@
+HitPay webhook (Coftea Philippines — Developers → Webhook Endpoints)
+
+URL:
+https://wuthacuizslfsadkwmad.supabase.co/functions/v1/hitpay-webhook
+
+Event:
+payment_request.completed
+
+Do not enable IP whitelisting (Supabase edge functions use dynamic egress).
+
+After saving, run:
+  ./supabase/scripts/sync-hitpay-secrets.sh
+  ./supabase/scripts/verify-hitpay-flow.sh

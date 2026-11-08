@@ -5,6 +5,7 @@ import {
   Bell,
   BookOpen,
   ClipboardList,
+  Contact,
   FileText,
   FolderOpen,
   Handshake,
@@ -15,6 +16,7 @@ import {
   Settings,
   Store,
   Users,
+  Package,
   Warehouse,
 } from 'lucide-react';
 import { useBrand } from '../../context/BrandContext';
@@ -32,6 +34,7 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
   const navItems = [
     { path: '/hq', label: 'Network Overview', icon: <LayoutDashboard size={18} /> },
     { path: '/hq/branches', label: 'Franchisees', icon: <Store size={18} /> },
+    { path: '/hq/roster', label: 'Brand Roster', icon: <Contact size={18} /> },
     { path: '/hq/branch-health', label: 'Branch Health', icon: <Activity size={18} /> },
     { path: '/hq/eod-reports', label: 'EOD Reports', icon: <FileText size={18} /> },
     { path: '/hq/supply-orders', label: 'Supply Orders', icon: <ClipboardList size={18} /> },
@@ -40,6 +43,7 @@ export default function AdminSidebar({ userName, onLogout }: AdminSidebarProps) 
     { path: '/hq/support', label: 'Support Inbox', icon: <LifeBuoy size={18} /> },
     { path: '/hq/notices', label: 'System Notices', icon: <Bell size={18} /> },
     { path: '/hq/warehouse', label: 'Warehouse', icon: <Warehouse size={18} /> },
+    { path: '/hq/inventory', label: 'Supply Inventory', icon: <Package size={18} /> },
     { path: '/hq/suppliers', label: 'Suppliers', icon: <Handshake size={18} /> },
     { path: '/hq/catalog', label: 'Menu Catalog', icon: <BookOpen size={18} /> },
     { path: '/hq/staff', label: 'Staff Directory', icon: <Users size={18} /> },

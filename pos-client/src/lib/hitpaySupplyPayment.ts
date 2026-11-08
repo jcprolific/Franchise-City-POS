@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import type { SupplyOrderLineInput } from './supplyOrderService';
+import type { SupplyCustomerDetails } from './supplyCheckout';
 
 export interface StartSupplyPaymentInput {
   brandId: string;
@@ -8,6 +9,7 @@ export interface StartSupplyPaymentInput {
   placedBy?: string;
   orderId?: string;
   lines?: SupplyOrderLineInput[];
+  customer?: SupplyCustomerDetails;
 }
 
 export interface StartSupplyPaymentResult {
@@ -37,6 +39,7 @@ export async function startSupplyOrderPayment(
       origin: window.location.origin,
       orderId: input.orderId,
       lines: input.lines,
+      customer: input.customer,
     },
   });
 

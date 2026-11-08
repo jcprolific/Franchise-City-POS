@@ -30,6 +30,7 @@ const ALLOWED_REDIRECT_ORIGINS = new Set([
   'http://localhost:5199',
   'http://127.0.0.1:5199',
   'https://pos.franchisecity.ph',
+  'https://coftea-pos.vercel.app',
   'https://www.franchisecity.ph',
   'https://franchisecity.ph',
 ]);
@@ -51,6 +52,47 @@ interface Payload {
   origin?: string;
   orderId?: string;
   lines?: LineInput[];
+  customer?: CustomerInput;
+}
+
+interface CustomerInput {
+  contactName?: string;
+  mobile?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  preferredDate?: string;
+}
+
+interface CleanCustomer {
+  contact_name: string;
+  contact_mobile: string;
+  contact_email: string;
+  delivery_address: string;
+  delivery_city: string;
+  preferred_delivery_date: string | null;
+}
+
+function parseCustomer(input: CustomerInput | undefined): CleanCustomer | string {
+  const name = input?.contactName?.trim() ?? '';
+  const email = input?.email?.trim() ?? '';
+  const address = input?.address?.trim() ?? '';
+  const city = input?.city?.trim() ?? '';
+  const date = input?.preferredDate?.trim() ?? '';
+  const mobile = (input?.mobile ?? '').replace(/[\s()-]/g, '').match(/^(?:\+?63|0)?(9\d{9})$/);
+  if (name.length < 2) return 'Contact name is required.';
+  if (!mobile) return 'A valid Philippine mobile number is required.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return 'A valid email is required.';
+  if (address.length < 8 || city.length < 2) return 'A complete delivery address is required.';
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Preferred delivery date is invalid.';
+  return {
+    contact_name: name.slice(0, 120),
+    contact_mobile: `+63${mobile[1]}`,
+    contact_email: email.slice(0, 200),
+    delivery_address: address.slice(0, 300),
+    delivery_city: city.slice(0, 120),
+    preferred_delivery_date: date || null,
+  };
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -191,8 +233,15 @@ Deno.serve(async (req: Request) => {
     profile?.full_name?.trim() ||
     user.email ||
     'Franchisee';
-  const payerName = profile?.full_name?.trim() || placedBy;
-  const payerEmail = user.email?.trim() || '';
+  // Details are mandatory for new orders; a retry from Order History may omit them.
+  let customer: CleanCustomer | null = null;
+  if (payload.customer || !existingOrderId) {
+    const parsed = parseCustomer(payload.customer);
+    if (typeof parsed === 'string') return jsonResponse({ error: parsed }, 400);
+    customer = parsed;
+  }
+  const payerName = customer?.contact_name || profile?.full_name?.trim() || placedBy;
+  const payerEmail = customer?.contact_email || user.email?.trim() || '';
 
   let orderId = existingOrderId;
   let referenceNo = '';
@@ -219,27 +268,64 @@ Deno.serve(async (req: Request) => {
     orderId = existing.id;
     referenceNo = existing.reference_no;
     totalAmount = roundMoney(Number(existing.total_amount) || 0);
+    if (customer) {
+      const { error: detailsError } = await admin
+        .from('supply_order')
+        .update({ ...customer, notes })
+        .eq('id', existingOrderId);
+      if (detailsError) return jsonResponse({ error: detailsError.message }, 400);
+    }
   } else {
-    const lines = (payload.lines ?? [])
-      .map((line) => {
-        const quantity = Math.max(0, Math.round(Number(line.quantity) || 0));
-        const unitPrice = roundMoney(Math.max(0, Number(line.unitPrice) || 0));
-        const name = line.name?.trim() ?? '';
-        return {
-          rawMaterialId: line.rawMaterialId?.trim() || null,
-          name,
-          packaging: line.packaging?.trim() || '',
-          unit: line.unit?.trim() || 'unit',
-          unitPrice,
-          quantity,
-          lineTotal: roundMoney(quantity * unitPrice),
-        };
-      })
-      .filter((line) => line.name && line.quantity > 0);
+    // Quantities come from the client; names and prices always come from the catalog.
+    const requested = (payload.lines ?? [])
+      .map((line) => ({
+        rawMaterialId: line.rawMaterialId?.trim() ?? '',
+        quantity: Math.min(100000, Math.max(0, Math.round(Number(line.quantity) || 0))),
+      }))
+      .filter((line) => line.rawMaterialId && line.quantity > 0);
 
-    if (lines.length === 0) {
+    if (requested.length === 0) {
       return jsonResponse({ error: 'Add at least one item before paying.' }, 400);
     }
+
+    const { data: catalogRows, error: catalogError } = await admin
+      .from('raw_material')
+      .select('id, name, packaging, unit, price')
+      .eq('brand_id', brandId)
+      .eq('is_active', true)
+      .in('id', requested.map((line) => line.rawMaterialId));
+
+    if (catalogError) {
+      return jsonResponse({ error: 'Could not verify item prices. Please try again.' }, 500);
+    }
+
+    const catalog = new Map((catalogRows ?? []).map((row) => [String(row.id), row]));
+    const unavailable = requested.filter((line) => {
+      const price = Number(catalog.get(line.rawMaterialId)?.price);
+      return !Number.isFinite(price) || price <= 0;
+    });
+    if (unavailable.length > 0) {
+      return jsonResponse(
+        {
+          error: `${unavailable.length} item(s) in your cart are no longer available. Refresh the page and review your order.`,
+        },
+        409
+      );
+    }
+
+    const lines = requested.map((line) => {
+      const material = catalog.get(line.rawMaterialId)!;
+      const unitPrice = roundMoney(Number(material.price));
+      return {
+        rawMaterialId: line.rawMaterialId,
+        name: String(material.name),
+        packaging: material.packaging ?? '',
+        unit: material.unit ?? 'unit',
+        unitPrice,
+        quantity: line.quantity,
+        lineTotal: roundMoney(line.quantity * unitPrice),
+      };
+    });
 
     const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
     totalAmount = roundMoney(lines.reduce((sum, line) => sum + line.lineTotal, 0));
@@ -263,6 +349,7 @@ Deno.serve(async (req: Request) => {
           notes,
           placed_by: placedBy,
           payment_method: 'hitpay',
+          ...customer,
         })
         .select('id, reference_no')
         .single();
@@ -316,6 +403,7 @@ Deno.serve(async (req: Request) => {
   form.set('purpose', `Coftea Supply Order ${referenceNo}`);
   form.set('name', payerName);
   if (payerEmail) form.set('email', payerEmail);
+  if (customer) form.set('phone', customer.contact_mobile);
 
   const methods = (Deno.env.get('HITPAY_PAYMENT_METHODS') ?? '')
     .split(',')

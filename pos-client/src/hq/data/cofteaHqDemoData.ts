@@ -67,6 +67,8 @@ export interface HqSupplierRow {
   email: string | null;
   address: string | null;
   category: string | null;
+  tin?: string | null;
+  tax_type?: string | null;
   is_active: boolean | null;
   created_at: string | null;
   outstanding_balance?: number | null;

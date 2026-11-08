@@ -1,5 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Boxes,
+  Check,
+  Lock,
+  MapPin,
+  Minus,
+  PackageX,
+  Plus,
+  Search,
+  ShoppingBag,
+  Trash2,
+  UserRound,
+  Wallet,
+  X,
+} from 'lucide-react';
 import { useBrand } from '../context/BrandContext';
 import type { PosOutletContext } from '../App';
 import { getCurrentBranch } from '../lib/branchContext';
@@ -11,14 +29,27 @@ import {
   type BranchInventoryItem,
 } from '../lib/inventoryService';
 import { startSupplyOrderPayment } from '../lib/hitpaySupplyPayment';
-import { fetchStockMovements, downloadMovementsCsv, logStockMovement, type StockMovement } from '../lib/stockMovementService';
 import {
-  cofteaRawMaterials,
-  RAW_MATERIAL_CATEGORY_ORDER,
-} from '../data/cofteaRawMaterials';
+  EMPTY_CUSTOMER,
+  cartSignature,
+  clearCartDraft,
+  minDeliveryDate,
+  normalizePhMobile,
+  readCartDraft,
+  readSavedContact,
+  saveContact,
+  validateCustomer,
+  writeCartDraft,
+  type SupplyCustomerDetails,
+  type SupplyCustomerErrors,
+} from '../lib/supplyCheckout';
+import { fetchStockMovements, downloadMovementsCsv, logStockMovement, type StockMovement } from '../lib/stockMovementService';
+import { cofteaRawMaterials, RAW_MATERIAL_CATEGORY_ORDER } from '../data/cofteaRawMaterials';
 import './InventoryPage.css';
 
 type StockSource = 'live' | 'local';
+type StockFilter = 'all' | 'low' | 'out';
+type CheckoutStep = 'items' | 'details';
 
 interface CartLine {
   item: BranchInventoryItem;
@@ -52,10 +83,18 @@ function localFallbackItems(): BranchInventoryItem[] {
   }));
 }
 
+function stockState(item: BranchInventoryItem): 'out' | 'low' | 'ok' {
+  if (item.onHandQty <= 0) return 'out';
+  return item.onHandQty <= item.lowStockQty ? 'low' : 'ok';
+}
+
+const STOCK_LABELS = { out: 'Out of stock', low: 'Low stock', ok: 'In stock' };
+
 const peso = new Intl.NumberFormat('en-PH', {
   style: 'currency',
   currency: 'PHP',
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
 
 const pesoExact = new Intl.NumberFormat('en-PH', {
@@ -64,6 +103,15 @@ const pesoExact = new Intl.NumberFormat('en-PH', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+
+const FIELD_ORDER: (keyof SupplyCustomerDetails)[] = [
+  'contactName',
+  'mobile',
+  'email',
+  'address',
+  'city',
+  'preferredDate',
+];
 
 export default function InventoryPage() {
   const { brand } = useBrand();
@@ -77,14 +125,23 @@ export default function InventoryPage() {
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [savingId, setSavingId] = useState<string | null>(null);
 
   // Reorder cart: rawMaterialId -> line
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+  const [cartRestored, setCartRestored] = useState(false);
+  const pendingOrder = useRef<{ orderId: string; signature: string } | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('items');
+  const [customer, setCustomer] = useState<SupplyCustomerDetails>(() => ({
+    ...EMPTY_CUSTOMER,
+    contactName: readStoredAuthSession()?.userName ?? '',
+    ...readSavedContact(branch.id),
+  }));
+  const [customerErrors, setCustomerErrors] = useState<SupplyCustomerErrors>({});
   const [notes, setNotes] = useState('');
   const [placing, setPlacing] = useState(false);
-  const [confirmation, setConfirmation] = useState<string | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [pageTab, setPageTab] = useState<'stock' | 'history'>('stock');
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -94,6 +151,9 @@ export default function InventoryPage() {
     next: number;
   } | null>(null);
   const [adjustReason, setAdjustReason] = useState('Count correction');
+
+  // Orders are priced by the server from the live catalog, so the offline list can't be ordered from.
+  const canOrder = canManageInventory && source === 'live';
 
   useEffect(() => {
     let cancelled = false;
@@ -125,40 +185,96 @@ export default function InventoryPage() {
     void fetchStockMovements(branch.id).then(setMovements);
   }, [branch.id, items]);
 
-  const categories = useMemo(() => {
-    const present = new Set(items.map((i) => i.category));
-    return RAW_MATERIAL_CATEGORY_ORDER.filter((c) => present.has(c));
+  // Bring back the cart after a cancelled HitPay checkout or a page refresh.
+  useEffect(() => {
+    if (source !== 'live' || cartRestored) return;
+    const draft = readCartDraft(branch.id);
+    if (draft) {
+      const restored: Record<string, CartLine> = {};
+      for (const item of items) {
+        const qty = draft.quantities[item.rawMaterialId];
+        if (qty > 0 && item.price > 0) restored[item.rawMaterialId] = { item, qty };
+      }
+      setCart(restored);
+      if (draft.orderId && draft.signature) {
+        pendingOrder.current = { orderId: draft.orderId, signature: draft.signature };
+      }
+    }
+    setCartRestored(true);
+  }, [source, items, cartRestored, branch.id]);
+
+  useEffect(() => {
+    if (!cartRestored) return;
+    const lines = Object.values(cart);
+    if (lines.length === 0) {
+      clearCartDraft(branch.id);
+      return;
+    }
+    writeCartDraft(branch.id, {
+      quantities: Object.fromEntries(lines.map((l) => [l.item.rawMaterialId, l.qty])),
+      orderId: pendingOrder.current?.orderId,
+      signature: pendingOrder.current?.signature,
+    });
+  }, [cart, cartRestored, branch.id]);
+
+  const categoryOrder = useMemo(() => {
+    const seen = new Set<string>();
+    const order: string[] = [];
+    for (const item of [...items].sort((a, b) => a.sortOrder - b.sortOrder)) {
+      const cat = item.category?.trim();
+      if (!cat || seen.has(cat)) continue;
+      seen.add(cat);
+      order.push(cat);
+    }
+    if (order.length > 0) return order;
+    return [...RAW_MATERIAL_CATEGORY_ORDER];
   }, [items]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((item) => {
+      const itemCategory = item.category?.trim() || 'Uncategorized';
       const matchesCategory =
-        activeCategory === 'all' || item.category === activeCategory;
+        activeCategory === 'all' || itemCategory === activeCategory;
+      const matchesStock = stockFilter === 'all' || stockState(item) === stockFilter;
       const matchesSearch =
         q === '' ||
         item.name.toLowerCase().includes(q) ||
         categoryLabel(item.category).toLowerCase().includes(q) ||
         item.packaging.toLowerCase().includes(q);
-      return matchesCategory && matchesSearch;
+      return matchesCategory && matchesStock && matchesSearch;
     });
-  }, [items, search, activeCategory]);
+  }, [items, search, activeCategory, stockFilter]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, BranchInventoryItem[]>();
     for (const item of filtered) {
-      const list = map.get(item.category) ?? [];
+      const key = item.category?.trim() || 'Uncategorized';
+      const list = map.get(key) ?? [];
       list.push(item);
-      map.set(item.category, list);
+      map.set(key, list);
     }
-    return RAW_MATERIAL_CATEGORY_ORDER.filter((c) => map.has(c)).map((c) => ({
-      category: c,
-      items: map.get(c) as BranchInventoryItem[],
-    }));
-  }, [filtered]);
+    const order =
+      categoryOrder.length > 0
+        ? categoryOrder
+        : [...map.keys()].sort((a, b) => a.localeCompare(b));
+    const sections = order
+      .filter((c) => map.has(c))
+      .map((c) => ({
+        category: c,
+        items: map.get(c) as BranchInventoryItem[],
+      }));
+    if (sections.length > 0) return sections;
+    if (filtered.length === 0) return [];
+    return [{ category: 'Uncategorized', items: filtered }];
+  }, [filtered, categoryOrder]);
 
   const lowStockCount = useMemo(
-    () => items.filter((i) => i.onHandQty <= i.lowStockQty).length,
+    () => items.filter((i) => stockState(i) === 'low').length,
+    [items]
+  );
+  const outOfStockCount = useMemo(
+    () => items.filter((i) => stockState(i) === 'out').length,
     [items]
   );
 
@@ -185,7 +301,6 @@ export default function InventoryPage() {
     if (!canManageInventory) return;
     const qty = Math.max(0, Math.round(nextQty));
     const previous = item.onHandQty;
-    if (qty === previous) return;
 
     setItems((prev) =>
       prev.map((i) =>
@@ -193,10 +308,28 @@ export default function InventoryPage() {
       )
     );
 
-    if (item.branchInventoryId) {
+    if (source === 'live') {
       setSavingId(item.rawMaterialId);
-      const { error } = await updateBranchStock(item.branchInventoryId, qty);
+      const { error, branchInventoryId } = await updateBranchStock(
+        item.branchInventoryId,
+        qty,
+        {
+          brandDbId: brand.dbBrandId,
+          branchId: branch.id,
+          rawMaterialId: item.rawMaterialId,
+          lowStockQty: item.lowStockQty,
+        }
+      );
       if (!error) {
+        if (branchInventoryId) {
+          setItems((prev) =>
+            prev.map((i) =>
+              i.rawMaterialId === item.rawMaterialId
+                ? { ...i, branchInventoryId }
+                : i
+            )
+          );
+        }
         const session = readStoredAuthSession();
         await logStockMovement({
           brandId: brand.dbBrandId,
@@ -224,12 +357,27 @@ export default function InventoryPage() {
     }
   };
 
-  const requestAdjust = (item: BranchInventoryItem, nextQty: number) => {
+  // `previous` is passed by the typed field, whose item already holds the typed value.
+  const requestAdjust = (item: BranchInventoryItem, nextQty: number, previous = item.onHandQty) => {
     if (!canManageInventory) return;
-    const qty = Math.max(0, Math.round(nextQty));
-    if (qty === item.onHandQty) return;
-    setPendingAdjust({ item, previous: item.onHandQty, next: qty });
+    const qty = Math.max(0, Math.round(Number.isFinite(nextQty) ? nextQty : 0));
+    if (qty === previous) {
+      setQtyLocal(item.rawMaterialId, previous);
+      return;
+    }
+    setPendingAdjust({ item: { ...item, onHandQty: previous }, previous, next: qty });
     setAdjustReason('Count correction');
+  };
+
+  const setQtyLocal = (rawMaterialId: string, qty: number) => {
+    setItems((prev) =>
+      prev.map((i) => (i.rawMaterialId === rawMaterialId ? { ...i, onHandQty: qty } : i))
+    );
+  };
+
+  const cancelAdjust = () => {
+    if (pendingAdjust) setQtyLocal(pendingAdjust.item.rawMaterialId, pendingAdjust.previous);
+    setPendingAdjust(null);
   };
 
   const confirmAdjust = async () => {
@@ -239,7 +387,7 @@ export default function InventoryPage() {
   };
 
   const addToCart = (item: BranchInventoryItem) => {
-    if (!canManageInventory) return;
+    if (!canOrder || item.price <= 0) return;
     setCart((prev) => {
       const existing = prev[item.rawMaterialId];
       return {
@@ -265,142 +413,271 @@ export default function InventoryPage() {
 
   const clearCart = () => setCart({});
 
+  const openCheckout = () => {
+    setCheckoutStep('items');
+    setOrderError(null);
+    setCheckoutOpen(true);
+  };
+
+  const closeCheckout = () => {
+    if (!placing) setCheckoutOpen(false);
+  };
+
+  useEffect(() => {
+    if (!checkoutOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !placing) setCheckoutOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [checkoutOpen, placing]);
+
+  useEffect(() => {
+    if (checkoutOpen && cartLines.length === 0) setCheckoutStep('items');
+  }, [checkoutOpen, cartLines.length]);
+
+  const updateCustomer = (field: keyof SupplyCustomerDetails, value: string) => {
+    setCustomer((prev) => ({ ...prev, [field]: value }));
+    setCustomerErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+  };
+
+  const validateField = (field: keyof SupplyCustomerDetails) => {
+    if (!customer[field]) return;
+    setCustomerErrors((prev) => ({ ...prev, [field]: validateCustomer(customer)[field] }));
+  };
+
   const handlePlaceOrder = async () => {
-    if (!canManageInventory || cartLines.length === 0) return;
+    if (!canOrder || cartLines.length === 0 || placing) return;
+
+    const errors = validateCustomer(customer);
+    setCustomerErrors(errors);
+    const firstInvalid = FIELD_ORDER.find((field) => errors[field]);
+    if (firstInvalid) {
+      document.getElementById(`supply-checkout-${firstInvalid}`)?.focus();
+      return;
+    }
+
     setPlacing(true);
     setOrderError(null);
     const session = readStoredAuthSession();
-    const { checkoutUrl, error } = await startSupplyOrderPayment({
+    const lines = cartLines.map((l) => ({
+      rawMaterialId: l.item.rawMaterialId,
+      name: l.item.name,
+      packaging: l.item.packaging,
+      unit: l.item.unit,
+      unitPrice: l.item.price,
+      quantity: l.qty,
+    }));
+    const signature = cartSignature(lines);
+    const cleanCustomer = {
+      ...customer,
+      mobile: normalizePhMobile(customer.mobile) ?? customer.mobile,
+    };
+    const reuseOrderId =
+      pendingOrder.current?.signature === signature ? pendingOrder.current.orderId : undefined;
+
+    const { checkoutUrl, orderId, error } = await startSupplyOrderPayment({
       brandId: brand.dbBrandId,
       branchId: branch.id,
       placedBy: session?.userName ?? 'Franchisee',
       notes,
-      lines: cartLines.map((l) => ({
-        rawMaterialId: l.item.rawMaterialId,
-        name: l.item.name,
-        packaging: l.item.packaging,
-        unit: l.item.unit,
-        unitPrice: l.item.price,
-        quantity: l.qty,
-      })),
+      lines,
+      customer: cleanCustomer,
+      orderId: reuseOrderId,
     });
-    setPlacing(false);
+
+    // Remember the unpaid order so retrying the same cart doesn't create a duplicate.
+    if (orderId) {
+      pendingOrder.current = { orderId, signature };
+      writeCartDraft(branch.id, {
+        quantities: Object.fromEntries(lines.map((l) => [l.rawMaterialId, l.quantity])),
+        orderId,
+        signature,
+      });
+    }
 
     if (error || !checkoutUrl) {
+      setPlacing(false);
       setOrderError(
         error === 'not-configured'
-          ? 'This branch isn’t connected yet, so the order can’t be sent to HQ.'
+          ? 'Supabase is not configured on this device. Check VITE_SUPABASE_URL in pos-client/.env.local.'
           : error ?? 'Could not open HitPay checkout. Please try again.'
       );
       return;
     }
 
+    saveContact(branch.id, customer);
     window.location.href = checkoutUrl;
   };
 
+  const renderField = (
+    field: keyof SupplyCustomerDetails,
+    label: string,
+    props: React.InputHTMLAttributes<HTMLInputElement>
+  ) => (
+    <div className={`supply-checkout-field ${customerErrors[field] ? 'has-error' : ''}`}>
+      <label htmlFor={`supply-checkout-${field}`}>{label}</label>
+      <input
+        id={`supply-checkout-${field}`}
+        value={customer[field]}
+        onChange={(e) => updateCustomer(field, e.target.value)}
+        onBlur={() => validateField(field)}
+        aria-invalid={Boolean(customerErrors[field])}
+        aria-describedby={customerErrors[field] ? `supply-checkout-${field}-error` : undefined}
+        {...props}
+      />
+      {customerErrors[field] && (
+        <span className="supply-checkout-field-error" id={`supply-checkout-${field}-error`}>
+          {customerErrors[field]}
+        </span>
+      )}
+    </div>
+  );
+
+  const toggleStockFilter = (next: StockFilter) =>
+    setStockFilter((current) => (current === next ? 'all' : next));
+
   return (
     <div className="inventory-page" id="inventory-page">
-      <div className="inventory-header">
-        <div className="inventory-header-left">
+      <header className="inv-hero">
+        <div>
+          <p className="inv-eyebrow">
+            <span className={`inv-sync-dot ${source === 'live' ? 'is-live' : ''}`} />
+            {syncing ? 'Syncing stock…' : source === 'live' ? 'Live stock' : 'Offline catalog'}
+          </p>
           <h1>Inventory</h1>
-          <span className="inventory-count">
-            {branch.name} · {items.length} raw materials tracked
-            {syncing && <span className="inventory-sync-label"> · syncing…</span>}
-          </span>
+          <p className="inv-subtitle">{branch.name}</p>
         </div>
-        <div className="inventory-header-right">
-          {canManageInventory && cartCount > 0 && (
-            <button className="inventory-cart-pill" onClick={() => setCheckoutOpen(true)}>
-              <span className="inventory-cart-icon">🛒</span>
-              <span className="inventory-cart-copy">
-                <strong>{cartCount} item{cartCount !== 1 ? 's' : ''}</strong>
-                <small>{pesoExact.format(cartTotal)}</small>
-              </span>
-              <span className="inventory-cart-action">Checkout</span>
-            </button>
-          )}
-          <div className="inventory-stat">
-            <span className="inventory-stat-value">{peso.format(totalValue)}</span>
-            <span className="inventory-stat-label">stock value</span>
+        {canManageInventory && (
+          <button
+            type="button"
+            className="inv-cart-button"
+            onClick={openCheckout}
+            disabled={cartCount === 0}
+          >
+            <ShoppingBag size={18} aria-hidden />
+            <span>{cartCount > 0 ? `${pesoExact.format(cartTotal)}` : 'Order is empty'}</span>
+            {cartCount > 0 && <span className="inv-cart-count">{cartCount}</span>}
+          </button>
+        )}
+      </header>
+
+      <div className="inv-stats">
+        <div className="inv-stat">
+          <span className="inv-stat-icon"><Wallet size={18} aria-hidden /></span>
+          <div>
+            <strong>{peso.format(totalValue)}</strong>
+            <span>Stock value</span>
           </div>
-          {lowStockCount > 0 && (
-            <div className="low-stock-badge">
-              <span className="low-stock-badge-icon">⚠️</span>
-              {lowStockCount} low stock
-            </div>
-          )}
         </div>
+        <button
+          type="button"
+          className={`inv-stat is-button ${stockFilter === 'all' ? 'is-active' : ''}`}
+          onClick={() => setStockFilter('all')}
+        >
+          <span className="inv-stat-icon"><Boxes size={18} aria-hidden /></span>
+          <div>
+            <strong>{items.length}</strong>
+            <span>Materials tracked</span>
+          </div>
+        </button>
+        <button
+          type="button"
+          className={`inv-stat is-button is-warn ${stockFilter === 'low' ? 'is-active' : ''}`}
+          onClick={() => toggleStockFilter('low')}
+          aria-pressed={stockFilter === 'low'}
+        >
+          <span className="inv-stat-icon"><AlertTriangle size={18} aria-hidden /></span>
+          <div>
+            <strong>{lowStockCount}</strong>
+            <span>Low stock</span>
+          </div>
+        </button>
+        <button
+          type="button"
+          className={`inv-stat is-button is-danger ${stockFilter === 'out' ? 'is-active' : ''}`}
+          onClick={() => toggleStockFilter('out')}
+          aria-pressed={stockFilter === 'out'}
+        >
+          <span className="inv-stat-icon"><PackageX size={18} aria-hidden /></span>
+          <div>
+            <strong>{outOfStockCount}</strong>
+            <span>Out of stock</span>
+          </div>
+        </button>
       </div>
 
-      {confirmation && (
-        <div className="inventory-confirm">
-          <span>
-            ✅ Order <strong>{confirmation}</strong> placed. Track it in Portal → Order History.
-          </span>
-          <button className="inventory-confirm-close" onClick={() => setConfirmation(null)}>
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {viewOnly && (
-        <div className="inventory-view-only-note" role="status">
-          View only — you can check stock levels here. Ask a franchisee or manager to adjust counts or place supply orders.
+        <div className="inv-note is-info" role="status">
+          View only. Ask a franchisee or manager to adjust counts or place supply orders.
         </div>
       )}
 
       {source === 'local' && !syncing && (
-        <div className="inventory-offline-note">
+        <div className="inv-note" role="status">
           {viewOnly
-            ? 'Showing the standard Coftea catalog (offline). Live stock will appear when this branch is connected.'
-            : 'Showing the standard Coftea catalog (offline). Stock edits and orders won’t be saved until this branch is connected.'}
+            ? 'Showing the standard Coftea catalog. Live stock will appear when this branch is connected.'
+            : 'Showing the standard Coftea catalog. Stock edits and supply orders are unavailable until this branch is connected.'}
         </div>
       )}
 
-      <div className="inventory-toolbar">
-        <div className="inventory-page-tabs">
-          <button
-            type="button"
-            className={`inventory-filter ${pageTab === 'stock' ? 'active' : ''}`}
-            onClick={() => setPageTab('stock')}
-          >
-            Current Stocks
-          </button>
-          <button
-            type="button"
-            className={`inventory-filter ${pageTab === 'history' ? 'active' : ''}`}
-            onClick={() => setPageTab('history')}
-          >
-            Movement History
-          </button>
-        </div>
-        <div className="inventory-search">
-          <input
-            className="inventory-search-input"
-            type="text"
-            placeholder="Search raw materials..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            id="inventory-search"
-          />
-        </div>
-        <div className="inventory-filters" role="tablist" aria-label="Filter by category">
-          <button
-            className={`inventory-filter ${activeCategory === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('all')}
-          >
-            All
-          </button>
-          {categories.map((c) => (
+      <div className="inv-toolbar">
+        <div className="inv-toolbar-row">
+          <div className="inv-tabs" role="tablist" aria-label="Inventory view">
             <button
-              key={c}
-              className={`inventory-filter ${activeCategory === c ? 'active' : ''}`}
-              onClick={() => setActiveCategory(c)}
+              type="button"
+              role="tab"
+              aria-selected={pageTab === 'stock'}
+              className={pageTab === 'stock' ? 'active' : ''}
+              onClick={() => setPageTab('stock')}
             >
-              {categoryLabel(c)}
+              Current stock
             </button>
-          ))}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pageTab === 'history'}
+              className={pageTab === 'history' ? 'active' : ''}
+              onClick={() => setPageTab('history')}
+            >
+              Movement history
+            </button>
+          </div>
+          {pageTab === 'stock' && (
+            <label className="inv-search">
+              <Search size={16} aria-hidden />
+              <input
+                type="search"
+                placeholder="Search raw materials"
+                aria-label="Search raw materials"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                id="inventory-search"
+              />
+            </label>
+          )}
         </div>
+        {pageTab === 'stock' && (
+          <div className="inv-chips" aria-label="Filter by category">
+            <button
+              type="button"
+              className={activeCategory === 'all' ? 'active' : ''}
+              onClick={() => setActiveCategory('all')}
+            >
+              All
+            </button>
+            {categoryOrder.map((c) => (
+              <button
+                type="button"
+                key={c}
+                className={activeCategory === c ? 'active' : ''}
+                onClick={() => setActiveCategory(c)}
+              >
+                {categoryLabel(c)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {pageTab === 'history' ? (
@@ -421,7 +698,9 @@ export default function InventoryPage() {
             movements.map((m) => (
               <div key={m.id} className="inventory-movement-row">
                 <strong>{m.materialName}</strong>
-                <span>{m.movementType} · {m.qtyDelta >= 0 ? '+' : ''}{m.qtyDelta}</span>
+                <span className={m.qtyDelta >= 0 ? 'is-up' : 'is-down'}>
+                  {m.movementType} · {m.qtyDelta >= 0 ? '+' : ''}{m.qtyDelta}
+                </span>
                 <span>{m.reason}</span>
                 <span>{m.createdBy}</span>
                 <span>{new Date(m.createdAt).toLocaleString('en-PH')}</span>
@@ -431,92 +710,131 @@ export default function InventoryPage() {
         </div>
       ) : grouped.length === 0 ? (
         <div className="inventory-empty">
-          <div className="inventory-empty-icon">🔍</div>
-          No raw materials match “{search}”.
+          <Search size={28} aria-hidden />
+          <p>No raw materials match these filters.</p>
+          <button
+            type="button"
+            className="inventory-export-btn"
+            onClick={() => {
+              setSearch('');
+              setActiveCategory('all');
+              setStockFilter('all');
+            }}
+          >
+            Clear filters
+          </button>
         </div>
       ) : (
         grouped.map(({ category, items: catItems }) => (
-          <section className="inventory-section" key={category}>
-            <div className="inventory-section-head">
-              <h2 className="inventory-section-title">{categoryLabel(category)}</h2>
-              <span className="inventory-section-count">{catItems.length} items</span>
+          <section className="inv-section" key={category}>
+            <div className="inv-section-head">
+              <h2>{categoryLabel(category)}</h2>
+              <span>{catItems.length} items</span>
             </div>
-            <div className="inventory-grid">
-              {catItems.map((item, index) => {
-                const isLow = item.onHandQty <= item.lowStockQty;
+            <div className="inv-grid">
+              {catItems.map((item) => {
+                const state = stockState(item);
                 const isSaving = savingId === item.rawMaterialId;
                 const inCart = cart[item.rawMaterialId]?.qty ?? 0;
+                const meta = [item.packaging, item.price > 0 ? peso.format(item.price) : 'Price pending']
+                  .filter(Boolean)
+                  .join(' · ');
                 return (
-                  <div
+                  <article
                     key={item.rawMaterialId}
-                    className={`inventory-item ${isLow ? 'low-stock' : ''}`}
-                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                    className={`inv-card is-${state} ${inCart > 0 ? 'in-order' : ''}`}
                   >
-                    <div className="inventory-item-icon">{item.icon || '📦'}</div>
-                    <div className="inventory-item-info">
-                      <div className="inventory-item-name">{item.name}</div>
-                      <div className="inventory-item-meta">
-                        {item.packaging} · {peso.format(item.price)}
-                        {isLow && <span className="inventory-item-flag">Low</span>}
+                    <div className="inv-card-top">
+                      <div className="inv-card-icon" aria-hidden>{item.icon || '📦'}</div>
+                      <div className="inv-card-info">
+                        <h3 title={item.name}>{item.name}</h3>
+                        <p>{meta}</p>
                       </div>
+                      <span className={`inv-pill is-${state}`}>{STOCK_LABELS[state]}</span>
                     </div>
-                    <div className="inventory-item-right">
+                    <div className="inv-card-bottom">
                       {canManageInventory ? (
                         <>
-                          <div className="inventory-qty-editor">
-                            <button
-                              className="inventory-action-btn minus"
-                              onClick={() => requestAdjust(item, item.onHandQty - 1)}
-                              disabled={isSaving || item.onHandQty <= 0}
-                              aria-label={`Remove one ${item.unit}`}
-                            >
-                              −
-                            </button>
-                            <div className="inventory-qty-field">
+                          <div className="inv-onhand">
+                            <span className="inv-control-label">On hand</span>
+                            <div className="inv-stepper">
+                              <button
+                                type="button"
+                                onClick={() => requestAdjust(item, item.onHandQty - 1)}
+                                disabled={isSaving || item.onHandQty <= 0}
+                                aria-label={`Remove one ${item.unit} of ${item.name}`}
+                              >
+                                <Minus size={14} aria-hidden />
+                              </button>
                               <input
-                                className="inventory-qty-input"
                                 type="number"
                                 min={0}
                                 value={item.onHandQty}
+                                aria-label={`${item.name} on hand`}
+                                data-previous={item.onHandQty}
+                                onFocus={(e) => {
+                                  e.currentTarget.dataset.previous = String(item.onHandQty);
+                                  e.currentTarget.select();
+                                }}
                                 onChange={(e) => {
                                   const v = Number(e.target.value);
-                                  setItems((prev) =>
-                                    prev.map((i) =>
-                                      i.rawMaterialId === item.rawMaterialId
-                                        ? { ...i, onHandQty: Number.isFinite(v) ? v : 0 }
-                                        : i
-                                    )
-                                  );
+                                  setQtyLocal(item.rawMaterialId, Number.isFinite(v) ? v : 0);
                                 }}
-                                onBlur={(e) => requestAdjust(item, Number(e.target.value))}
+                                onBlur={(e) =>
+                                  requestAdjust(
+                                    item,
+                                    Number(e.target.value),
+                                    Number(e.target.dataset.previous)
+                                  )
+                                }
                               />
-                              <span className="inventory-qty-unit">{item.unit}</span>
+                              <button
+                                type="button"
+                                onClick={() => requestAdjust(item, item.onHandQty + 1)}
+                                disabled={isSaving}
+                                aria-label={`Add one ${item.unit} of ${item.name}`}
+                              >
+                                <Plus size={14} aria-hidden />
+                              </button>
                             </div>
-                            <button
-                              className="inventory-action-btn plus"
-                              onClick={() => requestAdjust(item, item.onHandQty + 1)}
-                              disabled={isSaving}
-                              aria-label={`Add one ${item.unit}`}
-                            >
-                              +
-                            </button>
+                            <span className="inv-unit">{item.unit}</span>
                           </div>
-                          <button
-                            className={`inventory-reorder-btn ${inCart > 0 ? 'in-cart' : ''}`}
-                            onClick={() => addToCart(item)}
-                            aria-label={`Reorder ${item.name}`}
-                          >
-                            {inCart > 0 ? `In cart · ${inCart}` : 'Reorder'}
-                          </button>
+                          {inCart > 0 ? (
+                            <div className="inv-order-stepper">
+                              <button
+                                type="button"
+                                onClick={() => setCartQty(item.rawMaterialId, inCart - 1)}
+                                aria-label={`Order one less ${item.name}`}
+                              >
+                                <Minus size={14} aria-hidden />
+                              </button>
+                              <span aria-live="polite">{inCart} in order</span>
+                              <button
+                                type="button"
+                                onClick={() => addToCart(item)}
+                                aria-label={`Order one more ${item.name}`}
+                              >
+                                <Plus size={14} aria-hidden />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="inv-add"
+                              onClick={() => addToCart(item)}
+                              disabled={!canOrder || item.price <= 0}
+                            >
+                              <Plus size={15} aria-hidden /> Add to order
+                            </button>
+                          )}
                         </>
                       ) : (
-                        <div className="inventory-qty-readonly" aria-label={`${item.onHandQty} ${item.unit} on hand`}>
-                          <strong>{item.onHandQty}</strong>
-                          <span>{item.unit}</span>
+                        <div className="inv-readonly">
+                          <strong>{item.onHandQty}</strong> {item.unit} on hand
                         </div>
                       )}
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
@@ -533,115 +851,253 @@ export default function InventoryPage() {
             <span className="reorder-bar-total">{pesoExact.format(cartTotal)}</span>
           </div>
           <div className="reorder-bar-actions">
-            <button className="reorder-bar-clear" onClick={clearCart}>
+            <button type="button" className="reorder-bar-clear" onClick={clearCart}>
               Clear
             </button>
-            <button className="reorder-bar-review" onClick={() => setCheckoutOpen(true)}>
-              Review Order →
+            <button type="button" className="reorder-bar-review" onClick={openCheckout}>
+              Checkout <ArrowRight size={16} aria-hidden />
             </button>
           </div>
         </div>
       )}
 
       {canManageInventory && checkoutOpen && (
-        <div className="checkout-overlay" onClick={() => setCheckoutOpen(false)}>
-          <aside className="checkout-drawer" onClick={(e) => e.stopPropagation()}>
-            <div className="checkout-head">
+        <div className="supply-checkout-overlay" onClick={closeCheckout}>
+          <aside
+            className="supply-checkout-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="supply-checkout-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="supply-checkout-head">
               <div>
-                <h2>Review Supply Order</h2>
-                <span className="checkout-branch">{branch.name}</span>
+                <h2 id="supply-checkout-title">
+                  {checkoutStep === 'items' ? 'Review your order' : 'Delivery details'}
+                </h2>
+                <span className="supply-checkout-branch">{branch.name}</span>
               </div>
-              <button className="checkout-close" onClick={() => setCheckoutOpen(false)}>
-                ✕
+              <button
+                type="button"
+                className="supply-checkout-close"
+                onClick={closeCheckout}
+                disabled={placing}
+                aria-label="Close checkout"
+              >
+                <X size={16} aria-hidden />
               </button>
             </div>
 
-            <div className="checkout-lines">
-              {cartLines.length === 0 ? (
-                <div className="checkout-empty">Your reorder cart is empty.</div>
-              ) : (
-                cartLines.map(({ item, qty }) => (
-                  <div className="checkout-line" key={item.rawMaterialId}>
-                    <div className="checkout-line-icon">{item.icon || '📦'}</div>
-                    <div className="checkout-line-info">
-                      <div className="checkout-line-name">{item.name}</div>
-                      <div className="checkout-line-meta">
-                        {item.packaging} · {peso.format(item.price)}
+            <ol className="supply-checkout-steps" aria-label="Checkout progress">
+              <li
+                className={checkoutStep === 'items' ? 'is-current' : 'is-done'}
+                aria-current={checkoutStep === 'items' ? 'step' : undefined}
+              >
+                <span>{checkoutStep === 'items' ? '1' : <Check size={13} aria-hidden />}</span>
+                Items
+              </li>
+              <li
+                className={checkoutStep === 'details' ? 'is-current' : ''}
+                aria-current={checkoutStep === 'details' ? 'step' : undefined}
+              >
+                <span>2</span>
+                Details
+              </li>
+              <li>
+                <span>3</span>
+                Pay
+              </li>
+            </ol>
+
+            <div className="supply-checkout-body">
+              {checkoutStep === 'items' ? (
+                cartLines.length === 0 ? (
+                  <div className="supply-checkout-empty">Your order is empty.</div>
+                ) : (
+                  cartLines.map(({ item, qty }) => (
+                    <div className="supply-checkout-line" key={item.rawMaterialId}>
+                      <div className="supply-checkout-line-icon" aria-hidden>{item.icon || '📦'}</div>
+                      <div className="supply-checkout-line-info">
+                        <div className="supply-checkout-line-name">{item.name}</div>
+                        <div className="supply-checkout-line-meta">
+                          {[item.packaging, peso.format(item.price)].filter(Boolean).join(' · ')}
+                        </div>
                       </div>
-                    </div>
-                    <div className="checkout-line-qty">
+                      <div className="inv-stepper is-small">
+                        <button
+                          type="button"
+                          onClick={() => setCartQty(item.rawMaterialId, qty - 1)}
+                          aria-label={`Order one less ${item.name}`}
+                          disabled={qty <= 1}
+                        >
+                          <Minus size={13} aria-hidden />
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          value={qty}
+                          aria-label={`${item.name} order quantity`}
+                          onChange={(e) =>
+                            setCartQty(item.rawMaterialId, Math.max(1, Number(e.target.value) || 1))
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCartQty(item.rawMaterialId, qty + 1)}
+                          aria-label={`Order one more ${item.name}`}
+                        >
+                          <Plus size={13} aria-hidden />
+                        </button>
+                      </div>
+                      <div className="supply-checkout-line-total">{pesoExact.format(qty * item.price)}</div>
                       <button
-                        className="inventory-action-btn minus"
-                        onClick={() => setCartQty(item.rawMaterialId, qty - 1)}
-                        aria-label="Decrease"
+                        type="button"
+                        className="supply-checkout-line-remove"
+                        onClick={() => setCartQty(item.rawMaterialId, 0)}
+                        aria-label={`Remove ${item.name}`}
                       >
-                        −
+                        <Trash2 size={15} aria-hidden />
                       </button>
-                      <input
-                        className="checkout-qty-input"
-                        type="number"
-                        min={0}
-                        value={qty}
-                        onChange={(e) => setCartQty(item.rawMaterialId, Number(e.target.value))}
+                    </div>
+                  ))
+                )
+              ) : (
+                <form
+                  className="supply-checkout-form"
+                  id="supply-checkout-details-form"
+                  noValidate
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void handlePlaceOrder();
+                  }}
+                >
+                  <section className="supply-checkout-card">
+                    <div className="supply-checkout-card-head">
+                      <h3>Order summary</h3>
+                      <button type="button" onClick={() => setCheckoutStep('items')} disabled={placing}>
+                        Edit
+                      </button>
+                    </div>
+                    <ul className="supply-checkout-summary">
+                      {cartLines.map(({ item, qty }) => (
+                        <li key={item.rawMaterialId}>
+                          <span className="supply-checkout-summary-qty">{qty}×</span>
+                          <span className="supply-checkout-summary-name">{item.name}</span>
+                          <span>{pesoExact.format(qty * item.price)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  <section className="supply-checkout-card">
+                    <div className="supply-checkout-card-head">
+                      <h3><UserRound size={16} aria-hidden /> Contact</h3>
+                    </div>
+                    {renderField('contactName', 'Contact person', {
+                      autoComplete: 'name',
+                      placeholder: 'Full name',
+                    })}
+                    <div className="supply-checkout-form-row">
+                      {renderField('mobile', 'Mobile number', {
+                        type: 'tel',
+                        inputMode: 'tel',
+                        autoComplete: 'tel',
+                        placeholder: '0917 123 4567',
+                      })}
+                      {renderField('email', 'Email for receipt', {
+                        type: 'email',
+                        inputMode: 'email',
+                        autoComplete: 'email',
+                        placeholder: 'name@email.com',
+                      })}
+                    </div>
+                  </section>
+
+                  <section className="supply-checkout-card">
+                    <div className="supply-checkout-card-head">
+                      <h3><MapPin size={16} aria-hidden /> Delivery</h3>
+                    </div>
+                    {renderField('address', 'Delivery address', {
+                      autoComplete: 'street-address',
+                      placeholder: 'Unit, street, barangay',
+                    })}
+                    <div className="supply-checkout-form-row">
+                      {renderField('city', 'City / municipality', {
+                        autoComplete: 'address-level2',
+                        placeholder: 'City and province',
+                      })}
+                      {renderField('preferredDate', 'Preferred delivery (optional)', {
+                        type: 'date',
+                        min: minDeliveryDate(),
+                      })}
+                    </div>
+                    <div className="supply-checkout-field">
+                      <label htmlFor="supply-checkout-notes-input">Notes for HQ (optional)</label>
+                      <textarea
+                        id="supply-checkout-notes-input"
+                        placeholder="Landmark, receiving hours, or special requests"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={2}
                       />
-                      <button
-                        className="inventory-action-btn plus"
-                        onClick={() => setCartQty(item.rawMaterialId, qty + 1)}
-                        aria-label="Increase"
-                      >
-                        +
-                      </button>
                     </div>
-                    <div className="checkout-line-total">
-                      {pesoExact.format(qty * item.price)}
-                    </div>
-                  </div>
-                ))
+                  </section>
+                </form>
               )}
             </div>
 
-            <div className="checkout-notes">
-              <div className="checkout-hitpay-note">
-                <span className="checkout-payment-label">Payment</span>
-                <p>
-                  You’ll pay securely via HitPay. HQ receives this order only after
-                  payment is confirmed.
-                </p>
-              </div>
+            {orderError && <div className="supply-checkout-error" role="alert">{orderError}</div>}
 
-              <label htmlFor="checkout-notes-input">Notes for HQ (optional)</label>
-              <textarea
-                id="checkout-notes-input"
-                placeholder="e.g. Needed before the weekend rush"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-              />
-            </div>
-
-            {orderError && <div className="checkout-error">{orderError}</div>}
-
-            <div className="checkout-footer">
-              <div className="checkout-total-row">
-                <span>Total</span>
+            <div className="supply-checkout-footer">
+              <div className="supply-checkout-total-row">
+                <span>{cartCount} item{cartCount !== 1 ? 's' : ''} · Total</span>
                 <strong>{pesoExact.format(cartTotal)}</strong>
               </div>
-              <button
-                className="checkout-place-btn"
-                onClick={handlePlaceOrder}
-                disabled={placing || cartLines.length === 0}
-              >
-                {placing ? 'Opening HitPay…' : `Pay & place order · ${pesoExact.format(cartTotal)}`}
-              </button>
+              {checkoutStep === 'items' ? (
+                <button
+                  type="button"
+                  className="supply-checkout-place-btn"
+                  disabled={cartLines.length === 0}
+                  onClick={() => setCheckoutStep('details')}
+                >
+                  Continue to details <ArrowRight size={16} aria-hidden />
+                </button>
+              ) : (
+                <div className="supply-checkout-footer-actions">
+                  <button
+                    type="button"
+                    className="supply-checkout-back-btn"
+                    onClick={() => setCheckoutStep('items')}
+                    disabled={placing}
+                    aria-label="Back to items"
+                  >
+                    <ArrowLeft size={16} aria-hidden />
+                  </button>
+                  <button
+                    type="submit"
+                    form="supply-checkout-details-form"
+                    className="supply-checkout-place-btn"
+                    disabled={placing || cartLines.length === 0}
+                  >
+                    {!placing && <Lock size={15} aria-hidden />}
+                    {placing ? 'Opening HitPay…' : `Pay ${pesoExact.format(cartTotal)}`}
+                  </button>
+                </div>
+              )}
+              {checkoutStep === 'details' && (
+                <p className="supply-checkout-secure">
+                  Secured by HitPay. HQ receives your order once payment is confirmed.
+                </p>
+              )}
             </div>
           </aside>
         </div>
       )}
 
       {canManageInventory && pendingAdjust && (
-        <div className="inventory-adjust-overlay" role="dialog" aria-modal="true">
+        <div className="inventory-adjust-overlay" role="dialog" aria-modal="true" aria-labelledby="adjust-title">
           <div className="inventory-adjust-modal">
-            <h3>Adjust Stock</h3>
+            <h3 id="adjust-title">Adjust stock</h3>
             <p>
               {pendingAdjust.item.name}: {pendingAdjust.previous} → {pendingAdjust.next}{' '}
               {pendingAdjust.item.unit}
@@ -659,7 +1115,7 @@ export default function InventoryPage() {
               <option>Other</option>
             </select>
             <div className="inventory-adjust-actions">
-              <button type="button" onClick={() => setPendingAdjust(null)}>Cancel</button>
+              <button type="button" onClick={cancelAdjust}>Cancel</button>
               <button type="button" className="inventory-adjust-save" onClick={() => void confirmAdjust()}>
                 Save adjustment
               </button>

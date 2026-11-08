@@ -9,6 +9,11 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "import:roster": "node scripts/import-brand-roster.mjs --dry-run",
+    "import:roster:apply": "node scripts/import-brand-roster.mjs --apply",
+    "import:inventory": "node scripts/import-coftea-inventory.mjs --dry-run",
+    "import:inventory:apply": "node scripts/import-coftea-inventory.mjs --apply",
+    "import:inventory:write-ts": "node scripts/import-coftea-inventory.mjs --write-ts",
     "smoke:franchisee": "node scripts/smoke-test-franchisee.mjs"
   },
   "dependencies": {
@@ -25,6 +30,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "adm-zip": "^0.6.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",

@@ -16,6 +16,15 @@ export interface HqWeeklyRevenueItem {
   revenue: number;
 }
 
+export const EMPTY_HQ_SNAPSHOT: HqKpiSnapshot = {
+  todayRevenue: 0,
+  yesterdayRevenue: 0,
+  todayOrders: 0,
+  yesterdayOrders: 0,
+  avgOrderValue: 0,
+  activeBranches: 0,
+};
+
 interface RpcGlobalKpiRow {
   today_revenue: number | null;
   yesterday_revenue: number | null;
@@ -57,6 +66,13 @@ function getRecentManilaDates(days: number) {
     dates.push(d);
   }
   return dates;
+}
+
+export function emptyWeeklyRevenue(): HqWeeklyRevenueItem[] {
+  return getRecentManilaDates(7).map((d) => ({
+    day: toDayLabel(d),
+    revenue: 0,
+  }));
 }
 
 function buildFallbackFromRows(rows: PosOrderRow[]): {
@@ -132,10 +148,13 @@ export async function fetchHqKpiData(brandDbId?: string) {
         avgOrderValue: asNumber(snapshotRow?.avg_order_value),
         activeBranches: asNumber(snapshotRow?.active_branches),
       },
-      weeklyRevenue: weeklyRows.map((row) => ({
-        day: row.day_label ?? '--',
-        revenue: asNumber(row.revenue),
-      })),
+      weeklyRevenue:
+        weeklyRows.length > 0
+          ? weeklyRows.map((row) => ({
+              day: row.day_label ?? '--',
+              revenue: asNumber(row.revenue),
+            }))
+          : emptyWeeklyRevenue(),
       source: 'rpc' as const,
     };
   }
